@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 
-
 from fastapi import FastAPI
 import uvicorn
 from pydantic import BaseModel, IPvAnyAddress
