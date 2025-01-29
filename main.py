@@ -1,13 +1,18 @@
-from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 import uvicorn
 
+from core.models import Base, db_helper
 from controller_management.views import router as router_get_state
 
-load_dotenv()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with db_helper.engine.connect() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 app.include_router(router_get_state)
 
 @app.get('/')
