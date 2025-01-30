@@ -4,7 +4,8 @@ from fastapi import FastAPI
 import uvicorn
 
 from core.models import Base, db_helper
-from controller_management.views import router as router_get_state
+from api_v1 import router as router_v1
+from core.settings import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -13,7 +14,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(router_get_state)
+app.include_router(router=router_v1, prefix=settings.api_v1_prefix)
 
 @app.get('/')
 def root():

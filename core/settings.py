@@ -26,4 +26,8 @@ class SettingsDb(BaseSettings):
                 f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.POSTGRES_DB}")
 
 
+class Settings(BaseSettings):
+    api_v1_prefix: str = '/api/v1'
+
 settings_db = SettingsDb()
+settings = Settings()
