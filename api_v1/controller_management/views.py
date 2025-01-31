@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.models import db_helper
 from . import crud
-from .schemas import TrafficLightsObjectsRequest, TrafficLightsObjectsResponce
+from .schemas import TrafficLightsObjectsRequest, TrafficLightsObjectsResponce, GetStateRequest
 
 router = APIRouter(tags=['Controller-management'])
 
@@ -35,3 +35,10 @@ async def get_intersection(
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f'Хост {intersection} не найден в базе'
     )
+
+
+@router.post('/get-state')
+async def get_state(data: GetStateRequest):
+    return {
+        'test': 1
+    }
