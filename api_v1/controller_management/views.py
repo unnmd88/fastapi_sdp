@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import IPvAnyAddress
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from core.models import db_helper
 from . import crud
-from .schemas import TrafficLightsObjectsRequest, TrafficLightsObjectsResponce, GetStateRequest
+from .schemas import TrafficLightsObjectsRequest, TrafficLightsObjectsResponce, Ipv4, GetStateResponse
+
 
 router = APIRouter(tags=['Controller-management'])
 
@@ -38,7 +40,5 @@ async def get_intersection(
 
 
 @router.post('/get-state')
-async def get_state(data: GetStateRequest):
-    return {
-        'test': 1
-    }
+async def get_state() -> dict[str, GetStateResponse]:
+    pass
