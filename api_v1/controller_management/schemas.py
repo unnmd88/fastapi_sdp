@@ -60,6 +60,7 @@ class GetStateResponse(BaseModel):
                     "tax": 3.2,
                     "dict": {
                         "raw_data": "VA"
+                                    ""
                     }
                 }
             ]
