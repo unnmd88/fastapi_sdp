@@ -1,4 +1,5 @@
 import datetime
+import ipaddress
 from enum import StrEnum
 from typing import Annotated, Any
 
@@ -23,10 +24,6 @@ class TrafficLightsObjectsResponce(BaseModel):
     time_update: datetime.datetime
 
 
-class Ipv4(BaseModel):
-    ipv4: Annotated[IPvAnyAddress, Field(alias='ipv4Address')]
-
-
 class AllowedControllers(StrEnum):
     SWARCO = 'Swarco'
     POTOK_P = 'Поток (P)'
@@ -37,6 +34,10 @@ class AllowedControllers(StrEnum):
 class AllowedTypeRequestGetState(StrEnum):
     SNMP = 'snmp'
     HTTP = 'http'
+
+
+class Ipv4(BaseModel):
+    ipv4: IPvAnyAddress
 
 
 class GetStateByIpv4(BaseModel):
@@ -60,7 +61,6 @@ class GetStateResponse(BaseModel):
                     "tax": 3.2,
                     "dict": {
                         "raw_data": "VA"
-                                    ""
                     }
                 }
             ]
@@ -107,3 +107,13 @@ class GetStateResponse(BaseModel):
     #     "request_time": "2025-01-31 23:34:23"
     # }
 
+
+class GetStateRequest(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+    hosts: dict[str, GetStateByIpv4]
+
+
+if __name__ == '__main__':
+    ipaddress.IPv4Address('10.45.154.12-')
+    Ipv4(ipv4='10.45.154.122')
+    GetStateByIpv4(**{'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string', 'type_request': 'snmp'})
