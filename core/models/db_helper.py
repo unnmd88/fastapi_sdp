@@ -41,9 +41,12 @@ db_helper = DataBaseHelper(
 
 if __name__ == '__main__':
 
+    stmt = "SELECT * FROM toolkit_trafficlightsobjects WHERE ip_adress = '10.45.154.16'  OR ip_adress = '10.45.154.17'  OR ip_adress = '10.45.154.18' "
+    stmt_1 = 'SELECT * FROM toolkit_trafficlightsobjects LIMIT 10'
+
     async def get():
         async with db_helper.engine.connect() as conn:
-            res = await conn.execute(text('SELECT * FROM toolkit_trafficlightsobjects LIMIT 10'))
+            res = await conn.execute(text(stmt))
             for i in res:
 
                 print(f'i: {i}')
