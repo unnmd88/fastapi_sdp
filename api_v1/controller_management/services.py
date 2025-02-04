@@ -13,8 +13,10 @@ from core.models import db_helper
 from sdp_lib.utils_common import check_ipv4
 from .schemas import (
     AllowedControllers,
-    AllowedMonitoringEntity, AllowedProtocolsRequest, RequestBase, SearchInDb, RequestBaseWithSearchInDb, RequestCommon
+    AllowedMonitoringEntity, AllowedProtocolsRequest, RequestBase,
+    GetCommands, GetCommandsWithSearchInDb
 )
+
 from sdp_lib.management_controllers import controller_management
 
 
@@ -24,64 +26,97 @@ logger.debug('TEEEEEEEEEEST LOGGER')
 
 
 class DatabaseApi:
-    pass
+
+    def get_stmt_for_request_to_db(self, hosts: dict):
+        acc = []
+        print(f'self.search_in_db_hosts.items(): {self.search_in_db_hosts}')
+
+        for ip_or_num, data_host in hosts.items():
+            acc.append(f"{data_host.search_in_db_field} = '{ip_or_num}' ")
+        return " OR ".join(acc)
+
+    async def get_data_from_db(self):
+        stmt = self.get_stmt_for_request_to_db()
+        print(f'stmt: {stmt}')
+        async with db_helper.engine.connect() as conn:
+            stmt = (f'SELECT * '
+                    f'FROM toolkit_trafficlightsobjects '
+                    f'WHERE {stmt}')
+
+            res = await conn.execute(text(stmt))
+            print(f'res: {res.mappings().all()}')
+            return res
 
 class BaseDataHosts:
     """
     Базовый класс обработки данных и запросов с дорожных контроллеров.
     """
 
-    search_field_in_db_model = SearchInDb
-    # search_in_db_model = RequestBaseWithSearchInDb
+    base_model = RequestBase
+    msg_invalid_ip_or_num = 'invalid data for search host in database'
+    msg_invalid_ip = 'invalid ip v4 address'
+    msg_invalid_host_data = 'invalid host data'
 
     def __init__(self, income_data: dict):
         self.income_data = income_data
-        self.allowed_hosts = {}
-        self.bad_hosts = {}
-        self.search_in_db_hosts = {}
-        self.classes_for_request = []
+        self.allowed_hosts: dict = {}
+        self.bad_hosts: dict = {}
+        self.search_in_db_hosts: dict = {}
+        self.classes_for_request: list[dict] = []
 
 
-    # def __repr__(self):
-    #     return (f'self.income_data:\n{json.dumps(self.income_data, indent=4)}\n'
-    #             f'self.good_hosts: {json.dumps(self.allowed_hosts, indent=4)}\n'
-    #             # f'self.search_in_db_hosts: {json.dumps(self.search_in_db_hosts, indent=4)}\n'
-    #             f'self.bad_hosts: {json.dumps(self.bad_hosts, indent=4)}')
+    def __repr__(self):
+        return (f'self.income_data:\n{json.dumps(self.income_data, indent=4)}\n'
+                f'self.good_hosts: {json.dumps(self.allowed_hosts, indent=4)}\n'
+                f'self.search_in_db_hosts: {json.dumps(self.search_in_db_hosts, indent=4)}\n'
+                f'self.bad_hosts: {json.dumps(self.bad_hosts, indent=4)}')
+        return (f'self.income_data:\n{self.income_data}\n'
+                f'self.good_hosts: {self.allowed_hosts}\n'
+                f'self.search_in_db_hosts: {self.search_in_db_hosts}\n'
+                f'self.bad_hosts: {self.allowed_hosts}')
 
     def parse_income_data(self):
-        base_model = RequestBase
         for ip_or_num, data_host in self.income_data.items():
-            res = self.validate_entity(data_host, base_model)
-            logger.debug(res)
-            if isinstance(res, str):
-                data_host['errors'] = res
+            base_model = self.validate_entity(data_host, self.base_model, err_msg=self.msg_invalid_host_data)
+            # logger.debug(base_model)
+            if isinstance(base_model, str):
+                data_host['errors'] = base_model
                 self.bad_hosts |= {ip_or_num: data_host}
                 continue
-            if res.search_in_db:
-                _data_host = data_host | {'ip_or_num': ip_or_num}
-                model = self.validate_entity(_data_host, RequestCommon)
-                logger.debug('DDDDDDDDEEEEEBUGGGGGGGGGG')
-                logger.debug(model)
-                if isinstance(model, str):
-                    data_host['errors'] = res
-                    self.bad_hosts |= {ip_or_num: data_host}
-                else:
-                    self.search_in_db_hosts |= {ip_or_num: model}
+
+            _data_host = data_host | {'ip_or_num': ip_or_num} if base_model.search_in_db else data_host
+            # logger.debug(base_model.search_in_db)
+            # logger.debug(_data_host)
+            model = self.get_model(base_model.search_in_db)(**_data_host)
+            logger.debug(model)
+            if isinstance(model, str):
+                self.bad_hosts |= {ip_or_num: data_host}
+                logger.debug(self.bad_hosts)
+                continue
+
+            if base_model.search_in_db:
+                self.search_in_db_hosts |= {ip_or_num: model}
             else:
                 if check_ipv4(ip_or_num):
-                    self.allowed_hosts |= {ip_or_num: res}
+                    self.allowed_hosts |= {ip_or_num: data_host}
                 else:
                     self.bad_hosts |= {ip_or_num: data_host}
-                    data_host['errors'] = 'invalid ip v4 address'
 
-    def validate_entity(self, data_host: dict, model):
+
+
+
+
+
+
+
+    def validate_entity(self, data_host: dict, model, err_msg: str = None) -> BaseModel | str:
         try:
             _model = model(**data_host)
             return _model
         except ValidationError:
-            return 'invalid host data'
+            return err_msg
 
-    def get_search_field(self, field: str) -> SearchInDb | str:
+    def get_search_field(self, field: str) -> str:
         try:
             _model = self.search_field_in_db_model(search_in_db_field=field)
             return _model
@@ -113,7 +148,7 @@ class BaseDataHosts:
 
 
     @abc.abstractmethod
-    def get_model(self) -> RequestBase:
+    def get_model(self, search_in_db: bool):
         ...
 
 
@@ -122,8 +157,9 @@ class GetStates(BaseDataHosts):
     Класс обрабывает и получает данные состояния дорожных контроллеров
     """
 
-    def get_model(self):
-        return RequestCommon
+    def get_model(self, search_in_db: bool) -> GetCommands | GetCommandsWithSearchInDb:
+
+        return GetCommandsWithSearchInDb if search_in_db else GetCommands
 
     def get_class(self, data: dict):
         data = GetStateByIpv4(**data)

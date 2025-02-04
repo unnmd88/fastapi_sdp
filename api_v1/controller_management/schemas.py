@@ -25,6 +25,11 @@ class AllowedMonitoringEntity(StrEnum):
     # SET_FLASH = 'set_flash'
 
 
+class AllowedManagementEntity(StrEnum):
+    SET_STAGE = 'set_stage'
+    SET_DARK = 'set_dark'
+
+
 class AllowedProtocolsRequest(StrEnum):
     SNMP = 'snmp'
     HTTP = 'http'
@@ -34,6 +39,7 @@ class AllowedProtocolsRequest(StrEnum):
 class TrafficLightsObjectsTableFields(StrEnum):
     IP_ADDRESS = 'ip_adress'
     NUMBER = 'number'
+    ALL = '*'
 
 
 # class TrafficLightsObjectsRequest(BaseModel):
@@ -143,69 +149,108 @@ class GetStateResponse(BaseModel):
 
 
 class RequestBase(BaseModel):
+    """
+    Базовый класс с настройками и полями для любого запроса(Monitoring/Management)
+    """
+
     model_config = ConfigDict(use_enum_values=True)
 
     type_controller: AllowedControllers
-    host_id: str | None
-    scn: str | None
-    entity: str
+    host_id: Annotated[str, Field(default=None, max_length=20)]
+    scn: Annotated[str, Field(default=None, max_length=10)]
+    entity: AllowedMonitoringEntity | AllowedManagementEntity
     search_in_db: bool
 
+    @field_validator('type_controller', 'entity', mode='before')
+    def to_string(cls, value: str) -> str:
+        return str(value)
 
-class RequestCommon(RequestBase):
 
-    ip_or_num: Annotated[str, Field(min_length=2, max_length=20)]
-    # search_in_db_field: Annotated[str, Field(strict=True)]
-
-    # @field_validator('search_in_db_field', mode='after')
-    # def get_field_value(cls, value: str) -> str:
-    #     """
-    #     Определяет имя поля для поиска объекта в модели TrafficLightsObjects
-    #     """
-    #     if check_ipv4(value):
-    #         return TrafficLightsObjectsTableFields.IP_ADDRESS
-    #     return TrafficLightsObjectsTableFields.NUMBER
+class _RequestWithSearchInDb(RequestBase):
+    """
+    Класс настройки полей при поиске хоста в БД для любого запроса(Monitoring/Management)
+    """
+    ip_or_num: Annotated[str, Field(min_length=1, max_length=20)]
 
     @computed_field
     def search_in_db_field(self) -> str:
         if check_ipv4(self.ip_or_num):
-            return TrafficLightsObjectsTableFields.IP_ADDRESS
-        return TrafficLightsObjectsTableFields.NUMBER
-
-class RequestBaseWithSearchInDb(RequestBase):
-    search_in_db_field: Annotated[str, Field(min_length=2, max_length=20)]
-
-    @field_validator('search_in_db_field', mode='after')
-    def get_field_value(cls, value: str) -> str:
-        """
-        Определяет имя поля для поиска объекта в модели TrafficLightsObjects
-        """
-        if check_ipv4(value):
-            return TrafficLightsObjectsTableFields.IP_ADDRESS
-        return TrafficLightsObjectsTableFields.NUMBER
+            return TrafficLightsObjectsTableFields.IP_ADDRESS.value
+        return TrafficLightsObjectsTableFields.NUMBER.value
 
 
-class SearchInDb(BaseModel):
-    search_in_db_field: Annotated[str, Field(min_length=2, max_length=20)]
-
-    @field_validator('search_in_db_field', mode='after')
-    def get_field_value(cls, value: str) -> str:
-        """
-        Определяет имя поля для поиска объекта в модели TrafficLightsObjects
-        """
-        if check_ipv4(value):
-            return TrafficLightsObjectsTableFields.IP_ADDRESS
-        return TrafficLightsObjectsTableFields.NUMBER
+class GetCommands(RequestBase):
+    """
+    Класс типа получения данных с контроллера.
+    """
+    entity: AllowedMonitoringEntity
 
 
-# class GetStateAndSearchInDb(_SearchInDb):
-#     entity: AllowedMonitoringEntity
+class GetCommandsWithSearchInDb(_RequestWithSearchInDb):
+    """
+    Класс типа получения данных с контроллера с поиском хоста в БД
+    """
+    entity: AllowedMonitoringEntity
+
+
+# """ Первая версия """
+# class RequestBase(BaseModel):
+#     model_config = ConfigDict(use_enum_values=True)
+#
+#     type_controller: AllowedControllers
+#     host_id: str | None
+#     scn: str | None
+#     entity: str
+#     search_in_db: bool
 #
 #
-# class GetState(RequestBase):
-#     entity: AllowedMonitoringEntity
-
-
+# class RequestCommon(RequestBase):
+#
+#     ip_or_num: Annotated[str, Field(min_length=2, max_length=20)]
+#     # search_in_db_field: Annotated[str, Field(strict=True)]
+#
+#     # @field_validator('search_in_db_field', mode='after')
+#     # def get_field_value(cls, value: str) -> str:
+#     #     """
+#     #     Определяет имя поля для поиска объекта в модели TrafficLightsObjects
+#     #     """
+#     #     if check_ipv4(value):
+#     #         return TrafficLightsObjectsTableFields.IP_ADDRESS
+#     #     return TrafficLightsObjectsTableFields.NUMBER
+#
+#     @computed_field
+#     def search_in_db_field(self) -> str:
+#         if check_ipv4(self.ip_or_num):
+#             return TrafficLightsObjectsTableFields.IP_ADDRESS
+#         return TrafficLightsObjectsTableFields.NUMBER
+#
+#
+# class RequestBaseWithSearchInDb(RequestBase):
+#     search_in_db_field: Annotated[str, Field(min_length=2, max_length=20)]
+#
+#     @field_validator('search_in_db_field', mode='after')
+#     def get_field_value(cls, value: str) -> str:
+#         """
+#         Определяет имя поля для поиска объекта в модели TrafficLightsObjects
+#         """
+#         if check_ipv4(value):
+#             return TrafficLightsObjectsTableFields.IP_ADDRESS
+#         return TrafficLightsObjectsTableFields.NUMBER
+#
+#
+# class SearchInDb(BaseModel):
+#     search_in_db_field: Annotated[str, Field(min_length=2, max_length=20)]
+#
+#     @field_validator('search_in_db_field', mode='after')
+#     def get_field_value(cls, value: str) -> str:
+#         """
+#         Определяет имя поля для поиска объекта в модели TrafficLightsObjects
+#         """
+#         if check_ipv4(value):
+#             return TrafficLightsObjectsTableFields.IP_ADDRESS
+#         return TrafficLightsObjectsTableFields.NUMBER
+#
+#
 class GetStateRequest(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
     hosts: dict[str, RequestBase]
@@ -213,6 +258,8 @@ class GetStateRequest(BaseModel):
 
 
 # Annotated[str, Field(strict=True)
+
+
 if __name__ == '__main__':
     data = {
         'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string',
@@ -227,11 +274,10 @@ if __name__ == '__main__':
     #                   })
     # print(obj.model_dump())
 #############################
-    obj2 = _SearchInDb(
+    obj2 = GetCommandsWithSearchInDb(
         **{'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string',
           'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True,
-           'field_value': '10.45.154.16'
+           'ip_or_num': '123'
     })
     print(obj2)
-    print(obj2.field_value)
     print(obj2.model_dump())
