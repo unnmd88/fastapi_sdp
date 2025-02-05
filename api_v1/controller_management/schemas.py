@@ -155,15 +155,23 @@ class RequestBase(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True)
 
+    ip_or_num: Annotated[str, Field(max_length=20)]
     type_controller: AllowedControllers
     host_id: Annotated[str, Field(default=None, max_length=20)]
     scn: Annotated[str, Field(default=None, max_length=10)]
     entity: AllowedMonitoringEntity | AllowedManagementEntity
-    search_in_db: bool
+    search_in_db: Annotated[bool, Field(default=False)]
+    errors: Annotated[list[str], Field(default_factory=list)]
 
     @field_validator('type_controller', 'entity', mode='before')
     def to_string(cls, value: str) -> str:
         return str(value)
+
+    @computed_field
+    def search_in_db_field(self) -> str:
+        if check_ipv4(self.ip_or_num):
+            return TrafficLightsObjectsTableFields.IP_ADDRESS.value
+        return TrafficLightsObjectsTableFields.NUMBER.value
 
 
 class _RequestWithSearchInDb(RequestBase):

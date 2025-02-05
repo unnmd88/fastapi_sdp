@@ -1,4 +1,5 @@
 import asyncio
+import time
 from asyncio import current_task
 
 from sqlalchemy import text
@@ -41,13 +42,37 @@ db_helper = DataBaseHelper(
 
 if __name__ == '__main__':
 
-    stmt = "SELECT * FROM toolkit_trafficlightsobjects WHERE ip_adress = '10.45.154.16'  OR ip_adress = '10.45.154.17'  OR ip_adress = '10.45.154.18' "
-    stmt_1 = 'SELECT * FROM toolkit_trafficlightsobjects LIMIT 10'
+    # stmt = "SELECT * FROM toolkit_trafficlightsobjects WHERE ip_adress = '10.45.154.16' OR ip_adress = '10.45.154.17'  OR ip_adress = '10.45.154.18' "
+    stmt = "SELECT * FROM toolkit_trafficlightsobjects WHERE ip_adress = '10.45.154.1' OR ip_adress = '10.45.154.17'  OR ip_adress = '10.45.154.18' "
+    stmt1_1 = "SELECT * FROM toolkit_trafficlightsobjects WHERE ip_adress = '10.45.154.16' "
+    stmt1_2 = "SELECT * FROM toolkit_trafficlightsobjects WHERE ip_adress = '10.45.154.17' "
+    stmt1_3 = "SELECT * FROM toolkit_trafficlightsobjects WHERE ip_adress = '10.45.154.18' "
 
-    async def get():
+    stmt__ = 'SELECT * FROM toolkit_trafficlightsobjects LIMIT 10'
+
+    # async def get_multiple():
+    #     start_time = time.time()
+    #     async with db_helper.engine.connect() as conn:
+    #         res = await conn.execute(text(stmt))
+    #         print(f'final_time multiple: {time.time() - start_time}')
+    #         for i in res:
+    #
+    #             print(f'i: {i}')
+    # asyncio.run(get_multiple())
+    #
+    # print('-----------------------------------------')
+    # time.sleep(3)
+
+    async def get_single():
         async with db_helper.engine.connect() as conn:
-            res = await conn.execute(text(stmt))
+            start_time = time.time()
+            async with asyncio.TaskGroup() as tg:
+                res = [
+                    tg.create_task(conn.execute(text(stmt1_1))),
+                    tg.create_task(conn.execute(text(stmt1_2))),
+                    tg.create_task(conn.execute(text(stmt1_3))),
+                ]
+            print(f'final_time single: {time.time() - start_time}')
             for i in res:
-
                 print(f'i: {i}')
-    asyncio.run(get())
+    asyncio.run(get_single())
