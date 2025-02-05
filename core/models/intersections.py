@@ -9,12 +9,12 @@ from .base import Base
 class TrafficLightsObjects(Base):
     __tablename__ = "toolkit_trafficlightsobjects"
 
-    number = Mapped[int]
-    description = Mapped[str]
-    type_controller = Mapped[str]
-    group = Mapped[str]
-    ip_adress = Mapped[str]
-    address = Mapped[str]
+    number: Mapped[int]
+    description: Mapped[str]
+    type_controller: Mapped[str]
+    group: Mapped[str]
+    ip_adress: Mapped[str]
+    address: Mapped[str]
     time_create = Column(DateTime, default=func.now())
     time_update = Column(DateTime, default=func.now(), onupdate=func.now())
 

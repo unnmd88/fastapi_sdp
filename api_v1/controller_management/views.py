@@ -43,5 +43,5 @@ async def get_state(data: GetStateRequest) -> GetStateResponse:
     data_hosts.parse_income_data()
     # print(f'data_hosts >> {data_hosts}')
     # print(f'data_hosts >> {data}')
-    # await data_hosts.get_data_from_db()
+    await data_hosts.get_data_from_db()
     print(f'data_hosts >> {data_hosts}')

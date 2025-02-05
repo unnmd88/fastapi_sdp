@@ -41,9 +41,15 @@ def write_data_to_file(data_for_write: list[str] | str, filename: str, mode: str
             raise TypeError('Данные для записи в файл должны быть строкой или списком')
 
 
-def check_ipv4(ip: str) -> bool | None:
+def check_ipv4(ip_v4: str) -> bool:
+    """
+    Проверят валидность ip_v4.
+    :param ip_v4: Строка с ip адресом, которая будет проверена на валидность.
+                  Пример: 192.168.0.1
+    :return: True если ip_v4 валидный, иначе False.
+    """
     try:
-        ipaddress.IPv4Address(ip)
+        ipaddress.IPv4Address(ip_v4)
         return True
     except ipaddress.AddressValueError:
         return False
