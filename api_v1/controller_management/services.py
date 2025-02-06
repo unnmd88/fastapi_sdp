@@ -10,14 +10,15 @@ import logging_config
 from re import search
 
 from pydantic import ValidationError, BaseModel
-from sqlalchemy import text, select, or_, and_
+from sqlalchemy import text, select, or_, and_, BooleanClauseList, Select
 
 from core.models import db_helper, TrafficLightsObjects
+# from sdp_lib.management_controllers.tests import host_id
 from sdp_lib.utils_common import check_ipv4
 from .schemas import (
     AllowedControllers,
     AllowedMonitoringEntity, AllowedProtocolsRequest, RequestBase,
-    GetCommands, GetCommandsWithSearchInDb, TrafficLightsObjectsTableFields
+    GetCommands, GetCommandsWithSearchInDb, TrafficLightsObjectsTableFields, DataHostFields
 )
 
 from sdp_lib.management_controllers import controller_management
@@ -28,27 +29,27 @@ logger = logging.getLogger(__name__)
 logger.debug('TEEEEEEEEEEST LOGGER')
 
 
-class DatabaseApi:
+class BaseRequestsToDb:
 
-    def get_stmt_for_request_to_db(self, hosts: dict):
-        acc = []
-        print(f'self.search_in_db_hosts.items(): {self.search_in_db_hosts}')
-
-        for ip_or_num, data_host in hosts.items():
-            acc.append(f"{data_host.search_in_db_field} = '{ip_or_num}' ")
-        return " OR ".join(acc)
-
-    async def get_data_from_db(self):
-        stmt = self.get_stmt_for_request_to_db()
-        print(f'stmt: {stmt}')
+    async def get_hosts_where(self, stmt):
         async with db_helper.engine.connect() as conn:
-            stmt = (f'SELECT * '
-                    f'FROM toolkit_trafficlightsobjects '
-                    f'WHERE {stmt}')
+            result =  await conn.execute(stmt)
+            return result.mappings().all()
 
-            res = await conn.execute(text(stmt))
-            print(f'res: {res.mappings().all()}')
-            return res
+
+class SearchHosts(BaseRequestsToDb):
+
+    def get_stmt_where(self, hosts: dict) -> Select[tuple[TrafficLightsObjects]]:
+
+        matches = {
+            str(TrafficLightsObjectsTableFields.NUMBER): TrafficLightsObjects.number,
+            str(TrafficLightsObjectsTableFields.IP_ADDRESS): TrafficLightsObjects.ip_adress,
+        }
+        stmt: list = [
+            matches.get(obj.search_in_db_field) == ip_or_num for ip_or_num, obj in hosts.items()
+        ]
+        logger.debug(select(TrafficLightsObjects).where(or_(*stmt)))
+        return select(TrafficLightsObjects).where(or_(*stmt))
 
 
 class BaseDataHosts:
@@ -57,9 +58,11 @@ class BaseDataHosts:
     """
 
     base_model = RequestBase
+    field_errors = 'errors'
     msg_invalid_ip_or_num = 'invalid data for search host in database'
     msg_invalid_ip = 'invalid ip v4 address'
     msg_invalid_host_data = 'invalid host data'
+    msg_not_found_in_database = 'not found in database'
 
     def __init__(self, income_data: dict):
         self.income_data = income_data
@@ -67,6 +70,7 @@ class BaseDataHosts:
         self.bad_hosts: dict = {}
         self.no_search_in_db_hosts: dict = {}
         self.search_in_db_hosts: dict = {}
+        self.hosts_after_search_in_db = None
         self.classes_for_request: list[dict] = []
 
 
@@ -77,33 +81,35 @@ class BaseDataHosts:
         #         f'self.no_search_in_db_hosts: {json.dumps(self.no_search_in_db_hosts, indent=2)}\n'
         #         f'self.bad_hosts: {json.dumps(self.bad_hosts, indent=2)}')
         return (f'self.income_data:\n{self.income_data}\n'
-                f'self.good_hosts: {self.allowed_hosts}\n'
+                f'self.allowed_hosts: {self.allowed_hosts}\n'
                 f'self.search_in_db_hosts: {self.search_in_db_hosts}\n'
                 f'self.no_search_in_db_hosts: {self.no_search_in_db_hosts}\n'
-                f'self.bad_hosts: {self.allowed_hosts}')
+                f'self.hosts_after_search_in_db: {self.hosts_after_search_in_db}\n'
+                f'self.bad_hosts: {self.bad_hosts}')
 
-    def parse_income_data(self):
+    def sorting_income_data(self):
         for ip_or_num, data_host in self.income_data.items():
+            data_host[DataHostFields.ERRORS] = []
             checked_data_host = self.validate_entity(data_host, self.base_model, err_msg=self.msg_invalid_host_data)
             # logger.debug(base_model)
             if isinstance(checked_data_host, str):
-                data_host['errors'] = checked_data_host
-                self.bad_hosts |= {ip_or_num: data_host}
+                self.put_bad_host(ip_or_num, data_host, checked_data_host)
                 continue
 
             _data_host = checked_data_host
-
             if _data_host.search_in_db:
                 search_field = self.get_search_field(ip_or_num)
                 if search_field is None:
-                    data_host['errors'] = self.msg_invalid_ip_or_num
-                    self.bad_hosts |= {ip_or_num: data_host}
+                    self.put_bad_host(ip_or_num, data_host, self.msg_invalid_ip_or_num)
                     continue
                 _data_host.search_in_db_field = search_field
                 self.search_in_db_hosts |= {ip_or_num: _data_host}
             else:
                 self.no_search_in_db_hosts |= {ip_or_num: _data_host}
 
+    def put_bad_host(self, ip_or_num: str, data_host: dict, message: str) -> None:
+        data_host[DataHostFields.ERRORS].append(message)
+        self.bad_hosts |= {ip_or_num: data_host}
 
     def get_search_field(self, ip_or_num: str) -> str | None:
         """
@@ -117,8 +123,6 @@ class BaseDataHosts:
             return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
         return str(TrafficLightsObjectsTableFields.NUMBER)
 
-
-
     def validate_entity(self, data_host: dict, model, err_msg: str = None) -> BaseModel | str:
         try:
             _model = model(**data_host)
@@ -126,44 +130,25 @@ class BaseDataHosts:
         except ValidationError:
             return err_msg
 
-    # def get_stmt_for_request_to_db(self):
-    #     acc = []
-    #     print(f'self.search_in_db_hosts.items(): {self.search_in_db_hosts}')
-    #
-    #     for ip_or_num, data_host in self.search_in_db_hosts.items():
-    #         acc.append(f"{data_host.search_in_db_field} = '{ip_or_num}' ")
-    #     return " OR ".join(acc)
+    def sorting_hosts_after_get_grom_db(self):
 
-    def get_stmt_for_request_to_db(self):
+        stack = self.search_in_db_hosts
+        for found_host in self.hosts_after_search_in_db:
+            number = found_host.get(str(TrafficLightsObjectsTableFields.NUMBER))
+            ip_v4 = found_host.get(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
+            if number and number in stack:
+                key = number
+            elif ip_v4 and ip_v4 in stack:
+                key = ip_v4
+            else:
+                continue
+            curr_host = stack.pop(key)
+            curr_host.search_result = found_host
+            curr_host.host_id = number
+            self.allowed_hosts |= {ip_v4: curr_host}
 
-        matches = {
-            str(TrafficLightsObjectsTableFields.NUMBER): TrafficLightsObjects.number,
-            str(TrafficLightsObjectsTableFields.IP_ADDRESS): TrafficLightsObjects.ip_adress,
-        }
-        stmt = [
-            f'{matches.get(obj.search_in_db_field) == ip_or_num}' for ip_or_num, obj in self.search_in_db_hosts.items()
-        ]
-        logger.debug(stmt)
-        return stmt
-        # acc = []
-        # print(f'self.search_in_db_hosts.items(): {self.search_in_db_hosts}')
-        #
-        # for ip_or_num, data_host in self.search_in_db_hosts.items():
-        #     acc.append(f"{data_host.search_in_db_field} = '{ip_or_num}' ")
-        # return " OR ".join(acc)
-
-    async def get_data_from_db(self):
-
-        stmt = self.get_stmt_for_request_to_db()
-        print(f'stmt: {stmt}')
-        async with db_helper.engine.connect() as conn:
-            stmt_ = select(TrafficLightsObjects).where(or_(*stmt))
-            res = await conn.execute(stmt_)
-            print(f'res: {res.mappings().all()}')
-            return res
-
-
-
+        for ip_or_num, data in stack.items():
+            self.put_bad_host(ip_or_num, data.model_dump(), self.msg_not_found_in_database)
 
     @abc.abstractmethod
     def get_model(self, search_in_db: bool):
