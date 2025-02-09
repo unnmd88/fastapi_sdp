@@ -17,10 +17,6 @@ class AllowedControllers(StrEnum):
     PEEK = 'Peek'
 
 
-class Hosts(StrEnum):
-    GET_FROM_DB = 'get_property'
-
-
 class AllowedMonitoringEntity(StrEnum):
     GET_STATE_BASE = 'get_state_base'
     GET_STATE_FULL = 'get_state_full'
@@ -121,13 +117,17 @@ def from_enum_to_str(value: StrEnum) -> str:
     return str(value)
 
 
-class HostsBase(BaseModel):
+
+ip_or_num = Annotated[str, Field(min_length=1, max_length=20)]
+
+
+class HostsFromDb(BaseModel):
     """
     Базовый класс с настройками и полями для любого запроса(Monitoring/Management)
     """
     model_config = ConfigDict(use_enum_values=True)
-
-    entity: Annotated[Hosts, AfterValidator(from_enum_to_str)]
+    hosts: Annotated[list[ip_or_num]]
+    # entity: Annotated[Hosts, AfterValidator(from_enum_to_str)]
     # search_in_db: Annotated[bool, Field(default=True)]
     _ipv4: Annotated[str, Field(default=None,exclude=True)]
     _number: Annotated[str, Field(default=None, exclude=True)]
@@ -135,7 +135,7 @@ class HostsBase(BaseModel):
     _search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
 
 
-class _MonitoringAndManagementBase(HostsBase):
+class _MonitoringAndManagementBase(HostsFromDb):
 
     type_controller: Annotated[AllowedControllers, AfterValidator(from_enum_to_str)]
     host_id: Annotated[str, Field(default=None, max_length=20)]
@@ -149,34 +149,17 @@ class _MonitoringAndManagementBase(HostsBase):
 
 
 class Monitoring(_MonitoringAndManagementBase):
-    # pass
-
     entity: Annotated[AllowedMonitoringEntity, AfterValidator(from_enum_to_str)]
 
 
-class Management(_MonitoringAndManagementBase):
-    pass
-    # entity = [AllowedManagementEntity, AfterValidator(from_enum_to_str)]
+""" Входные данные запроса """
 
 
-class GetStateRequest(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
-    hosts: dict[str, _MonitoringAndManagementBase]
-
-ip_or_num = Annotated[str, Field(min_length=1, max_length=20)]
-class GetHostsModel(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
-    hosts: Annotated[list[dict[ip_or_num, HostsBase]], Field(repr=True)]
-    # hosts: Annotated[dict[ip_or_num, HostsBase], Field(repr=True)]
+class RequestMonitoringAndManagement(BaseModel):
+    hosts: Annotated[dict[ip_or_num, Monitoring], Field(repr=True)]
 
 
-class RequestMonitoringAndManagement(GetHostsModel):
-    hosts: Annotated[list[dict[ip_or_num, Monitoring]], Field(repr=True)]
-
-
-    # hosts: dict[str, HostsBase]
-
-
+""" Модели БД """
 class ModelFromDb(BaseModel):
     model_config = ConfigDict(use_enum_values=True, from_attributes=True)
 
@@ -192,6 +175,10 @@ class ModelFromDb(BaseModel):
 
 
 # Annotated[str, Field(strict=True)
+
+""" Тестовые модели """
+class T1(BaseModel):
+    hosts: Annotated[list[str], Field(repr=True)]
 
 
 if __name__ == '__main__':

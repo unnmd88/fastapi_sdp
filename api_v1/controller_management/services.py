@@ -21,7 +21,7 @@ from sdp_lib.utils_common import check_ipv4
 from .schemas import (
     AllowedControllers,
     AllowedMonitoringEntity, AllowedProtocolsRequest,
-    TrafficLightsObjectsTableFields, DataHostFields, Monitoring, HostsBase, ModelFromDb
+    TrafficLightsObjectsTableFields, DataHostFields, Monitoring, HostsFromDb, ModelFromDb
 )
 
 from sdp_lib.management_controllers import controller_management
@@ -214,7 +214,7 @@ class BaseDataHostsSorter:
 class GetHosts(BaseDataHostsSorter):
 
     def get_model(self):
-        return HostsBase
+        return HostsFromDb
 
     def create_responce(self):
         all_hosts = {} | self.bad_hosts

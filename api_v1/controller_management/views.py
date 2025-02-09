@@ -4,39 +4,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.models import db_helper
 from . import crud
 from .schemas import (
-    GetStateRequest, GetStateResponse, GetHostsModel, RequestMonitoringAndManagement)
+    GetStateResponse, GetHostsFromDb, RequestMonitoringAndManagement, T1)
 from .services import GetStates, BaseSearch, SearchHosts, logger, GetHosts
 
 router = APIRouter(tags=['Intersections'])
 
-# @router.post('/get-test')
-# def get_intersection_data(intersection: TrafficLightsObjectsRequest):
-#     return {
-#         'success': True,
-#         'ip': str(intersection.ipv4)
-#     }
-#
-#
-# @router.post('/get-host', response_model=TrafficLightsObjectsResponce)
-# async def get_intersection(
-#     intersection: TrafficLightsObjectsRequest,
-#     session: AsyncSession = Depends(db_helper.session_dependency)
-# ):
-#     print(f'intersection: {intersection}')
-#     res = await crud.get_intersection(session=session, ip=intersection, number=intersection)
-#
-#     print(f'res from view: {res._mapping}')
-#
-#     print(f'type(res): {type(res)}')
-#     if res is not None:
-#         return res
-#
-#     raise HTTPException (
-#         status_code=status.HTTP_404_NOT_FOUND,
-#         detail=f'Хост {intersection} не найден в базе'
-#     )
+
+@router.post('/get-hosts-test')
+async def get_hosts_test(data: T1):
+    logger.debug(data)
+    logger.debug(data.hosts)
+    logger.debug(data.model_fields)
+    logger.debug(data.model_config)
+    logger.debug(data.model_json_schema())
+    return data
+
+
+
 @router.post('/get-hosts')
-async def get_hosts(data: GetHostsModel):
+async def get_hosts(data: GetHostsFromDb):
     logger.debug(data)
     logger.debug(data.hosts)
     logger.debug(data.model_fields)
