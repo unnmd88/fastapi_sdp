@@ -25,14 +25,10 @@ async def get_hosts_test(data: T1):
 async def get_hosts(data: GetHostsStaticDataFromDb):
     logger.debug(data)
     logger.debug(data.hosts)
-    logger.debug(data.model_fields)
-    logger.debug(data.model_config)
-    logger.debug(data.model_json_schema())
-    # data_hosts = GetHostsStaticData(data.hosts)
-    # data_hosts.sorting_income_data()
-    return data
-    data_hosts = GetHostsStaticData(data.model_dump().get('hosts'))
+    data_hosts = GetHostsStaticData(data.hosts)
     data_hosts.sorting_income_data()
+    print(data_hosts)
+    return data_hosts.allowed_hosts
     if data_hosts.search_in_db_hosts:
         db = SearchHosts()
         data_hosts.hosts_after_search_in_db = await db.get_hosts_where(

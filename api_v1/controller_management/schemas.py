@@ -1,6 +1,6 @@
 import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, IPvAnyAddress, Field, ConfigDict, field_validator, computed_field, AfterValidator
 from pydantic.json_schema import model_json_schema
@@ -115,44 +115,19 @@ def from_enum_to_str(value: StrEnum) -> str:
     return str(value)
 
 
-def set_name_number_or_none(value: str) -> str | None:
-    return value if not check_is_ipv4(value) else None
-
-
-def set_ipv4_or_none(value: str) -> str | None:
-    return value if check_is_ipv4(value) else None
-
-
-
-ip_or_num_from_user = Annotated[str, Field(min_length=1, max_length=20)]
-
-
-
-
+ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 class HostPropertiesBase(BaseModel):
 
-    ip_or_num_from_user: Annotated[str, Field(min_length=1, max_length=20)]
+    ip_or_name_from_user: ip_or_name
 
+    search_in_db: Annotated[bool, Field(default=False, exclude=True)]
     search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
     search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
+    errors: Annotated[list, Field(default=[])]
 
     def model_post_init(self, __context):
         self.set_search_in_db_field()
-
-    # def set_name_number(self):
-    #     """ Устанавливает значение атрибута self.name_number.
-    #         Если self.ip_or_num_from_user является ip адресом, то установит None.
-    #         Иначе установит значение из self.ip_or_num_from_user.
-    #     """
-    #     self.name_number = self.ip_or_num_from_user if not check_ipv4(self.ip_or_num_from_user) else None
-    #
-    # def set_ipv4(self):
-    #     """ Устанавливает значение атрибута self.ipv4.
-    #         Если self.ip_or_num_from_user является ip адресом, то установит значение из self.ip_or_num_from_user.
-    #         Иначе установит значение None.
-    #     """
-    #     self.name_number = self.ip_or_num_from_user if not check_ipv4(self.ip_or_num_from_user) else None
 
     def set_search_in_db_field(self):
         """
@@ -160,12 +135,16 @@ class HostPropertiesBase(BaseModel):
         производиться поиск хоста в БД.
         :return:
         """
-        if check_is_ipv4(self.ip_or_num_from_user):
+        if check_is_ipv4(self.ip_or_name_from_user):
             self.search_in_db_field = str(TrafficLightsObjectsTableFields.IP_ADDRESS)
         else:
             self.search_in_db_field = str(TrafficLightsObjectsTableFields.NUMBER)
 
 
+class HostPropertiesForGetStaticDataFromDb(HostPropertiesBase):
+
+    entity: Annotated[Literal[AllowedMonitoringEntity.GET_FROM_DB], AfterValidator(from_enum_to_str)]
+    search_in_db: Annotated[bool, Field(default=True, exclude=True)]
 
 # class _MonitoringAndManagementBase(HostsStaticData):
 #
@@ -191,7 +170,7 @@ class GetHostsStaticDataFromDb(BaseModel):
     Базовый класс с настройками и полями для любого запроса(Monitoring/Management)
     """
 
-    hosts: Annotated[list[ip_or_num_from_user], Field(repr=True)]
+    hosts: Annotated[list[ip_or_name], Field(repr=True)]
     # entity: Annotated[Hosts, AfterValidator(from_enum_to_str)]
     # search_in_db: Annotated[bool, Field(default=True)]
     # _ipv4: Annotated[str, Field(default=None,exclude=True)]
@@ -235,7 +214,7 @@ if __name__ == '__main__':
 
     objs = ['2725', '3323', 'baza_bereg', '10.45.154.16', '192.168.45.19']
     for o in objs:
-        obj1 = HostPropertiesBase(ip_or_num_from_user=o)
+        obj1 = HostPropertiesBase(ip_or_name_from_user=o)
 
         print(obj1)
 

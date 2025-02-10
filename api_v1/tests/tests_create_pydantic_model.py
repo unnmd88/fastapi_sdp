@@ -12,12 +12,12 @@ faker = Faker()
 
 def test_create_model_with_search_in_db_field__ipv4():
     for ip in [faker.ipv4() for _ in range(100)]:
-        obj = HostPropertiesBase(ip_or_num_from_user=ip)
+        obj = HostPropertiesBase(ip_or_name_from_user=ip)
         assert obj.search_in_db_field == TrafficLightsObjectsTableFields.IP_ADDRESS
 
 def test_create_model_with_search_in_db_field__number():
     for ip in [get_random_word() for _ in range(100)]:
-        obj = HostPropertiesBase(ip_or_num_from_user=ip)
+        obj = HostPropertiesBase(ip_or_name_from_user=ip)
         assert obj.search_in_db_field == TrafficLightsObjectsTableFields.NUMBER
 
 
