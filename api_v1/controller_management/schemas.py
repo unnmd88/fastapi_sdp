@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, IPvAnyAddress, Field, ConfigDict, field_validator, computed_field, AfterValidator
 from pydantic.json_schema import model_json_schema
 
-from sdp_lib.utils_common import check_ipv4
+from sdp_lib.utils_common import check_is_ipv4
 
 
 class AllowedControllers(StrEnum):
@@ -118,23 +118,82 @@ def from_enum_to_str(value: StrEnum) -> str:
 
 
 def set_name_number_or_none(value: str) -> str | None:
-    return value if not check_ipv4(value) else None
+    return value if not check_is_ipv4(value) else None
 
 
 def set_ipv4_or_none(value: str) -> str | None:
-    return value if check_ipv4(value) else None
+    return value if check_is_ipv4(value) else None
 
 
 
-ip_or_num = Annotated[str, Field(min_length=1, max_length=20)]
+ip_or_num_from_user = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-class HostsStaticData(BaseModel):
+
+
+
+class HostPropertiesBase(BaseModel):
+
+    ip_or_num_from_user: Annotated[str, Field(min_length=1, max_length=20)]
+
+    search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
+    search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
+
+    def model_post_init(self, __context):
+        self.set_search_in_db_field()
+
+    # def set_name_number(self):
+    #     """ Устанавливает значение атрибута self.name_number.
+    #         Если self.ip_or_num_from_user является ip адресом, то установит None.
+    #         Иначе установит значение из self.ip_or_num_from_user.
+    #     """
+    #     self.name_number = self.ip_or_num_from_user if not check_ipv4(self.ip_or_num_from_user) else None
+    #
+    # def set_ipv4(self):
+    #     """ Устанавливает значение атрибута self.ipv4.
+    #         Если self.ip_or_num_from_user является ip адресом, то установит значение из self.ip_or_num_from_user.
+    #         Иначе установит значение None.
+    #     """
+    #     self.name_number = self.ip_or_num_from_user if not check_ipv4(self.ip_or_num_from_user) else None
+
+    def set_search_in_db_field(self):
+        """
+        Устанавливает значение поля self.search_in_db_field, по которому будет
+        производиться поиск хоста в БД.
+        :return:
+        """
+        if check_is_ipv4(self.ip_or_num_from_user):
+            self.search_in_db_field = str(TrafficLightsObjectsTableFields.IP_ADDRESS)
+        else:
+            self.search_in_db_field = str(TrafficLightsObjectsTableFields.NUMBER)
+
+
+
+# class _MonitoringAndManagementBase(HostsStaticData):
+#
+#     type_controller: Annotated[AllowedControllers, AfterValidator(from_enum_to_str)]
+#     host_id: Annotated[str, Field(default=None, max_length=20)]
+#     scn: Annotated[str, Field(default=None, max_length=10)]
+#     entity: AllowedMonitoringEntity | AllowedManagementEntity
+#     search_in_db: Annotated[bool, Field(default=False)]
+#
+#     # @field_validator('type_controller', 'entity', mode='before')
+#     # def to_string(cls, value: str) -> str:
+#     #     return str(value)
+
+
+# class Monitoring(_MonitoringAndManagementBase):
+#     entity: Annotated[AllowedMonitoringEntity, AfterValidator(from_enum_to_str)]
+
+
+""" Входные данные запроса """
+
+class GetHostsStaticDataFromDb(BaseModel):
     """
     Базовый класс с настройками и полями для любого запроса(Monitoring/Management)
     """
 
-    hosts: Annotated[list[ip_or_num], Field(repr=True)]
+    hosts: Annotated[list[ip_or_num_from_user], Field(repr=True)]
     # entity: Annotated[Hosts, AfterValidator(from_enum_to_str)]
     # search_in_db: Annotated[bool, Field(default=True)]
     # _ipv4: Annotated[str, Field(default=None,exclude=True)]
@@ -143,36 +202,9 @@ class HostsStaticData(BaseModel):
     # _search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
 
 
-class HostProperties(BaseModel):
-
-    ipv4: Annotated[str, Field(exclude=True), AfterValidator(set_ipv4_or_none)]
-    name_or_number: Annotated[str, Field(exclude=True), AfterValidator(set_name_number_or_none)]
-    search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
-    search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
-
-
-class _MonitoringAndManagementBase(HostsStaticData):
-
-    type_controller: Annotated[AllowedControllers, AfterValidator(from_enum_to_str)]
-    host_id: Annotated[str, Field(default=None, max_length=20)]
-    scn: Annotated[str, Field(default=None, max_length=10)]
-    entity: AllowedMonitoringEntity | AllowedManagementEntity
-    search_in_db: Annotated[bool, Field(default=False)]
-
-    # @field_validator('type_controller', 'entity', mode='before')
-    # def to_string(cls, value: str) -> str:
-    #     return str(value)
-
-
-class Monitoring(_MonitoringAndManagementBase):
-    entity: Annotated[AllowedMonitoringEntity, AfterValidator(from_enum_to_str)]
-
-
-""" Входные данные запроса """
-
-
 class RequestMonitoringAndManagement(BaseModel):
-    hosts: Annotated[dict[ip_or_num, Monitoring], Field(repr=True)]
+    pass
+    # hosts: Annotated[dict[ip_or_num_from_user, Monitoring], Field(repr=True)]
 
 
 """ Модели БД """
@@ -203,9 +235,11 @@ if __name__ == '__main__':
         'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True
     }
 
+    objs = ['2725', '3323', 'baza_bereg', '10.45.154.16', '192.168.45.19']
+    for o in objs:
+        obj1 = HostPropertiesBase(ip_or_num_from_user=o)
 
-    obj1 = HostProperties()
-    print(obj1)
+        print(obj1)
 
     # j_data = json.dumps(data)
     # print(j_data)

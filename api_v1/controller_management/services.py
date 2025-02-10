@@ -17,7 +17,7 @@ from sqlalchemy import text, select, or_, and_, BooleanClauseList, Select
 
 from core.models import db_helper, TrafficLightsObjects
 # from sdp_lib.management_controllers.tests import host_id
-from sdp_lib.utils_common import check_ipv4
+from sdp_lib.utils_common import check_is_ipv4
 from .schemas import (
     AllowedControllers,
     AllowedMonitoringEntity, AllowedProtocolsRequest,
@@ -161,7 +161,7 @@ class BaseDataHostsSorter:
         :param data_host_pydantic_model: экземпляр модели pydantic, определённый методом self.get_model().
         :return: True, если ip v4 валидный, иначе False.
         """
-        ipv4_is_valid = check_ipv4(ip_v4)
+        ipv4_is_valid = check_is_ipv4(ip_v4)
         if not ipv4_is_valid:
             self.add_bad_host(ip_v4, data_host_pydantic_model.model_dump(), Messages.invalid_ip)
         self.allowed_hosts |= {ip_v4: data_host_pydantic_model}
@@ -186,7 +186,7 @@ class BaseDataHostsSorter:
         """
         if not ip_or_num or len(ip_or_num) > 20:
             return None
-        if check_ipv4(ip_or_num):
+        if check_is_ipv4(ip_or_num):
             return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
         return str(TrafficLightsObjectsTableFields.NUMBER)
 
