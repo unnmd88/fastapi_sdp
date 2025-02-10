@@ -262,7 +262,7 @@ class BaseDataHostsSorter:
 
         return (f'self.income_data:\n{self.income_data}\n'   
                 f'self.search_in_db_hosts: {self.search_in_db_hosts}\n'
-                # f'self.no_search_in_db_hosts: {self.no_search_in_db_hosts}\n'
+                f'self.no_search_in_db_hosts: {self.no_search_in_db_hosts}\n'
                 # f'self.hosts_after_search_in_db: {self.hosts_after_search_in_db}\n'
                 f'self.bad_hosts: {self.bad_hosts}\n'
                 f'self.hosts_after_search_in_db: {self.hosts_after_search_in_db}\n'
@@ -317,29 +317,44 @@ class BaseDataHostsSorter:
             else:
                 self.add_bad_host(str(Messages.invalid_ip))
 
+    def sorting_hosts_after_search_from_db(self):
 
-
-
-
-    def sorting_hosts_after_get_grom_db(self):
-
-        stack = deepcopy(self.search_in_db_hosts)
-        for found_host in self.hosts_after_search_in_db:
-            number = found_host.get(str(TrafficLightsObjectsTableFields.NUMBER))
-            ip_v4 = found_host.get(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
-            if number and number in stack:
-                key = number
-            elif ip_v4 and ip_v4 in stack:
-                key = ip_v4
+        stack = deepcopy(self.hosts_after_search_in_db)
+        logger.debug(f'stack: {stack}')
+        logger.debug(f'self.search_in_db_hosts: {self.search_in_db_hosts}')
+        for self.current_name_or_ipv4, self.current_data_host in self.search_in_db_hosts.items():
+            _found_record = None
+            for i, found_record in enumerate(stack):
+                logger.debug(f'found_record: {found_record}')
+                logger.debug(f'stack: {stack}')
+                if self.current_name_or_ipv4 in found_record.values():
+                    _found_record = stack.pop(i)
+                    break
+            if _found_record is not None:
+                self.current_data_host.search_in_db_result = ModelFromDb(**_found_record)
             else:
-                continue
-            curr_host = stack.pop(key)
-            curr_host.search_result = found_host
-            curr_host.host_id = number
-            self.allowed_hosts |= {ip_v4: curr_host}
+                self.current_data_host.errors.append(str(Messages.not_found_in_database))
 
-        for ip_or_num, data in stack.items():
-            self.add_bad_host(ip_or_num, data.model_dump(), Messages.not_found_in_database)
+
+    # def sorting_hosts_after_search_from_db(self):
+    #
+    #     stack = deepcopy(self.search_in_db_hosts)
+    #     for found_host in self.hosts_after_search_in_db:
+    #         number = found_host.get(str(TrafficLightsObjectsTableFields.NUMBER))
+    #         ip_v4 = found_host.get(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
+    #         if number and number in stack:
+    #             key = number
+    #         elif ip_v4 and ip_v4 in stack:
+    #             key = ip_v4
+    #         else:
+    #             continue
+    #         curr_host = stack.pop(key)
+    #         curr_host.search_result = found_host
+    #         curr_host.host_id = number
+    #         self.allowed_hosts |= {ip_v4: curr_host}
+    #
+    #     for ip_or_num, data in stack.items():
+    #         self.add_bad_host(ip_or_num, data.model_dump(), Messages.not_found_in_database)
 
     @abc.abstractmethod
     def get_model(self):

@@ -34,11 +34,11 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
         data_hosts.hosts_after_search_in_db = await db.get_hosts_where(
             stmt=db.get_stmt_where(hosts=data_hosts.search_in_db_hosts)
         )
-        # data_hosts.sorting_hosts_after_get_grom_db()
+        data_hosts.sorting_hosts_after_search_from_db()
     logger.debug(data_hosts.hosts_after_search_in_db)
-    # print(data_hosts)
+    print(data_hosts)
 
-    return data_hosts.hosts_after_search_in_db
+    return data_hosts.search_in_db_hosts
 
 
 
@@ -64,7 +64,7 @@ async def get_state(data: RequestMonitoringAndManagement):
         data_hosts.hosts_after_search_in_db = await db.get_hosts_where(
             stmt=db.get_stmt_where(hosts=data_hosts.search_in_db_hosts)
         )
-        data_hosts.sorting_hosts_after_get_grom_db()
+        data_hosts.sorting_hosts_after_search_from_db()
 
     print(f'data_hosts >> {data_hosts}')
     print(f'data_hosts >> {data}')

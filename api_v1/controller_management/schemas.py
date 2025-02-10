@@ -123,7 +123,7 @@ class HostPropertiesBase(BaseModel):
 
     search_in_db: Annotated[bool, Field(default=False, exclude=True)]
     search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
-    search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
+    search_in_db_result: Annotated[str, Field(default=None, exclude=False)]
     errors: Annotated[list, Field(default=[])]
 
     def model_post_init(self, __context):
@@ -188,15 +188,15 @@ class RequestMonitoringAndManagement(BaseModel):
 class ModelFromDb(BaseModel):
     model_config = ConfigDict(use_enum_values=True, from_attributes=True)
 
-    id: int
+    # id: int
     number: str
     description: str | None
     type_controller: str
-    group: int
+    # group: int
     ip_adress: str
     address: str | None
-    time_create: datetime.datetime
-    time_update: datetime.datetime
+    # time_create: datetime.datetime
+    # time_update: datetime.datetime
 
 
 # Annotated[str, Field(strict=True)
