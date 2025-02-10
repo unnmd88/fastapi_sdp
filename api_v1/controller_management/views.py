@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.models import db_helper
 from . import crud
 from .schemas import (
-    GetStateResponse, RequestMonitoringAndManagement, T1, HostsStaticData)
-from .services import GetStates, BaseSearch, SearchHosts, logger, GetHostsStaticData
+    GetStateResponse, RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb)
+from .services import BaseSearch, SearchHosts, logger, GetHostsStaticData
 
 router = APIRouter(tags=['Intersections'])
 
@@ -22,14 +22,14 @@ async def get_hosts_test(data: T1):
 
 
 @router.post('/get-hosts')
-async def get_hosts(data: HostsStaticData):
+async def get_hosts(data: GetHostsStaticDataFromDb):
     logger.debug(data)
     logger.debug(data.hosts)
     logger.debug(data.model_fields)
     logger.debug(data.model_config)
     logger.debug(data.model_json_schema())
-    data_hosts = GetHostsStaticData(data.hosts)
-    data_hosts.sorting_income_data()
+    # data_hosts = GetHostsStaticData(data.hosts)
+    # data_hosts.sorting_income_data()
     return data
     data_hosts = GetHostsStaticData(data.model_dump().get('hosts'))
     data_hosts.sorting_income_data()
