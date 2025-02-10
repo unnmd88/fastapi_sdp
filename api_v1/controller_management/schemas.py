@@ -117,25 +117,41 @@ def from_enum_to_str(value: StrEnum) -> str:
     return str(value)
 
 
+def set_name_number_or_none(value: str) -> str | None:
+    return value if not check_ipv4(value) else None
+
+
+def set_ipv4_or_none(value: str) -> str | None:
+    return value if check_ipv4(value) else None
+
+
 
 ip_or_num = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-class HostsFromDb(BaseModel):
+class HostsStaticData(BaseModel):
     """
     Базовый класс с настройками и полями для любого запроса(Monitoring/Management)
     """
-    model_config = ConfigDict(use_enum_values=True)
-    hosts: Annotated[list[ip_or_num]]
+
+    hosts: Annotated[list[ip_or_num], Field(repr=True)]
     # entity: Annotated[Hosts, AfterValidator(from_enum_to_str)]
     # search_in_db: Annotated[bool, Field(default=True)]
-    _ipv4: Annotated[str, Field(default=None,exclude=True)]
-    _number: Annotated[str, Field(default=None, exclude=True)]
-    _search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
-    _search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
+    # _ipv4: Annotated[str, Field(default=None,exclude=True)]
+    # _number: Annotated[str, Field(default=None, exclude=True)]
+    # _search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
+    # _search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
 
 
-class _MonitoringAndManagementBase(HostsFromDb):
+class HostProperties(BaseModel):
+
+    ipv4: Annotated[str, Field(exclude=True), AfterValidator(set_ipv4_or_none)]
+    name_or_number: Annotated[str, Field(exclude=True), AfterValidator(set_name_number_or_none)]
+    search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
+    search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
+
+
+class _MonitoringAndManagementBase(HostsStaticData):
 
     type_controller: Annotated[AllowedControllers, AfterValidator(from_enum_to_str)]
     host_id: Annotated[str, Field(default=None, max_length=20)]
@@ -187,12 +203,16 @@ if __name__ == '__main__':
         'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True
     }
 
-    j_data = json.dumps(data)
-    print(j_data)
-    print(type(j_data))
-    obj = _MonitoringAndManagementBase(**{'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string',
-                      'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True,
-                                          })
-    print(obj.model_dump())
+
+    obj1 = HostProperties()
+    print(obj1)
+
+    # j_data = json.dumps(data)
+    # print(j_data)
+    # print(type(j_data))
+    # obj = _MonitoringAndManagementBase(**{'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string',
+    #                   'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True,
+    #                                       })
+    # print(obj.model_dump())
 ############################
 

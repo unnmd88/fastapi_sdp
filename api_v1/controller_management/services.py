@@ -21,7 +21,7 @@ from sdp_lib.utils_common import check_ipv4
 from .schemas import (
     AllowedControllers,
     AllowedMonitoringEntity, AllowedProtocolsRequest,
-    TrafficLightsObjectsTableFields, DataHostFields, Monitoring, HostsFromDb, ModelFromDb
+    TrafficLightsObjectsTableFields, DataHostFields, Monitoring, HostsStaticData, ModelFromDb, HostProperties
 )
 
 from sdp_lib.management_controllers import controller_management
@@ -37,6 +37,7 @@ class Messages(StrEnum):
     invalid_ip = 'invalid ip v4 address'
     invalid_host_data = 'invalid host data'
     not_found_in_database = 'not found in database'
+
 
 class BaseSearch:
 
@@ -81,11 +82,12 @@ class BaseDataHostsSorter:
 
     def __init__(self, income_data: dict):
         self.income_data = income_data
+        self.model = None
         self.allowed_hosts: dict = {}
         self.bad_hosts: dict = {}
         self.no_search_in_db_hosts: dict = {}
         self.search_in_db_hosts: dict = {}
-        self.hosts_after_search_in_db = None
+        self.hosts_after_search_in_db = Monitoring
         self.classes_for_request: list[dict] = []
 
     def __repr__(self):
@@ -102,19 +104,21 @@ class BaseDataHostsSorter:
                 f'self.bad_hosts: {self.bad_hosts}\n'
                 f'self.allowed_hosts: {self.allowed_hosts}\n')
 
+
+
     def sorting_income_data(self):
         for ip_or_num, data_host in self.income_data.items():
-            model = self.get_model()
+            # self.model = self.get_model()
             data_host[str(DataHostFields.ERRORS)] = []
-            data_host_pydantic_model = self.get_model_host_data(data_host, model)
+            data_host_pydantic_model = self.get_model_host_data(data_host)
             if data_host_pydantic_model is None:
                 self.add_bad_host(ip_or_num, data_host, message=str(Messages.invalid_host_data))
                 continue
             self.sorting_search_in_db_or_not(ip_or_num, data_host_pydantic_model)
 
-    def get_model_host_data(self, data_host: dict, model) -> BaseModel | None:
+    def get_model_host_data(self, data_host: dict | str) -> BaseModel | None:
         try:
-            return model(**data_host)
+            return self.model(**data_host)
         except ValidationError:
             return None
 
@@ -211,10 +215,28 @@ class BaseDataHostsSorter:
         ...
 
 
-class GetHosts(BaseDataHostsSorter):
+class GetHostsStaticData(BaseDataHostsSorter):
 
-    def get_model(self):
-        return HostsFromDb
+
+
+    def set_model(self):
+        self.model = HostProperties
+
+    def sorting_income_data(self):
+        self.set_model()
+        print(f'self.income_data!! {self.income_data}')
+
+        for host in self.income_data:
+            data_host_pydantic_model = self.get_model_host_data(host)
+            self.allowed_hosts |= {host: data_host_pydantic_model}
+            logger.debug(f'data_host_pydantic_model!! {data_host_pydantic_model}')
+        logger.debug(f'self.allowed_hosts!! {self.allowed_hosts}')
+
+    def get_model_host_data(self, data_host: str) -> BaseModel | None:
+        try:
+            return self.model(ipv4=data_host, name_or_number=data_host)
+        except ValidationError:
+            return None
 
     def create_responce(self):
         all_hosts = {} | self.bad_hosts
