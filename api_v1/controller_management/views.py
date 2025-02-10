@@ -28,17 +28,17 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
     data_hosts = GetHostsStaticData(data.hosts)
     data_hosts.sorting_income_data()
     print(data_hosts)
-    return data_hosts.allowed_hosts
+    # return data_hosts.search_in_db_hosts
     if data_hosts.search_in_db_hosts:
         db = SearchHosts()
         data_hosts.hosts_after_search_in_db = await db.get_hosts_where(
             stmt=db.get_stmt_where(hosts=data_hosts.search_in_db_hosts)
         )
-        data_hosts.sorting_hosts_after_get_grom_db()
-    logger.debug(data_hosts)
+        # data_hosts.sorting_hosts_after_get_grom_db()
+    logger.debug(data_hosts.hosts_after_search_in_db)
     # print(data_hosts)
 
-    return data_hosts.create_responce()
+    return data_hosts.hosts_after_search_in_db
 
 
 

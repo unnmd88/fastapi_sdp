@@ -53,6 +53,9 @@ class SearchHosts(BaseSearch):
     Поиск хостов в БД по определённым полям.
     """
 
+    def __init__(self, all_columns: bool = False):
+        self.all_columns = all_columns
+
     def get_stmt_where(self, hosts: dict) -> Select[tuple[TrafficLightsObjects]]:
         """
         Формирует сущность запроса поиска записей в БД для каждого хоста из hosts.
@@ -64,10 +67,20 @@ class SearchHosts(BaseSearch):
             str(TrafficLightsObjectsTableFields.IP_ADDRESS): TrafficLightsObjects.ip_adress,
         }
         stmt: list = [
-            matches.get(obj.search_in_db_field) == ip_or_num for ip_or_num, obj in hosts.items()
+            matches.get(data_host.search_in_db_field) == ip_or_num for ip_or_num, data_host in hosts.items()
         ]
+
         # logger.debug(select(TrafficLightsObjects).where(or_(*stmt)))
-        return select(TrafficLightsObjects).where(or_(*stmt))
+
+        if self.all_columns:
+            return select(TrafficLightsObjects).where(or_(*stmt))
+        return select(*self.get_columns()).where(or_(*stmt))
+
+    def get_columns(self):
+        return (
+            TrafficLightsObjects.number, TrafficLightsObjects.ip_adress, TrafficLightsObjects.type_controller,
+            TrafficLightsObjects.address, TrafficLightsObjects.description
+        )
 
 
 # class BaseDataHostsSorter:
@@ -226,10 +239,6 @@ class BaseDataHostsSorter:
     """
 
     field_errors = 'errors'
-    # msg_invalid_ip_or_num = 'invalid data for search host in database'
-    # msg_invalid_ip = 'invalid ip v4 address'
-    # msg_invalid_host_data = 'invalid host data'
-    # msg_not_found_in_database = 'not found in database'
 
     def __init__(self, income_data: dict | list):
         self.income_data = income_data
@@ -240,8 +249,9 @@ class BaseDataHostsSorter:
         self.search_in_db_hosts: dict = {}
         self.current_name_or_ipv4: str | None = None
         self.current_data_host: dict | None = None
-        # self.hosts_after_search_in_db = Monitoring
-        self.classes_for_request: list[dict] = []
+        self.hosts_after_search_in_db = None
+        self.current_data_host_pydantic_model: BaseModel | None = None
+
 
     def __repr__(self):
         # return (f'self.income_data:\n{json.dumps(self.income_data, indent=2)}\n'
@@ -255,30 +265,18 @@ class BaseDataHostsSorter:
                 # f'self.no_search_in_db_hosts: {self.no_search_in_db_hosts}\n'
                 # f'self.hosts_after_search_in_db: {self.hosts_after_search_in_db}\n'
                 f'self.bad_hosts: {self.bad_hosts}\n'
+                f'self.hosts_after_search_in_db: {self.hosts_after_search_in_db}\n'
                 f'self.allowed_hosts: {self.allowed_hosts}\n')
 
     def sorting_income_data(self):
         for self.current_name_or_ipv4, self.current_data_host in self.income_data.items():
             self.add_error_field_to_current_data_host()
-            data_host_pydantic_model = self.get_model_host_data(self.get_kwargs_for_pydatnic_model())
+            self.current_data_host_pydantic_model = self.get_model_host_data(self.get_kwargs_for_pydatnic_model())
             # logger.debug(f'data_host_pydantic_model: {data_host_pydantic_model}' )
-            if data_host_pydantic_model is not None:
-                self.allowed_hosts |= {self.current_name_or_ipv4: data_host_pydantic_model}
+            if self.current_data_host_pydantic_model is not None:
+                self.sorting_search_in_db_hosts_or_no()
             else:
                 self.add_bad_host(str(Messages.invalid_ip_or_num))
-
-
-
-
-    # def sorting_income_data(self):
-    #     for host, data_host in self.income_data.items():
-    #         data_host = self.add_error_field_to_data_host(data_host)
-    #         data_host_pydantic_model = self.get_model_host_data(self.get_kwargs_for_pydatnic_model(host, data_host))
-    #         # logger.debug(f'data_host_pydantic_model: {data_host_pydantic_model}' )
-    #         if data_host_pydantic_model is not None:
-    #             self.allowed_hosts |= {host: data_host_pydantic_model}
-    #         else:
-    #             self.bad_hosts |= {host: str(Messages.invalid_ip_or_num)}
 
     def add_error_field_to_current_data_host(self) -> None:
         self.current_data_host |= {self.field_errors: []}
@@ -299,10 +297,7 @@ class BaseDataHostsSorter:
 
         return {'ip_or_name_from_user': self.current_name_or_ipv4} | self.current_data_host
 
-    def add_bad_host(
-            self,
-            message: str
-    ) -> None:
+    def add_bad_host(self, message: str) -> None:
         """
         Добавляет хост в "контейнер" с хостами, в данных которых содержатся ошибки.
         # :param ip_or_num: Ip v4/номер(наименование) хоста.
@@ -312,6 +307,19 @@ class BaseDataHostsSorter:
         """
         self.current_data_host[str(DataHostFields.ERRORS)].append(message)
         self.bad_hosts |= {self.current_name_or_ipv4: self.current_data_host}
+
+    def sorting_search_in_db_hosts_or_no(self):
+        if self.current_data_host_pydantic_model.search_in_db:
+            self.search_in_db_hosts |= {self.current_name_or_ipv4: self.current_data_host_pydantic_model}
+        else:
+            if check_is_ipv4(self.current_name_or_ipv4):
+                self.no_search_in_db_hosts |= {self.current_name_or_ipv4: self.current_data_host_pydantic_model}
+            else:
+                self.add_bad_host(str(Messages.invalid_ip))
+
+
+
+
 
     def sorting_hosts_after_get_grom_db(self):
 
