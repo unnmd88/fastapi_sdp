@@ -170,8 +170,12 @@ class Messages(StrEnum):
 #         ...
 
 class BaseHostsSorters:
-    def __init__(self, income_data: dict | list):
+    def __init__(self, income_data: BaseModel):
         self.income_data = income_data
+        self.hosts_for_response: dict[str, str] | list[str] = income_data.hosts
+        self.current_ip = None
+        self.current_data_host = None
+        self.bad_hosts = []
 
     def get_pydantic_model_or_none(self, data_host: dict, model) -> BaseModel | None:
         logger.debug(f'data_host get_model_host_data: {data_host}')
@@ -180,23 +184,105 @@ class BaseHostsSorters:
         except ValidationError:
             return None
 
+
+class HostSorterSearchInDB(BaseHostsSorters):
+
+    def __init__(self, income_data: BaseModel):
+        BaseHostsSorters.__init__(self, income_data)
+        self.hosts_for_response = self.get_income_data_as_dict(income_data.hosts)
+        self.hosts_after_search: list | None = None
+        self.current_name_or_ipv4 = None
+        self.model_for_search_in_db = self.get_model_for_search_in_db()
+        self._current_record = None
+
+    def __repr__(self):
+        return (
+            f'self.income_data: {self.income_data}\n'
+            f'self.model_for_search_in_db: {self.model_for_search_in_db}\n'
+            f'self.hosts_after_search: {self.hosts_after_search}\n'
+            f'self.hosts_for_response: {self.hosts_for_response}\n'
+            f'self.bad_hosts: {self.bad_hosts}\n'
+            # f'self.hosts_after_search_in_db: {self.hosts_after_search}\n'
+        )
+
+    def get_income_data_as_dict(self, hosts_for_response: list | dict) -> dict[str, dict[str, str]]:
+        if isinstance(hosts_for_response, list):
+            added_entity = {str(AllowedDataHostFields.entity): str(AllowedMonitoringEntity.GET_FROM_DB)}
+            return {ip_or_num: added_entity for ip_or_num in hosts_for_response}
+        elif isinstance(hosts_for_response, dict):
+            return hosts_for_response
+        raise ValueError('Переданный тип должен быть list или dict')
+
+    def get_model_for_search_in_db(self):
+        return BaseSearchHostsInDb
+
+    def get_hosts_data_for_search_db(self):
+        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.hosts_for_response.keys()]
+
+    def sorting_hosts_after_search_from_db(self) -> dict[str, str]:
+
+        stack = deepcopy(self.hosts_after_search)
+        logger.debug(f'stack: {stack}')
+        # logger.debug(f'self.search_in_db_hosts: {self.search_in_db_hosts}')
+        hosts_for_response = {}
+        for self.current_name_or_ipv4, self.current_data_host in self.hosts_for_response.items():
+            _found_record = None
+            for i, found_record in enumerate(stack):
+                logger.debug(f'found_record: {found_record}')
+                logger.debug(f'stack: {stack}')
+                if self.current_name_or_ipv4 in found_record.values():
+                    _found_record = stack.pop(i)
+                    break
+            if _found_record is not None:
+                _found_record = dict(_found_record)
+                hosts_for_response |= self.build_properties_for_good_host(_found_record)
+                # self.current_data_host.search_in_db_result = ModelFromDb(**_found_record)
+            else:
+                self.build_properties_and_add_to_bad_hosts()
+
+        self.hosts_for_response = hosts_for_response
+        return self.hosts_for_response
+
+    def build_properties_for_good_host(self, record_from_db: dict[str, str]) -> dict[str, str]:
+        iv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
+        return {iv4: record_from_db}
+
+
+    def check_have_errors_field_for_current_data_host(self) -> bool:
+
+        if self.current_data_host.get(str(AllowedDataHostFields.errors)) is not None:
+            return True
+        return False
+
+    def add_errors_field_to_data_host_if_have_not(self):
+
+        self.current_data_host |= {str(AllowedDataHostFields.errors): []}
+
+    def add_host_to_container_bad_hosts(self):
+
+        self.bad_hosts.append({self.current_name_or_ipv4: self.current_data_host})
+
+    def add_message_to_error_field(self, message: str):
+        self.add_errors_field_to_data_host_if_have_not()
+        self.current_data_host[AllowedDataHostFields.errors].append(message)
+
+    def build_properties_and_add_to_bad_hosts(self):
+        self.add_message_to_error_field(str(Messages.not_found_in_database))
+        self.add_host_to_container_bad_hosts()
+
+
+
+
 class HostsMonitoringAndManagementDataBroker(BaseHostsSorters):
     def __init__(self, income_data: list | dict):
         BaseHostsSorters.__init__(self, income_data)
         self.model_for_search_in_db = self.get_model_for_search_in_db()
         self.search_data = self.get_search_db_entity()
         self.hosts_after_search_in_db = None
-        self.current_ip = None
-        self.current_data_host = None
+
         self.base_model = self.get_base_model()
 
-    def __repr__(self):
-        return (
-            f'self.income_data: {self.income_data}\n'
-            f'self.model: {self.model_for_search_in_db}\n'
-            f'self.search_data: {self.search_data}\n'
-            f'self.hosts_after_search_in_db: {self.hosts_after_search_in_db}\n'
-        )
+
 
     @abc.abstractmethod
     def get_model_for_search_in_db(self):
@@ -212,11 +298,10 @@ class HostsMonitoringAndManagementDataBroker(BaseHostsSorters):
 
 class BaseSortersWithSearchInDb(HostsMonitoringAndManagementDataBroker):
 
-    def get_model_for_search_in_db(self):
-        return BaseSearchHostsInDb
+
 
     def get_search_db_entity(self):
-        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.income_data]
+        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.row_hosts]
 
     def sorting_hosts(self):
         pass
@@ -234,10 +319,11 @@ class SortersWithSearchInDbMonitoring(BaseSortersWithSearchInDb):
         ...
 
     def get_search_db_entity(self):
-        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.income_data.keys()]
+        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.row_hosts.keys()]
 
     def sorting_hosts(self):
-        for self.current_ip, self.current_data_host in self.income_data.items():
+        for self.current_ip, self.current_data_host in self.row_hosts.items():
+            pass
 
 
 class BaseDataHostsSorter:

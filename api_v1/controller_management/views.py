@@ -8,34 +8,33 @@ from . import crud
 from .crud import SearchHosts
 from .schemas import (
     GetStateResponse, RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb)
-from .services import  logger, BaseSortersWithSearchInDb, SortersWithSearchInDbMonitoring
+from .services import logger, BaseSortersWithSearchInDb, SortersWithSearchInDbMonitoring, HostSorterSearchInDB
+
+router = APIRouter(tags=['traffic-lights'])
 
 
-router = APIRouter(tags=['Intersections'])
-
-
-@router.post('/get-hosts-test')
-async def get_hosts_test(data: T1):
+@router.post('/get-hosts-test/{test_val}')
+async def get_hosts_test(test_val: str, data: T1):
+    logger.debug(f'test_val: {test_val}')
     logger.debug(data)
-    logger.debug(data.hosts)
-    logger.debug(data.model_fields)
-    logger.debug(data.model_config)
     logger.debug(data.model_json_schema())
     return data
 
 
 
-@router.post('/get-hosts')
+@router.post('/properties')
 async def get_hosts(data: GetHostsStaticDataFromDb):
-    logger.debug(data)
-    logger.debug(data.hosts)
-    data_hosts = BaseSortersWithSearchInDb(data.hosts)
-    db = SearchHosts()
 
-    data_hosts.hosts_after_search_in_db = await db.get_hosts_where(db.get_stmt_where(data_hosts.search_data))
+    logger.debug(data.hosts)
+    data_hosts = HostSorterSearchInDB(data)
+    db = SearchHosts()
+    search_entity = data_hosts.get_hosts_data_for_search_db()
+
+    data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(search_entity))
+    data_hosts.sorting_hosts_after_search_from_db()
     pprint.pprint(data_hosts)
-    logger.debug()
-    return data_hosts.search_data
+    logger.debug(f'data_hosts.hosts_after_search: {data_hosts.hosts_after_search}')
+    return data_hosts.hosts_after_search
 
 
 

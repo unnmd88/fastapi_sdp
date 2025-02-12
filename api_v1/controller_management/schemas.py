@@ -39,6 +39,8 @@ class AllowedDataHostFields(StrEnum):
     errors = 'errors'
     search_in_db = 'search_in_db'
     ip_or_name_from_user = 'ip_or_name_from_user'
+    entity = 'entity'
+    ipv4 = 'ip_adress'
 
 class TrafficLightsObjectsTableFields(StrEnum):
     IP_ADDRESS = 'ip_adress'
