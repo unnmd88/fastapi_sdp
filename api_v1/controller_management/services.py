@@ -176,8 +176,6 @@ class BaseHostsSorters:
     def __init__(self, income_data: BaseModel):
         self.income_data = income_data
         self.hosts: dict[str, str] | list[str] = income_data.hosts
-        # self._current_name_or_ipv4 = None
-        # self._current_data_host = None
         self.bad_hosts = []
 
     def get_pydantic_model_or_none(self, data_host: dict, model) -> BaseModel | None:
