@@ -1,4 +1,5 @@
 import pprint
+import time
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,7 @@ async def get_hosts_test(test_val: str, data: T1):
 @router.post('/properties')
 async def get_hosts(data: GetHostsStaticDataFromDb):
 
+    start_time = time.time()
     logger.debug(data.hosts)
     data_hosts = HostSorterSearchInDB(data)
     db = SearchHosts()
@@ -31,6 +33,7 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
     data_hosts.sorting_hosts_after_search_from_db()
     pprint.pprint(data_hosts)
 
+    print(f'Время запроса составило: {time.time() - start_time}')
     return data_hosts.get_hosts_and_bad_hosts_as_dict()
 
 
