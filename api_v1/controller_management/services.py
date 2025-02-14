@@ -172,6 +172,31 @@ class ErrorMessages(StrEnum):
 #         """
 #         ...
 
+
+
+class HostData:
+    """
+    Класс - обработчик данных хоста.
+    """
+
+    def __init__(self, ip_or_name: str, properties: dict):
+        self.ip_or_name = ip_or_name
+        self.properties = properties
+        self.ip_or_name_and_properties_as_dict = self.get_full_host_data_as_dict()
+
+    def _add_errors_field_to_current_data_host_if_have_not(self):
+
+        if self.properties.get(AllowedDataHostFields.errors) is None:
+            self.properties |= {str(AllowedDataHostFields.errors): []}
+
+    def add_message_to_error_field_to_current_host(self, message: str):
+        self._add_errors_field_to_current_data_host_if_have_not()
+        self.properties[str(AllowedDataHostFields.errors)].append(message)
+
+    def get_full_host_data_as_dict(self):
+        return {self.ip_or_name: self.properties}
+
+
 class BaseHostsSorters:
     """
     Базовый класс сортировок хостов, переданных пользователем.
@@ -200,26 +225,6 @@ class BaseHostsSorters:
             self.bad_hosts |= host
         else:
             raise TypeError(f'DEBUG: Тип контейнера < self.bad_hosts > должен быть dict или list')
-
-
-class CurrentHostData:
-
-    def __init__(self, ip_or_name: str, properties: dict):
-        self.ip_or_name = ip_or_name
-        self.properties = properties
-        self.ip_or_name_and_properties_as_dict = self.get_full_host_data_as_dict()
-
-    def _add_errors_field_to_current_data_host_if_have_not(self):
-
-        if self.properties.get(AllowedDataHostFields.errors) is None:
-            self.properties |= {str(AllowedDataHostFields.errors): []}
-
-    def add_message_to_error_field_to_current_host(self, message: str):
-        self._add_errors_field_to_current_data_host_if_have_not()
-        self.properties[str(AllowedDataHostFields.errors)].append(message)
-
-    def get_full_host_data_as_dict(self):
-        return {self.ip_or_name: self.properties}
 
 
 class HostSorterSearchInDB(BaseHostsSorters):
@@ -281,7 +286,7 @@ class HostSorterSearchInDB(BaseHostsSorters):
         logger.debug(f'!! len self._stack_hosts >> {len(self._stack_hosts)}')
 
         for current_name_or_ipv4, current_data_host in self._stack_hosts.items():
-            current_host = CurrentHostData(ip_or_name=current_name_or_ipv4, properties=current_data_host)
+            current_host = HostData(ip_or_name=current_name_or_ipv4, properties=current_data_host)
             current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.not_found_in_database))
             self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
         self.hosts = founded_in_db_hosts
