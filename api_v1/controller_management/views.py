@@ -8,7 +8,7 @@ from . import crud
 from .crud import SearchHosts
 from .schemas import (
     GetStateResponse, RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb)
-from .services import logger, BaseSortersWithSearchInDb, SortersWithSearchInDbMonitoring, HostSorterSearchInDB
+from .services import logger, HostSorterSearchInDB
 
 router = APIRouter(tags=['traffic-lights'])
 
