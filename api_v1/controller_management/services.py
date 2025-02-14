@@ -184,16 +184,35 @@ class HostData:
         self.properties = properties
         self.ip_or_name_and_properties_as_dict = self.get_full_host_data_as_dict()
 
-    def _add_errors_field_to_current_data_host_if_have_not(self):
+    def __repr__(self):
+        return (
+            f'self.ip_or_name: {self.ip_or_name}\n'
+            f'self.properties: {json.dumps(self.properties, indent=2)}\n'
+            f'self.ip_or_name_and_properties_as_dict: {json.dumps(self.ip_or_name_and_properties_as_dict, indent=2)}\n'
+        )
 
+    def _add_errors_field_to_current_data_host_if_have_not(self) -> None:
+        """
+        Добавляет к self.properties свойство в виде dict: {"errors": []}.
+        :return: None.
+        """
         if self.properties.get(AllowedDataHostFields.errors) is None:
             self.properties |= {str(AllowedDataHostFields.errors): []}
 
-    def add_message_to_error_field_to_current_host(self, message: str):
+    def add_message_to_error_field_to_current_host(self, message: str) -> None:
+        """
+        Добавляет сообщение с текстом ошибки.
+        :param message: Строка с текстом сообщения
+        :return: None
+        """
         self._add_errors_field_to_current_data_host_if_have_not()
         self.properties[str(AllowedDataHostFields.errors)].append(message)
 
-    def get_full_host_data_as_dict(self):
+    def get_full_host_data_as_dict(self) -> dict[str, dict[str, Any]]:
+        """
+        Возвращает словарь вида {self.ip_or_name: self.properties}
+        :return:
+        """
         return {self.ip_or_name: self.properties}
 
 
