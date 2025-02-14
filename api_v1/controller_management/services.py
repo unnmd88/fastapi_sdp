@@ -1,5 +1,7 @@
 import abc
 import asyncio
+import functools
+import itertools
 from dataclasses import dataclass
 import ipaddress
 import json
@@ -185,6 +187,9 @@ class BaseHostsSorters:
         except ValidationError:
             return None
 
+    def add_host_to_container_with_bad_hosts(self, host: dict[str, str]):
+
+        self.bad_hosts.append(host)
 
 class CurrentHostData:
 
@@ -210,9 +215,9 @@ class HostSorterSearchInDB(BaseHostsSorters):
 
     def __init__(self, income_data: BaseModel):
         BaseHostsSorters.__init__(self, income_data)
-        self._stack_hosts = self.get_income_data_as_dict(income_data.hosts)
+        self._stack_hosts = self._get_income_data_as_dict(income_data.hosts)
         self.hosts_after_search: list | None = None
-        self.model_for_search_in_db = self.get_model_for_search_in_db()
+        self.model_for_search_in_db = self._get_model_for_search_in_db()
         self._current_record = None
 
     def __repr__(self):
@@ -226,21 +231,33 @@ class HostSorterSearchInDB(BaseHostsSorters):
             # f'self.hosts_after_search_in_db: {self.hosts_after_search}\n'
         )
 
-    def get_income_data_as_dict(self, hosts_for_response: list | dict) -> dict[str, dict[str, str]]:
+    def get_hosts_and_bad_hosts_as_dict(self) -> dict:
+
+        logger.debug(f'^^^^ self.hosts: {self.hosts}\n')
+        logger.debug(f'^^^^ self.get_bad_hosts_as_dict(): {self.get_bad_hosts_as_dict()}\n')
+        logger.debug(f'^^^^ self.hosts | self.get_bad_hosts_as_dict(): {self.hosts | self.get_bad_hosts_as_dict()}\n')
+        return self.hosts | self.get_bad_hosts_as_dict()
+
+    def get_bad_hosts_as_dict(self) -> dict:
+        return functools.reduce(lambda x, y: x | y, self.bad_hosts, {})
+
+    def _get_income_data_as_dict(self, hosts_for_response: list | dict) -> dict[str, dict[str, str]]:
         if isinstance(hosts_for_response, list):
-            added_entity = {str(AllowedDataHostFields.entity): str(AllowedMonitoringEntity.GET_FROM_DB)}
-            return {ip_or_num: added_entity for ip_or_num in hosts_for_response}
+            return {
+                ip_or_num: {str(AllowedDataHostFields.entity): str(AllowedMonitoringEntity.GET_FROM_DB)} for ip_or_num
+                in hosts_for_response
+            }
         elif isinstance(hosts_for_response, dict):
             return hosts_for_response
         raise ValueError('Переданный тип должен быть list или dict')
 
-    def get_model_for_search_in_db(self):
+    def _get_model_for_search_in_db(self):
         return BaseSearchHostsInDb
 
     def get_hosts_data_for_search_db(self):
         return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self._stack_hosts.keys()]
 
-    def sorting_hosts_after_search_from_db(self) -> dict[str, str]:
+    def sorting_hosts_after_search_from_db(self) -> dict[str, dict[str, Any]]:
 
         # self.hosts_after_search = self.convert_hosts_after_search_to_dicts()
         founded_in_db_hosts = {}
@@ -248,23 +265,20 @@ class HostSorterSearchInDB(BaseHostsSorters):
 
         for found_record in self.hosts_after_search:
             found_record = dict(found_record)
-            self.pop_found_host_from_stack_hosts(found_record)
-            founded_in_db_hosts |= self.build_properties_for_good_host(found_record)
+            self._pop_found_host_from_stack_hosts(found_record)
+            founded_in_db_hosts |= self._build_properties_for_good_host(found_record)
 
         logger.debug(f'!! self._stack_hosts >> {self._stack_hosts}')
+        logger.debug(f'!! len self._stack_hosts >> {len(self._stack_hosts)}')
 
         for current_name_or_ipv4, current_data_host in self._stack_hosts.items():
             current_host = CurrentHostData(ip_or_name=current_name_or_ipv4, properties=current_data_host)
             current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.not_found_in_database))
             self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
-
         self.hosts = founded_in_db_hosts
-        # logger.debug(f'tmp_hosts_for_response: {founded_in_db_hosts}')
-        # logger.debug(f'self.hosts_for_response: {self._stack_hosts}')
-        # logger.debug(f'self.bad_hosts: {self.bad_hosts}')
         return self.hosts
 
-    def pop_found_host_from_stack_hosts(self, found_host: dict[str, str]):
+    def _pop_found_host_from_stack_hosts(self, found_host: dict[str, str]):
 
         if found_host[str(TrafficLightsObjectsTableFields.NUMBER)] in self._stack_hosts:
             self._stack_hosts.pop(found_host[str(TrafficLightsObjectsTableFields.NUMBER)])
@@ -273,13 +287,11 @@ class HostSorterSearchInDB(BaseHostsSorters):
         else:
             raise ValueError('DEBUG: Найденный хост в БД должен содержаться в self.hosts_for_response!!')
 
-    def build_properties_for_good_host(self, record_from_db) -> dict[str, str]:
+    def _build_properties_for_good_host(self, record_from_db) -> dict[str, str]:
         ipv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
         return {ipv4: record_from_db}
 
-    def add_host_to_container_with_bad_hosts(self, host: dict[str, str]):
 
-        self.bad_hosts.append(host)
 
 
 
