@@ -6,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.models import db_helper
 from . import crud
 from .crud import SearchHosts
-from .schemas import (
-    GetStateResponse, RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb)
+from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb
 from .services import logger, HostSorterSearchInDB
 
 router = APIRouter(tags=['traffic-lights'])
