@@ -3,8 +3,6 @@ import pprint
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models import db_helper
-from . import crud
 from .crud import SearchHosts
 from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb
 from .services import logger, HostSorterSearchInDB
