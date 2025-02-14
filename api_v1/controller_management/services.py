@@ -1,20 +1,21 @@
 import abc
 import asyncio
+from dataclasses import dataclass
 import ipaddress
 import json
 import logging
 from copy import deepcopy
 from enum import StrEnum
+from itertools import zip_longest
 from typing import Type, Any, Sequence
 
+from more_itertools.more import raise_
 from pydantic.json_schema import model_json_schema
 
 import logging_config
 from re import search
 
-from pydantic import ValidationError, BaseModel
-
-
+from pydantic import ValidationError, BaseModel, field_validator
 
 # from sdp_lib.management_controllers.tests import host_id
 from sdp_lib.utils_common import check_is_ipv4
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 logger.debug('TEEEEEEEEEEST LOGGER')
 
 
-class Messages(StrEnum):
+class ErrorMessages(StrEnum):
     invalid_ip_or_num_for_search_in_db = 'invalid data for search host in database'
     invalid_ip_or_num = 'invalid number or ip v4 address'
     invalid_ip = 'invalid ip v4 address'
@@ -172,9 +173,9 @@ class Messages(StrEnum):
 class BaseHostsSorters:
     def __init__(self, income_data: BaseModel):
         self.income_data = income_data
-        self.hosts_for_response: dict[str, str] | list[str] = income_data.hosts
-        self.current_ip = None
-        self.current_data_host = None
+        self.hosts: dict[str, str] | list[str] = income_data.hosts
+        self._current_name_or_ipv4 = None
+        self._current_data_host = None
         self.bad_hosts = []
 
     def get_pydantic_model_or_none(self, data_host: dict, model) -> BaseModel | None:
@@ -185,13 +186,32 @@ class BaseHostsSorters:
             return None
 
 
+class CurrentHostData:
+
+    def __init__(self, ip_or_name: str, properties: dict):
+        self.ip_or_name = ip_or_name
+        self.properties = properties
+        self.ip_or_name_and_properties_as_dict = self.get_full_host_data_as_dict()
+
+    def _add_errors_field_to_current_data_host_if_have_not(self):
+
+        if self.properties.get(AllowedDataHostFields.errors) is None:
+            self.properties |= {str(AllowedDataHostFields.errors): []}
+
+    def add_message_to_error_field_to_current_host(self, message: str):
+        self._add_errors_field_to_current_data_host_if_have_not()
+        self.properties[str(AllowedDataHostFields.errors)].append(message)
+
+    def get_full_host_data_as_dict(self):
+        return {self.ip_or_name: self.properties}
+
+
 class HostSorterSearchInDB(BaseHostsSorters):
 
     def __init__(self, income_data: BaseModel):
         BaseHostsSorters.__init__(self, income_data)
-        self.hosts_for_response = self.get_income_data_as_dict(income_data.hosts)
+        self._stack_hosts = self.get_income_data_as_dict(income_data.hosts)
         self.hosts_after_search: list | None = None
-        self.current_name_or_ipv4 = None
         self.model_for_search_in_db = self.get_model_for_search_in_db()
         self._current_record = None
 
@@ -200,7 +220,8 @@ class HostSorterSearchInDB(BaseHostsSorters):
             f'self.income_data: {self.income_data}\n'
             f'self.model_for_search_in_db: {self.model_for_search_in_db}\n'
             f'self.hosts_after_search: {self.hosts_after_search}\n'
-            f'self.hosts_for_response: {self.hosts_for_response}\n'
+            f'self._stack_hosts: {self._stack_hosts}\n'
+            f'self.hosts: {self.hosts}\n'
             f'self.bad_hosts: {self.bad_hosts}\n'
             # f'self.hosts_after_search_in_db: {self.hosts_after_search}\n'
         )
@@ -217,58 +238,58 @@ class HostSorterSearchInDB(BaseHostsSorters):
         return BaseSearchHostsInDb
 
     def get_hosts_data_for_search_db(self):
-        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.hosts_for_response.keys()]
+        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self._stack_hosts.keys()]
 
     def sorting_hosts_after_search_from_db(self) -> dict[str, str]:
 
-        stack = deepcopy(self.hosts_after_search)
-        logger.debug(f'stack: {stack}')
-        # logger.debug(f'self.search_in_db_hosts: {self.search_in_db_hosts}')
-        hosts_for_response = {}
-        for self.current_name_or_ipv4, self.current_data_host in self.hosts_for_response.items():
-            _found_record = None
-            for i, found_record in enumerate(stack):
-                logger.debug(f'found_record: {found_record}')
-                logger.debug(f'stack: {stack}')
-                if self.current_name_or_ipv4 in found_record.values():
-                    _found_record = stack.pop(i)
-                    break
-            if _found_record is not None:
-                _found_record = dict(_found_record)
-                hosts_for_response |= self.build_properties_for_good_host(_found_record)
-                # self.current_data_host.search_in_db_result = ModelFromDb(**_found_record)
-            else:
-                self.build_properties_and_add_to_bad_hosts()
+        # self.hosts_after_search = self.convert_hosts_after_search_to_dicts()
+        founded_in_db_hosts = {}
+        # logger.debug(f'!! self.hosts_after_search >> {self.hosts_after_search}')
 
-        self.hosts_for_response = hosts_for_response
-        return self.hosts_for_response
+        for found_record in self.hosts_after_search:
+            found_record = dict(found_record)
+            self.pop_found_host_from_stack_hosts(found_record)
+            founded_in_db_hosts |= self.build_properties_for_good_host(found_record)
 
-    def build_properties_for_good_host(self, record_from_db: dict[str, str]) -> dict[str, str]:
-        iv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
-        return {iv4: record_from_db}
+        logger.debug(f'!! self._stack_hosts >> {self._stack_hosts}')
+
+        for current_name_or_ipv4, current_data_host in self._stack_hosts.items():
+            current_host = CurrentHostData(ip_or_name=current_name_or_ipv4, properties=current_data_host)
+            current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.not_found_in_database))
+            self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+
+        self.hosts = founded_in_db_hosts
+        # logger.debug(f'tmp_hosts_for_response: {founded_in_db_hosts}')
+        # logger.debug(f'self.hosts_for_response: {self._stack_hosts}')
+        # logger.debug(f'self.bad_hosts: {self.bad_hosts}')
+        return self.hosts
+
+    def pop_found_host_from_stack_hosts(self, found_host: dict[str, str]):
+
+        if found_host[str(TrafficLightsObjectsTableFields.NUMBER)] in self._stack_hosts:
+            self._stack_hosts.pop(found_host[str(TrafficLightsObjectsTableFields.NUMBER)])
+        elif found_host[str(TrafficLightsObjectsTableFields.IP_ADDRESS)] in self._stack_hosts:
+            self._stack_hosts.pop(found_host[str(TrafficLightsObjectsTableFields.IP_ADDRESS)])
+        else:
+            raise ValueError('DEBUG: Найденный хост в БД должен содержаться в self.hosts_for_response!!')
+
+    def build_properties_for_good_host(self, record_from_db) -> dict[str, str]:
+        ipv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
+        return {ipv4: record_from_db}
+
+    def add_host_to_container_with_bad_hosts(self, host: dict[str, str]):
+
+        self.bad_hosts.append(host)
 
 
-    def check_have_errors_field_for_current_data_host(self) -> bool:
 
-        if self.current_data_host.get(str(AllowedDataHostFields.errors)) is not None:
-            return True
-        return False
 
-    def add_errors_field_to_data_host_if_have_not(self):
 
-        self.current_data_host |= {str(AllowedDataHostFields.errors): []}
 
-    def add_host_to_container_bad_hosts(self):
 
-        self.bad_hosts.append({self.current_name_or_ipv4: self.current_data_host})
 
-    def add_message_to_error_field(self, message: str):
-        self.add_errors_field_to_data_host_if_have_not()
-        self.current_data_host[AllowedDataHostFields.errors].append(message)
 
-    def build_properties_and_add_to_bad_hosts(self):
-        self.add_message_to_error_field(str(Messages.not_found_in_database))
-        self.add_host_to_container_bad_hosts()
+
 
 
 
@@ -369,13 +390,13 @@ class BaseDataHostsSorter:
             self.add_error_field_to_current_data_host()
             if self.current_data_host.get(AllowedDataHostFields.search_in_db):
                 if self.get_pydantic_model_or_none(self.current_data_host, self._check_data_host_temp_model) is None:
-                    self.add_bad_host(str(Messages.invalid_host_data))
+                    self.add_bad_host(str(ErrorMessages.invalid_host_data))
                     continue
                 else:
                     self.model = self.get_model()
             else:
                 if self.get_pydantic_model_or_none(self.current_data_host, self._check_data_host_temp_model) is None:
-                    self.add_bad_host(str(Messages.invalid_host_data))
+                    self.add_bad_host(str(ErrorMessages.invalid_host_data))
                     continue
 
 
@@ -424,7 +445,7 @@ class BaseDataHostsSorter:
             if check_is_ipv4(self.current_name_or_ipv4):
                 self.no_search_in_db_hosts |= {self.current_name_or_ipv4: self.current_data_host_pydantic_model}
             else:
-                self.add_bad_host(str(Messages.invalid_ip))
+                self.add_bad_host(str(ErrorMessages.invalid_ip))
 
     def sorting_hosts_after_search_from_db(self):
 
@@ -442,7 +463,7 @@ class BaseDataHostsSorter:
             if _found_record is not None:
                 self.current_data_host.search_in_db_result = ModelFromDb(**_found_record)
             else:
-                self.current_data_host.errors.append(str(Messages.not_found_in_database))
+                self.current_data_host.errors.append(str(ErrorMessages.not_found_in_database))
 
     def get_model(self):
         """
