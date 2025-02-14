@@ -173,6 +173,9 @@ class ErrorMessages(StrEnum):
 #         ...
 
 class BaseHostsSorters:
+    """
+    Базовый класс сортировок хостов, переданных пользователем.
+    """
     def __init__(self, income_data: BaseModel):
         self.income_data = income_data
         self.hosts: dict[str, str] | list[str] = income_data.hosts
@@ -186,8 +189,17 @@ class BaseHostsSorters:
             return None
 
     def add_host_to_container_with_bad_hosts(self, host: dict[str, str]):
-
-        self.bad_hosts.append(host)
+        """
+        Добавляет хост с ошибками в контейнер self.bad_hosts
+        :param host: Хост, который будет добавлен в контейнер self.bad_hosts.
+        :return: None
+        """
+        if isinstance(self.bad_hosts, list):
+            self.bad_hosts.append(host)
+        elif isinstance(self.bad_hosts, dict):
+            self.bad_hosts |= host
+        else:
+            raise TypeError(f'DEBUG: Тип контейнера < self.bad_hosts > должен быть dict или list')
 
 
 class CurrentHostData:
@@ -211,13 +223,15 @@ class CurrentHostData:
 
 
 class HostSorterSearchInDB(BaseHostsSorters):
+    """
+    Класс сортировок хостов, преданных пользователем с учётом поиска хостов в БД.
+    """
 
     def __init__(self, income_data: BaseModel):
         BaseHostsSorters.__init__(self, income_data)
         self._stack_hosts = self._get_income_data_as_dict(income_data.hosts)
         self.hosts_after_search: list | None = None
         self.model_for_search_in_db = self._get_model_for_search_in_db()
-        self._current_record = None
 
     def __repr__(self):
         return (
