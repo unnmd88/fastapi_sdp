@@ -250,40 +250,94 @@ class HostSorterSearchInDB(BaseHostsSorters):
         )
 
     def get_hosts_and_bad_hosts_as_dict(self) -> dict:
+        """
+        Возвращает словарь всех хостов(прошедших валидацию и хостов с ошибками)
+        :return: Словарь со всеми хостами запроса.
+        """
         return self.hosts | self.get_bad_hosts_as_dict()
 
     def get_bad_hosts_as_dict(self) -> dict:
+        """
+        Возвращает self.bad_hosts в виде списка.
+        :return: self.bad_hosts в виде списка.
+        """
         return functools.reduce(lambda x, y: x | y, self.bad_hosts, {})
 
-    def _get_income_data_as_dict(self, hosts_for_response: list | dict) -> dict[str, dict[str, str]]:
-        if isinstance(hosts_for_response, list):
+    def _get_income_data_as_dict(self, income_hosts: list | dict) -> dict[str, dict[str, str]]:
+        """
+        Преобразует list хостов в dict, если income_hosts является list.
+        Если income_hosts является dict, возвращает себя(income_hosts).
+        :param income_hosts: income_hosts от пользователя.
+                             Пример: ["string", "3190", "10.45.154.16", "192.168.45.18", "230"] будет пре
+                             преобразован в словарь со свойством {'entity': 'get_host_property'}:
+                             {'string': {'entity': 'get_host_property'},
+                             '3190': {'entity': 'get_host_property'}, '
+                             10.45.154.16': {'entity': 'get_host_property'},
+                             '192.168.45.18': {'entity': 'get_host_property'},
+                             '230': {'entity': 'get_host_property'},
+                             }
+        :return: income_hosts в виде dict.
+        """
+        if isinstance(income_hosts, list):
             return {
                 ip_or_num: {str(AllowedDataHostFields.entity): str(AllowedMonitoringEntity.GET_FROM_DB)} for ip_or_num
-                in hosts_for_response
+                in income_hosts
             }
-        elif isinstance(hosts_for_response, dict):
-            return hosts_for_response
+        elif isinstance(income_hosts, dict):
+            return income_hosts
         raise ValueError('Переданный тип должен быть list или dict')
 
     def _get_model_for_search_in_db(self):
+        """
+        Возвращает модель pydantic, которой будут переданы данные хоста для валидации
+        на предмет возможности хоста в БД.
+        :return: Модель pydantic.
+        """
         return BaseSearchHostsInDb
 
     def get_hosts_data_for_search_db(self):
+        """
+        Возвращает список с экземплярами модели, полученной в self._get_model_for_search_in_db()
+        для каждого хоста, для формирования stmt запрос.
+        :return: list с экземплярами модели, полученной self._get_model_for_search_in_db()
+        """
         return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self._stack_hosts.keys()]
 
     def sorting_hosts_after_search_from_db(self) -> dict[str, dict[str, Any]]:
+        """
+        Сортирует хосты: если хост был найден в БД, отправляет в self.hosts, иначе в self.bad_hosts.
+        Также приводит свойства хостов(dict) к общему виду, см. описание founded_in_db_hosts и self.bad_hosts.
+        founded_in_db_hosts: dict, в который будут добавляться хосты, найденные в БД.
+                             Пример:
+                             {
+                             "10.179.56.1": {
+                             "number": "12",
+                             "type_controller": "Поток (P)",
+                             "address": "Щербаковская ул. - Вельяминовская ул. д.6к1,32   ВАО (ВАО-4)",
+                             "description": "Приоритет ОТ"
+                             },
+                             "10.179.40.9": {
+                             "number": "13",
+                             "type_controller": "Swarco",
+                             "address": "Шереметьевская ул. д.60,62,29,27к1 - Марьиной Рощи 11-й пр-д (СВАО-2)",
+                             "description": null
+                             }
+                             }
+        self.bad_hosts: В контексте данного метода это list с хостами, которые не были найдены в БД.
+                        Пример:
+                        [
+                        {'string': {'entity': 'get_host_property', 'errors': ['not found in database']}},
+                        {'abra': {'entity': 'get_host_property', 'errors': ['not found in database']}},
+                        {'cadabra': {'entity': 'get_host_property', 'errors': ['not found in database']}}
+                        ]
+        :return: None.
+        """
 
-        # self.hosts_after_search = self.convert_hosts_after_search_to_dicts()
         founded_in_db_hosts = {}
-        # logger.debug(f'!! self.hosts_after_search >> {self.hosts_after_search}')
-
         for found_record in self.hosts_after_search:
             found_record = dict(found_record)
             self._pop_found_host_from_stack_hosts(found_record)
             founded_in_db_hosts |= self._build_properties_for_good_host(found_record)
-
-        logger.debug(f'!! self._stack_hosts >> {self._stack_hosts}')
-        logger.debug(f'!! len self._stack_hosts >> {len(self._stack_hosts)}')
 
         for current_name_or_ipv4, current_data_host in self._stack_hosts.items():
             current_host = HostData(ip_or_name=current_name_or_ipv4, properties=current_data_host)
@@ -293,6 +347,17 @@ class HostSorterSearchInDB(BaseHostsSorters):
         return self.hosts
 
     def _pop_found_host_from_stack_hosts(self, found_host: dict[str, str]):
+        """
+        Удаляет найденный в БД хост из self._stack_hosts.
+        :param found_host: Запись о хосте, найденная в БД.
+                           Пример:
+                           {
+                           'number': '11', 'ip_adress': '10.179.28.9', 'type_controller': 'Swarco',
+                           'address': 'Бережковская наб. д.22, 24    ЗАО (ЗАО-9)', 'description': 'Приоритет ОТ'
+                           }
+
+        :return: None.
+        """
 
         if found_host[str(TrafficLightsObjectsTableFields.NUMBER)] in self._stack_hosts:
             self._stack_hosts.pop(found_host[str(TrafficLightsObjectsTableFields.NUMBER)])
@@ -302,6 +367,25 @@ class HostSorterSearchInDB(BaseHostsSorters):
             raise ValueError('DEBUG: Найденный хост в БД должен содержаться в self.hosts_for_response!!')
 
     def _build_properties_for_good_host(self, record_from_db) -> dict[str, str]:
+        """
+        Формирует свойства хоста в виде словаря.
+        :param record_from_db: Запись, найденная в БД.
+                               Пример:
+                              {
+                               'number': '11', 'ip_adress': '10.179.28.9', 'type_controller': 'Swarco',
+                               'address': 'Бережковская наб. д.22, 24    ЗАО (ЗАО-9)', 'description': 'Приоритет ОТ'
+                               }
+        :return: dict со свойствами хоста общего вида, где ключом является ip адресс, а значением остальные
+                 свойства dict record_from_db
+                 Пример:
+                 "10.179.28.9":
+                 {
+                    "number": "11",
+                    "type_controller": "Swarco",
+                    "address": "Бережковская наб. д.22, 24    ЗАО (ЗАО-9)",
+                    "description": "Приоритет ОТ"
+                 }
+        """
         ipv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
         return {ipv4: record_from_db}
 
