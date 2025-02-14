@@ -1,9 +1,8 @@
-import datetime
 from enum import StrEnum
-from typing import Annotated, Literal, Any
+from typing import Annotated, Any
+from annotated_types import MinLen, MaxLen
 
-from pydantic import BaseModel, IPvAnyAddress, Field, ConfigDict, field_validator, computed_field, AfterValidator
-from pydantic.json_schema import model_json_schema
+from pydantic import BaseModel, IPvAnyAddress, Field, ConfigDict, computed_field, AfterValidator
 
 from sdp_lib.utils_common import check_is_ipv4
 
@@ -41,6 +40,7 @@ class AllowedDataHostFields(StrEnum):
     ip_or_name_from_user = 'ip_or_name_from_user'
     entity = 'entity'
     ipv4 = 'ip_adress'
+
 
 class TrafficLightsObjectsTableFields(StrEnum):
     IP_ADDRESS = 'ip_adress'
@@ -138,29 +138,6 @@ class BaseSearchHostsInDb(BaseModel):
             return str(TrafficLightsObjectsTableFields.NUMBER)
 
 
-# class HostPropertiesMonitoringWithSearchInDb(HostPropertiesBase):
-#
-#     search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
-#     search_in_db_result: Annotated[str, Field(default=None, exclude=False)]
-#     errors: Annotated[list, Field(default=[])]
-#
-#     def model_post_init(self, __context):
-#         self.set_search_in_db_field()
-#
-#     def set_search_in_db_field(self):
-#         """
-#         Устанавливает значение поля self.search_in_db_field, по которому будет
-#         производиться поиск хоста в БД.
-#         :return:
-#         """
-#         if check_is_ipv4(self.ip_or_name_from_user):
-#             self.search_in_db_field = str(TrafficLightsObjectsTableFields.IP_ADDRESS)
-#         else:
-#             self.search_in_db_field = str(TrafficLightsObjectsTableFields.NUMBER)
-
-
-
-
 """ Проверка данных(свойств) определённого хоста """
 
 class DataHostIfSearchInDbFalseBase(BaseModel):
@@ -177,27 +154,11 @@ class DataHostIfSearchInDbFalseBase(BaseModel):
 
 class GetHostsStaticDataFromDb(BaseModel):
 
-    hosts: Annotated[list[ip_or_name], Field(repr=True)]
+    hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30)]
+
 
 class RequestMonitoringAndManagement(BaseModel):
     hosts: Annotated[dict[ip_or_name, dict[str, str]], Field(repr=True)]
-
-# class GetHostsStaticDataFromDb(BaseModel):
-#     """
-#     Базовый класс с настройками и полями для любого запроса(Monitoring/Management)
-#     """
-#
-#     hosts: Annotated[dict[ip_or_name, dict[str, str]], Field(repr=True)]
-#     # entity: Annotated[Hosts, AfterValidator(from_enum_to_str)]
-#     # search_in_db: Annotated[bool, Field(default=True)]
-#     # _ipv4: Annotated[str, Field(default=None,exclude=True)]
-#     # _number: Annotated[str, Field(default=None, exclude=True)]
-#     # _search_in_db_field: Annotated[str, Field(default=None, exclude=True)]
-#     # _search_in_db_result: Annotated[str, Field(default=None, exclude=True)]
-
-
-
-    # hosts: Annotated[dict[ip_or_num_from_user, Monitoring], Field(repr=True)]
 
 
 """ Модели БД """
@@ -228,12 +189,7 @@ if __name__ == '__main__':
         'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True
     }
 
-    obj1 = _CheckerDataHostIfSearchInDbTrueBase(
-        ip_or_name_from_user='111',
-        entity='get_host_property',
-        search_in_db=True
-    )
-    print(obj1)
+
 
     # j_data = json.dumps(data)
     # print(j_data)

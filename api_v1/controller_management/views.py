@@ -33,8 +33,7 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(search_entity))
     data_hosts.sorting_hosts_after_search_from_db()
     pprint.pprint(data_hosts)
-    logger.debug(f'data_hosts.hosts_after_search: {data_hosts.hosts_after_search}')
-    logger.debug(f'data_hosts.get_hosts_and_bad_hosts_as_dict(): {data_hosts.get_hosts_and_bad_hosts_as_dict()}')
+
     return data_hosts.get_hosts_and_bad_hosts_as_dict()
 
 

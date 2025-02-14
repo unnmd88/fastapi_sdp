@@ -176,8 +176,8 @@ class BaseHostsSorters:
     def __init__(self, income_data: BaseModel):
         self.income_data = income_data
         self.hosts: dict[str, str] | list[str] = income_data.hosts
-        self._current_name_or_ipv4 = None
-        self._current_data_host = None
+        # self._current_name_or_ipv4 = None
+        # self._current_data_host = None
         self.bad_hosts = []
 
     def get_pydantic_model_or_none(self, data_host: dict, model) -> BaseModel | None:
@@ -232,10 +232,6 @@ class HostSorterSearchInDB(BaseHostsSorters):
         )
 
     def get_hosts_and_bad_hosts_as_dict(self) -> dict:
-
-        logger.debug(f'^^^^ self.hosts: {self.hosts}\n')
-        logger.debug(f'^^^^ self.get_bad_hosts_as_dict(): {self.get_bad_hosts_as_dict()}\n')
-        logger.debug(f'^^^^ self.hosts | self.get_bad_hosts_as_dict(): {self.hosts | self.get_bad_hosts_as_dict()}\n')
         return self.hosts | self.get_bad_hosts_as_dict()
 
     def get_bad_hosts_as_dict(self) -> dict:
@@ -328,6 +324,7 @@ class HostsMonitoringAndManagementDataBroker(BaseHostsSorters):
     @abc.abstractmethod
     def get_base_model(self):
         return NotImplemented
+
 
 class BaseSortersWithSearchInDb(HostsMonitoringAndManagementDataBroker):
 
@@ -489,9 +486,6 @@ class DataHostsSorterWithSearchInDb(BaseDataHostsSorter):
     def __init__(self, income_data: dict | list):
         BaseDataHostsSorter.__init__(self, income_data)
         self.allowed_search_in_db_hosts: dict[str, Any] = {}
-
-
-
 
 
 class GetHostsStaticDataWithSearchInDb(DataHostsSorterWithSearchInDb):
