@@ -55,10 +55,6 @@ class TrafficLightsObjectsTableFields(StrEnum):
     ALL = '*'
 
 
-class DataHostFields(StrEnum):
-    ERRORS = 'errors'
-
-
 # class TrafficLightsObjectsResponce(BaseModel):
 #     model_config = ConfigDict()
 #     id: int
