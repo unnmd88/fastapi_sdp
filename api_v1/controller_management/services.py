@@ -259,3 +259,4 @@ class HostSorterSearchInDB(BaseHostsSorters):
         """
         ipv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
         return {ipv4: record_from_db}
+

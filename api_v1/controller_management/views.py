@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .crud import SearchHosts
-from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb
+from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
 from .services import logger, HostSorterSearchInDB
 
 router = APIRouter(tags=['traffic-lights'])
@@ -60,9 +60,10 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
 
 
 @router.post('/get-state')
-async def get_state(data: RequestMonitoringAndManagement):
+async def get_state(data: FastRequestMonitoringAndManagement):
     logger.debug(data)
     logger.debug(data.hosts)
+    return data
     data_hosts = SortersWithSearchInDbMonitoring(data.hosts)
     db = SearchHosts()
 

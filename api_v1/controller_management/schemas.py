@@ -8,7 +8,7 @@ from pydantic import (
     Field,
     ConfigDict,
     computed_field,
-    AfterValidator
+    AfterValidator, SkipValidation
 )
 
 from sdp_lib.utils_common import check_is_ipv4
@@ -160,8 +160,21 @@ class GetHostsStaticDataFromDb(BaseModel):
     hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30)]
 
 
+class T(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
+    type_controller: AllowedControllers
+    entity: AllowedMonitoringEntity
+    host_id: str
+    # host_fields_monitoring: Annotated[dict[AllowedMonitoringEntity, str], Field(repr=True)]
+
 class RequestMonitoringAndManagement(BaseModel):
     hosts: Annotated[dict[ip_or_name, dict[str, str]], Field(repr=True)]
+
+
+class FastRequestMonitoringAndManagement(BaseModel):
+
+    hosts: Annotated[dict[IPvAnyAddress, T], Field(repr=True), SkipValidation]
 
 
 """ Модели БД """
@@ -180,15 +193,20 @@ class ModelFromDb(BaseModel):
 
 
 """ Тестовые модели """
-class T1(BaseModel):
-    hosts: Annotated[list[str], Field(repr=True)]
+class Nested(BaseModel):
+    t1: str
+    num: int
 
+class T1(BaseModel):
+    id: int
+    hosts: list[Nested]
 
 if __name__ == '__main__':
     data = {
         'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string',
         'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True
     }
+
 
 
 
