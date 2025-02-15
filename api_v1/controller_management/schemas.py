@@ -2,7 +2,14 @@ from enum import StrEnum
 from typing import Annotated, Any
 from annotated_types import MinLen, MaxLen
 
-from pydantic import BaseModel, IPvAnyAddress, Field, ConfigDict, computed_field, AfterValidator
+from pydantic import (
+    BaseModel,
+    IPvAnyAddress,
+    Field,
+    ConfigDict,
+    computed_field,
+    AfterValidator
+)
 
 from sdp_lib.utils_common import check_is_ipv4
 
@@ -175,8 +182,6 @@ class ModelFromDb(BaseModel):
     # time_create: datetime.datetime
     # time_update: datetime.datetime
 
-
-# Annotated[str, Field(strict=True)
 
 """ Тестовые модели """
 class T1(BaseModel):
