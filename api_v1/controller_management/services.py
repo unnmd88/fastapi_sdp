@@ -232,7 +232,7 @@ class BaseHostsSorters:
         except ValidationError:
             return None
 
-    def add_host_to_container_with_bad_hosts(self, host: dict[str, str]):
+    def add_host_to_container_with_bad_hosts(self, host: dict[str, Any]):
         """
         Добавляет хост с ошибками в контейнер self.bad_hosts
         :param host: Хост, который будет добавлен в контейнер self.bad_hosts.
@@ -349,7 +349,7 @@ class HostSorterSearchInDB(BaseHostsSorters):
                         {'abra': {'entity': 'get_host_property', 'errors': ['not found in database']}},
                         {'cadabra': {'entity': 'get_host_property', 'errors': ['not found in database']}}
                         ]
-        :return: None.
+        :return: self.hosts
         """
 
         founded_in_db_hosts = {}

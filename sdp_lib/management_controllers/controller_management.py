@@ -14,7 +14,6 @@ from datetime import datetime
 import logging
 from collections.abc import Callable
 
-
 from dotenv import load_dotenv
 from pathlib import Path
 from enum import Enum
