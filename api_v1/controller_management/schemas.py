@@ -116,7 +116,7 @@ class GetStateResponse(BaseModel):
     }
 
 
-def value_to_string(value: Any) -> str:
+def get_value_as_string(value: Any) -> str:
     """
     Конвертирует экземпляр в строковый тип.
     :param value: Значение, которое будет сконвертировано в строковый тип.
@@ -141,14 +141,24 @@ class BaseSearchHostsInDb(BaseModel):
             return str(TrafficLightsObjectsTableFields.NUMBER)
 
 
+class GetState(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
+    type_controller: Annotated[AllowedControllers, AfterValidator(get_value_as_string)]
+    number: Annotated[str, Field(default=None, max_length=20)]
+    scn: Annotated[str, Field(default=None, max_length=10)]
+    entity: Annotated[AllowedMonitoringEntity, AfterValidator(get_value_as_string)]
+    errors: Annotated[list, Field(default=[])]
+
+
 """ Проверка данных(свойств) определённого хоста """
 
 class DataHostIfSearchInDbFalseBase(BaseModel):
 
-    ip_or_name_from_user: Annotated[IPvAnyAddress, AfterValidator(value_to_string)]
+    ip_or_name_from_user: Annotated[IPvAnyAddress, AfterValidator(get_value_as_string)]
     search_in_db: bool
     entity: AllowedMonitoringEntity
-    type_controller: Annotated[AllowedControllers, AfterValidator(value_to_string)]
+    type_controller: Annotated[AllowedControllers, AfterValidator(get_value_as_string)]
     number: Annotated[str, Field(default=None, max_length=20, alias='host_id')]
     scn: Annotated[str, Field(default=None, max_length=10)]
 

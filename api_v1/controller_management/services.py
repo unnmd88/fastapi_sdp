@@ -6,11 +6,12 @@ from typing import Any
 
 from pydantic import ValidationError, BaseModel
 
+from sdp_lib.utils_common import check_is_ipv4
 from .schemas import (
     AllowedMonitoringEntity,
     TrafficLightsObjectsTableFields,
     AllowedDataHostFields,
-    BaseSearchHostsInDb
+    BaseSearchHostsInDb, GetState
 )
 import logging_config
 
@@ -74,7 +75,7 @@ class BaseHostsSorters:
     """
     def __init__(self, income_data: BaseModel):
         self.income_data = income_data
-        self.hosts: dict[str, str] | list[str] = income_data.hosts
+        self.hosts: list[str] | dict[str, str] | dict[str, dict[str, str]] = income_data.hosts
         self.bad_hosts = []
 
     def get_pydantic_model_or_none(self, data_host: dict, model) -> BaseModel | None:
@@ -83,6 +84,9 @@ class BaseHostsSorters:
             return model(**data_host)
         except ValidationError:
             return None
+
+    def get_model_for_body(self):
+        raise NotImplemented
 
     def add_host_to_container_with_bad_hosts(self, host: dict[str, Any]):
         """
@@ -259,4 +263,46 @@ class HostSorterSearchInDB(BaseHostsSorters):
         """
         ipv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
         return {ipv4: record_from_db}
+
+
+class HostSorterGetStateNoSearchInDB(BaseHostsSorters):
+
+    # def __init__(self, income_data: BaseModel):
+    #     BaseHostsSorters.__init__(self, income_data)
+    #     self.allowed_to_request_hosts = None
+
+    def get_model_for_body(self):
+        return GetState
+
+    def sorting(self):
+        allowed_to_request_hosts = {}
+        for curr_host_ipv4, current_data_host in self.hosts.items():
+            current_host = HostData(ip_or_name=curr_host_ipv4, properties=current_data_host)
+            if not check_is_ipv4(curr_host_ipv4):
+                current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.invalid_ip))
+                self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+                continue
+            model = self.get_model_for_body()
+            try:
+                model(
+                    type_controller=current_host.properties.get('type_controller'),
+                    number=current_host.properties.get('number'),
+                    scn=current_host.properties.get('scn'),
+                    entity=current_host.properties.get('entity')
+                )
+            except ValidationError as e:
+                print(f'e >>>> {e}')
+
+            # type_controller: Annotated[AllowedControllers, AfterValidator(value_to_string)]
+            # number: Annotated[str, Field(default=None, max_length=20)]
+            # scn: Annotated[str, Field(default=None, max_length=10)]
+            # errors: Annotated[list, Field(default=[])]
+
+            allowed_to_request_hosts |= current_host.ip_or_name_and_properties_as_dict
+
+
+        self.hosts = allowed_to_request_hosts
+        return self.hosts
+        logger.debug(f'sorting result: {allowed_to_request_hosts}')
+        logger.debug(f'self.bad_hosts result: {self.bad_hosts}')
 

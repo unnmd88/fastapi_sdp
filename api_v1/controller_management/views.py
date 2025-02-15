@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .crud import SearchHosts
 from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
-from .services import logger, HostSorterSearchInDB
+from .services import logger, HostSorterSearchInDB, HostSorterGetStateNoSearchInDB
 
 router = APIRouter(tags=['traffic-lights'])
 
@@ -63,14 +63,12 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
 async def get_state(data: FastRequestMonitoringAndManagement):
     logger.debug(data)
     logger.debug(data.hosts)
-    return data
-    data_hosts = SortersWithSearchInDbMonitoring(data.hosts)
-    db = SearchHosts()
-
-    data_hosts.hosts_after_search_in_db = await db.get_hosts_where(db.get_stmt_where(data_hosts.search_data))
+    # return data
+    data_hosts = HostSorterGetStateNoSearchInDB(data)
+    data_hosts.sorting()
     pprint.pprint(data_hosts)
     # logger.debug()
-    return data_hosts.search_data
+    return data_hosts
 
 
 
