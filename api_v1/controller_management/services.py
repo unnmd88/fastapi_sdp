@@ -1,39 +1,21 @@
-import abc
-import asyncio
 import functools
-import itertools
-from dataclasses import dataclass
-import ipaddress
 import json
 import logging
-from copy import deepcopy
 from enum import StrEnum
-from itertools import zip_longest
-from typing import Type, Any, Sequence
+from typing import Any
 
-from more_itertools.more import raise_
-from pydantic.json_schema import model_json_schema
+from pydantic import ValidationError, BaseModel
 
-import logging_config
-from re import search
-
-from pydantic import ValidationError, BaseModel, field_validator
-
-# from sdp_lib.management_controllers.tests import host_id
-from sdp_lib.utils_common import check_is_ipv4
 from .schemas import (
-    AllowedControllers,
-    AllowedMonitoringEntity, AllowedProtocolsRequest,
-    TrafficLightsObjectsTableFields, DataHostFields, ModelFromDb,
-    AllowedDataHostFields, BaseSearchHostsInDb
+    AllowedMonitoringEntity,
+    TrafficLightsObjectsTableFields,
+    AllowedDataHostFields,
+    BaseSearchHostsInDb
 )
-
-from sdp_lib.management_controllers import controller_management
+import logging_config
 
 
 logger = logging.getLogger(__name__)
-
-logger.debug('TEEEEEEEEEEST LOGGER')
 
 
 class ErrorMessages(StrEnum):
@@ -277,5 +259,3 @@ class HostSorterSearchInDB(BaseHostsSorters):
         """
         ipv4 = record_from_db.pop(str(TrafficLightsObjectsTableFields.IP_ADDRESS))
         return {ipv4: record_from_db}
-
-
