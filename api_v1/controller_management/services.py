@@ -394,7 +394,7 @@ class HostSorterSearchInDB(BaseHostsSorters):
                                'number': '11', 'ip_adress': '10.179.28.9', 'type_controller': 'Swarco',
                                'address': 'Бережковская наб. д.22, 24    ЗАО (ЗАО-9)', 'description': 'Приоритет ОТ'
                                }
-        :return: dict со свойствами хоста общего вида, где ключом является ip адресс, а значением остальные
+        :return: dict со свойствами хоста общего вида, где ключом является ip адрес, а значением остальные
                  свойства dict record_from_db
                  Пример:
                  "10.179.28.9":
