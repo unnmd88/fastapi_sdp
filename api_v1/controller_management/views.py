@@ -65,10 +65,12 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     logger.debug(data.hosts)
     # return data
     data_hosts = HostSorterGetStateNoSearchInDB(data)
+    print(data_hosts)
+    print(data_hosts.hosts)
     data_hosts.sorting()
     pprint.pprint(data_hosts)
     # logger.debug()
-    return data_hosts
+    return data_hosts.bad_hosts
 
 
 

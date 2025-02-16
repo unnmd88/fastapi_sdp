@@ -11,7 +11,7 @@ from .schemas import (
     AllowedMonitoringEntity,
     TrafficLightsObjectsTableFields,
     AllowedDataHostFields,
-    BaseSearchHostsInDb, GetState
+    BaseSearchHostsInDb, BaseMonitoringHostBody, GetState
 )
 import logging_config
 
@@ -52,14 +52,17 @@ class HostData:
         if self.properties.get(AllowedDataHostFields.errors) is None:
             self.properties |= {str(AllowedDataHostFields.errors): []}
 
-    def add_message_to_error_field_to_current_host(self, message: str) -> None:
+    def add_message_to_error_field_to_current_host(self, message: list | str) -> None:
         """
         Добавляет сообщение с текстом ошибки.
         :param message: Строка с текстом сообщения
         :return: None
         """
         self._add_errors_field_to_current_data_host_if_have_not()
-        self.properties[str(AllowedDataHostFields.errors)].append(message)
+        if isinstance(message, str):
+            self.properties[str(AllowedDataHostFields.errors)].append(message)
+        elif isinstance(message, list):
+            self.properties[str(AllowedDataHostFields.errors)] += message
 
     def get_full_host_data_as_dict(self) -> dict[str, dict[str, Any]]:
         """
@@ -67,6 +70,9 @@ class HostData:
         :return:
         """
         return {self.ip_or_name: self.properties}
+
+    def _get_full_host_data_as_dict(self) -> dict[str, Any]:
+        return self.properties | {str(AllowedDataHostFields.ipv4): self.ip_or_name}
 
 
 class BaseHostsSorters:
@@ -267,9 +273,7 @@ class HostSorterSearchInDB(BaseHostsSorters):
 
 class HostSorterGetStateNoSearchInDB(BaseHostsSorters):
 
-    # def __init__(self, income_data: BaseModel):
-    #     BaseHostsSorters.__init__(self, income_data)
-    #     self.allowed_to_request_hosts = None
+
 
     def get_model_for_body(self):
         return GetState
@@ -278,19 +282,20 @@ class HostSorterGetStateNoSearchInDB(BaseHostsSorters):
         allowed_to_request_hosts = {}
         for curr_host_ipv4, current_data_host in self.hosts.items():
             current_host = HostData(ip_or_name=curr_host_ipv4, properties=current_data_host)
-            if not check_is_ipv4(curr_host_ipv4):
-                current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.invalid_ip))
-                self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
-                continue
+            # if not check_is_ipv4(curr_host_ipv4):
+            #     current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.invalid_ip))
+            #     self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+            #     continue
             model = self.get_model_for_body()
+            print(f"current_host.properties: {current_host.properties}"),
             try:
-                model(
-                    type_controller=current_host.properties.get('type_controller'),
-                    number=current_host.properties.get('number'),
-                    scn=current_host.properties.get('scn'),
-                    entity=current_host.properties.get('entity')
-                )
+                m = model(**current_host._get_full_host_data_as_dict())
+                logger.debug(f'm:: {m}')
             except ValidationError as e:
+                current_host.add_message_to_error_field_to_current_host(e.errors())
+                self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+
+                print(f'current_host: {current_host.ip_or_name}')
                 print(f'e >>>> {e}')
 
             # type_controller: Annotated[AllowedControllers, AfterValidator(value_to_string)]

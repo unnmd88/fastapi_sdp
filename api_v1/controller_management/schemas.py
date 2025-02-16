@@ -10,6 +10,8 @@ from pydantic import (
     computed_field,
     AfterValidator, SkipValidation
 )
+from pydantic_core import ValidationError
+from typing_extensions import Literal
 
 from sdp_lib.utils_common import check_is_ipv4
 
@@ -43,6 +45,7 @@ class AllowedProtocolsRequest(StrEnum):
 
 class AllowedDataHostFields(StrEnum):
     errors = 'errors'
+    host_id = 'host_id'
     search_in_db = 'search_in_db'
     ip_or_name_from_user = 'ip_or_name_from_user'
     entity = 'entity'
@@ -141,26 +144,32 @@ class BaseSearchHostsInDb(BaseModel):
             return str(TrafficLightsObjectsTableFields.NUMBER)
 
 
-class GetState(BaseModel):
+class BaseMonitoringHostBody(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
+    ipv4: Annotated[IPvAnyAddress, Field(alias=str(AllowedDataHostFields.ipv4)), AfterValidator(get_value_as_string)]
     type_controller: Annotated[AllowedControllers, AfterValidator(get_value_as_string)]
-    number: Annotated[str, Field(default=None, max_length=20)]
-    scn: Annotated[str, Field(default=None, max_length=10)]
-    entity: Annotated[AllowedMonitoringEntity, AfterValidator(get_value_as_string)]
+    number: Annotated[str | None, Field(default=None, max_length=20, validation_alias='host_id')]
+    scn: Annotated[str | None, Field(default=None, max_length=10)]
     errors: Annotated[list, Field(default=[])]
+
+
+class GetState(BaseMonitoringHostBody):
+
+    entity: Annotated[Literal[str(AllowedMonitoringEntity.GET_STATE_BASE), str(AllowedMonitoringEntity.GET_STATE_FULL)],
+                      AfterValidator(get_value_as_string)]
 
 
 """ Проверка данных(свойств) определённого хоста """
 
-class DataHostIfSearchInDbFalseBase(BaseModel):
-
-    ip_or_name_from_user: Annotated[IPvAnyAddress, AfterValidator(get_value_as_string)]
-    search_in_db: bool
-    entity: AllowedMonitoringEntity
-    type_controller: Annotated[AllowedControllers, AfterValidator(get_value_as_string)]
-    number: Annotated[str, Field(default=None, max_length=20, alias='host_id')]
-    scn: Annotated[str, Field(default=None, max_length=10)]
+# class DataHostIfSearchInDbFalseBase(BaseModel):
+#
+#     ip_or_name_from_user: Annotated[IPvAnyAddress, AfterValidator(get_value_as_string)]
+#     search_in_db: bool
+#     entity: AllowedMonitoringEntity
+#     type_controller: Annotated[AllowedControllers, AfterValidator(get_value_as_string)]
+#     number: Annotated[str, Field(default=None, max_length=20, alias='host_id')]
+#     scn: Annotated[str, Field(default=None, max_length=10)]
 
 
 """ Входные данные запроса """
@@ -177,6 +186,7 @@ class T(BaseModel):
     entity: AllowedMonitoringEntity
     host_id: str
     # host_fields_monitoring: Annotated[dict[AllowedMonitoringEntity, str], Field(repr=True)]
+
 
 class RequestMonitoringAndManagement(BaseModel):
     hosts: Annotated[dict[ip_or_name, dict[str, str]], Field(repr=True)]
@@ -212,11 +222,17 @@ class T1(BaseModel):
     hosts: list[Nested]
 
 if __name__ == '__main__':
-    data = {
-        'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string',
-        'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True
-    }
+    data = {'type_controller': 'Swarc', 'entity': 'get_state_base', 'host_id': '1557'}
 
+    try:
+        o = BaseMonitoringHostBody(**data)
+        print(f'o: {o}')
+    except ValidationError as err:
+        print(f'err: {err}')
+        print(f'err.errors(): {err.errors()}')
+        print(f'err.args: {err.args}')
+        print(f'err.json(): {err.json()}')
+        print(f'err.error_count(): {err.error_count()}')
 
 
 
