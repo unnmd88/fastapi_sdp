@@ -51,8 +51,8 @@ class SnmpRequest(Host):
             ip_v4: str,
             community: str,
             oids: list[str],
-            timeout: float = 0,
-            retries: int = 1
+            timeout: float = 0.1,
+            retries: int = 0
     ) -> tuple:
         """
         Метод get запросов по snmp
@@ -92,9 +92,15 @@ class BaseSTCIP(SnmpRequest):
     community_write = os.getenv('communitySTCIP_w')
     community_read = os.getenv('communitySTCIP_r')
 
+    async def get_multiple(self, oids: list[str | Oids]):
+        res = await self.get_request_base(
+            ip_v4=self.ip_v4,
+            community=self.community_write,
+            oids=oids
+        )
+        return res
 
 class SwarcoSNMP(BaseSTCIP):
-
 
     async def get_stage(self):
         res = await self.get_request_base(
