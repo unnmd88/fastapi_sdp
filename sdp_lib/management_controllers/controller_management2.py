@@ -1,4 +1,4 @@
-
+import os
 
 from pysnmp.hlapi.asyncio import *
 
@@ -8,7 +8,40 @@ from sdp_lib.utils_common import check_is_ipv4
 
 
 
-class SnmpRequest:
+class Host:
+    """
+    Базовый класс для любого хоста.
+    """
+    def __init__(self, ip_v4: str, host_id=None, scn=None):
+        self.ip_v4 = ip_v4
+        self.host_id = host_id
+        self.scn = scn
+        self.query_data = []
+
+    def __repr__(self):
+        return (
+            f'ip_v4: {self.ip_v4}\n'
+            f'host_id: {self.host_id}\n'
+            f'scn: {self.scn}'
+        )
+
+    def __setattr__(self, key, value):
+        if key == 'ip_v4':
+            if check_is_ipv4(value):
+                self.__dict__[key] = value
+            else:
+                raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {value}')
+
+        elif key == 'scn':
+            if value is None or len(value) <= 10:
+                self.__dict__[key] = value
+            else:
+                raise ValueError('Значение < self.scn > не должно превышать 10 символов ')
+        else:
+            self.__dict__[key] = value
+
+
+class SnmpRequest(Host):
     """
     Интерфейс отправки snmp запросов.
     """
@@ -55,41 +88,25 @@ class SnmpRequest:
         return error_indication, var_binds
 
 
-class SwarcoWebBase:
-    pass
+class BaseSTCIP(SnmpRequest):
+    community_write = os.getenv('communitySTCIP_w')
+    community_read = os.getenv('communitySTCIP_r')
 
 
-class Host:
-    """
-    Базовый класс для любого хоста.
-    """
-    def __init__(self, ip_v4: str, host_id=None, scn=None):
-        self.ip_v4 = ip_v4
-        self.host_id = host_id
-        self.scn = scn
-        self.query_data = []
+class SwarcoSNMP(BaseSTCIP):
 
-    def __repr__(self):
-        return (
-            f'ip_v4: {self.ip_v4}\n'
-            f'host_id: {self.host_id}\n'
-            f'scn: {self.scn}'
+
+    async def get_stage(self):
+        res = await self.get_request_base(
+            ip_v4=self.ip_v4,
+            community=self.community_write,
+            oids=[Oids.swarcoUTCTrafftechPhaseStatus]
         )
+        return res
 
-    def __setattr__(self, key, value):
-        if key == 'ip_v4':
-            if check_is_ipv4(key):
-                self.__dict__[key] = value
-            else:
-                raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {value}')
 
-        elif key == 'scn':
-            if len(key) <= 10:
-                self.__dict__[key] = value
-            else:
-                raise ValueError('Значение < self.scn > не должно превышать 10 символов ')
-        else:
-            self.__dict__[key] = value
+
+
 
 
 
