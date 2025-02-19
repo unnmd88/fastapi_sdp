@@ -1,6 +1,6 @@
 import os
 
-from pysnmp.hlapi.asyncio import *
+from pysnmp.hlapi.v3arch.asyncio import *
 
 from .snmp_oids import Oids
 from sdp_lib.utils_common import check_is_ipv4
@@ -45,13 +45,14 @@ class SnmpRequest(Host):
     """
     Интерфейс отправки snmp запросов.
     """
+    snmp_engine = SnmpEngine()
 
     async def get_request_base(
             self,
             ip_v4: str,
             community: str,
             oids: list[str],
-            timeout: float = 0.1,
+            timeout: float = 0.2,
             retries: int = 0
     ) -> tuple:
         """
@@ -78,10 +79,10 @@ class SnmpRequest(Host):
         asyncio.run(set_request(ip_adress, community, oids))
         ******************************
         """
-        error_indication, error_status, error_index, var_binds = await getCmd(
-            SnmpEngine(),
+        error_indication, error_status, error_index, var_binds = await get_cmd(
+            self.snmp_engine,
             CommunityData(community),
-            UdpTransportTarget((ip_v4, 161), timeout=timeout, retries=retries),
+            await UdpTransportTarget.create((ip_v4, 161), timeout=timeout, retries=retries),
             ContextData(),
             *[ObjectType(ObjectIdentity(oid)) for oid in oids]
         )
@@ -93,12 +94,16 @@ class BaseSTCIP(SnmpRequest):
     community_read = os.getenv('communitySTCIP_r')
 
     async def get_multiple(self, oids: list[str | Oids]):
+        print('я в функции get_multiple')
         res = await self.get_request_base(
             ip_v4=self.ip_v4,
             community=self.community_write,
             oids=oids
         )
+        print('я в функции get_multiple перед return')
+
         return res
+
 
 class SwarcoSNMP(BaseSTCIP):
 
