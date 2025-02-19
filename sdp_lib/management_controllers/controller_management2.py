@@ -1,3 +1,4 @@
+import abc
 import os
 
 from pysnmp.hlapi.v3arch.asyncio import *
@@ -12,11 +13,11 @@ class Host:
     """
     Базовый класс для любого хоста.
     """
-    def __init__(self, ip_v4: str, host_id=None, scn=None):
+    def __init__(self, ip_v4: str, host_id=None):
         self.ip_v4 = ip_v4
         self.host_id = host_id
-        self.scn = scn
-        self.query_data = []
+        # self.scn = scn
+        # self.query_data = []
 
     def __repr__(self):
         return (
@@ -41,14 +42,25 @@ class Host:
             self.__dict__[key] = value
 
 
-class SnmpRequest(Host):
+class SnmpHost(Host):
+    def __init__(self, ip_v4: str, host_id: str = None, scn: str = None):
+        Host.__init__(self, ip_v4, host_id)
+        self.scn = scn
+        self.community_r, self.community_w = self.get_community()
+
+    def get_community(self) -> tuple[str, str]:
+        ...
+
+
+class SnmpRequest(SnmpHost):
     """
     Интерфейс отправки snmp запросов.
     """
     snmp_engine = SnmpEngine()
 
+    @classmethod
     async def get_request_base(
-            self,
+            cls,
             ip_v4: str,
             community: str,
             oids: list[str],
@@ -58,11 +70,10 @@ class SnmpRequest(Host):
         """
         Метод get запросов по snmp
         :param ip_v4:
-        :arg ip_adress: ip хоста
-        :arg community: коммьюнити хоста
-        :arg oids: список oids, которые будут отправлены в get запросе
-        :arg timeout: таймаут запроса, в секундах
-        :arg retries: количество попыток запроса
+        :param community: коммьюнити хоста
+        :param oids: список oids, которые будут отправлены в get запросе
+        :param timeout: таймаут запроса, в секундах
+        :param retries: количество попыток запроса
         :return: tuple вида:
                  index[0] -> если есть ошибка в snmp запросе, то текст ошибки, иначе None
                  index[1] -> ответные данные. список вида [(oid, payload), (oid, payload)...]
@@ -72,15 +83,15 @@ class SnmpRequest(Host):
         --------
         ip_adress = '192.168.0.1'\n
         community = 'community'\n
-        oids = [Oids.swarcoUTCTrafftechPhaseStatus.value,
-               Oids.swarcoUTCTrafftechPlanStatus.value]
+        oids = [Oids.swarcoUTCTrafftechPhaseStatus,
+               Oids.swarcoUTCTrafftechPlanStatus]
 
 
         asyncio.run(set_request(ip_adress, community, oids))
         ******************************
         """
         error_indication, error_status, error_index, var_binds = await get_cmd(
-            self.snmp_engine,
+            cls.snmp_engine,
             CommunityData(community),
             await UdpTransportTarget.create((ip_v4, 161), timeout=timeout, retries=retries),
             ContextData(),
@@ -88,34 +99,111 @@ class SnmpRequest(Host):
         )
         return error_indication, var_binds
 
+    async def get_request(
+            self,
+            oids: list[str | Oids],
+            timeout: float = 0.2,
+            retries: int = 0
+    ) -> tuple:
+        """
+        Метод get запросов по протоколу snmp.
+        :param oids: список oids, которые будут отправлены в get запросе
+        :param timeout: таймаут запроса, в секундах
+        :param retries: количество попыток запроса
+        :return: tuple вида:
+                 index[0] -> если есть ошибка в snmp запросе, то текст ошибки, иначе None
+                 index[1] -> ответные данные. список вида [(oid, payload), (oid, payload)...]
+                 index[2] -> self, ссылка на объект
+
+        Examples
+        --------
+        ip_adress = '192.168.0.1'\n
+        community = 'community'\n
+        oids = [Oids.swarcoUTCTrafftechPhaseStatus,
+               Oids.swarcoUTCTrafftechPlanStatus]
+
+
+        asyncio.run(set_request(ip_adress, community, oids))
+        ******************************
+        """
+        error_indication, error_status, error_index, var_binds = await get_cmd(
+            SnmpRequest.snmp_engine,
+            CommunityData(self.community_r),
+            await UdpTransportTarget.create((self.ip_v4, 161), timeout=timeout, retries=retries),
+            ContextData(),
+            *[ObjectType(ObjectIdentity(oid)) for oid in oids]
+        )
+        return error_indication, var_binds
+
 
 class BaseSTCIP(SnmpRequest):
-    community_write = os.getenv('communitySTCIP_w')
-    community_read = os.getenv('communitySTCIP_r')
+
+    def get_community(self) -> tuple[str, str]:
+        return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
 
     async def get_multiple(self, oids: list[str | Oids]):
         print('я в функции get_multiple')
-        res = await self.get_request_base(
-            ip_v4=self.ip_v4,
-            community=self.community_write,
-            oids=oids
-        )
+        res = await self.get_request(oids=oids)
         print('я в функции get_multiple перед return')
-
         return res
 
 
-class SwarcoSNMP(BaseSTCIP):
+class SwarcoSnmp(BaseSTCIP):
+
+    oids_get_state_base = [
+        Oids.swarcoUTCStatusEquipment,
+        Oids.swarcoUTCTrafftechPhaseStatus,
+        Oids.swarcoUTCTrafftechPlanCurrent,
+        Oids.swarcoUTCDetectorQty,
+        Oids.swarcoSoftIOStatus
+    ]
+
+    @staticmethod
+    def convert_val_to_num_stage_get_req(val: str) -> int | None:
+        """
+        Конвертирует значение из oid фазы в номер фазы из get заспроа
+        :param val: значение, которое будет сконвертировано в десятичный номер фазы.
+        :return: номер фазы в десятичном представлении
+        """
+
+        values = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
+        return values.get(val)
+
+    @staticmethod
+    def convert_val_to_num_stage_set_req(val: str) -> int | None:
+        """
+        Конвертирует номер фазы в значение для установки в oid фазы
+        :param val: номер фазы, который будет сконвертирован в соответствующее значение
+        :return: Значение фазы, которое будет установлено.
+        """
+
+        values = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
+        return values.get(val)
 
     async def get_stage(self):
-        res = await self.get_request_base(
-            ip_v4=self.ip_v4,
-            community=self.community_write,
+        error_indication, var_binds = await self.get_request(
             oids=[Oids.swarcoUTCTrafftechPhaseStatus]
         )
-        return res
+        if error_indication is None:
+            # print(f'ip: {self.ip_v4}\nstage: {var_binds[0][1]}')
+            print(f'ip: {self.ip_v4}\nstage: {self.convert_val_to_num_stage_get_req(str(var_binds[0][1]))}')
+            return self.convert_val_to_num_stage_get_req(var_binds)
+        return error_indication
 
+    async def get_data_for_basic_current_state(self):
+        error_indication, var_binds = await self.get_request(
+            oids=SwarcoSnmp.oids_get_state_base
+        )
 
+        self.parse_raw_data_for_basic_current_state(var_binds)
+        return error_indication, var_binds
+
+    def parse_raw_data_for_basic_current_state(self, raw_data: tuple[ObjectType]):
+        for varBind in raw_data:
+            print(" = ".join([x.prettyPrint() for x in varBind]))
+
+class SwarcoSnmpCurrentStates(SwarcoSnmp):
+    pass
 
 
 
