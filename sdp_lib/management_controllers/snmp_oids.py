@@ -26,6 +26,7 @@ class Oids(StrEnum):
     swarcoUTCDetectorQty = os.getenv('swarcoUTCDetectorQty')
     swarcoUTCSignalGroupState = os.getenv('swarcoUTCSignalGroupState')
     swarcoUTCSignalGroupOffsetTime = os.getenv('swarcoUTCSignalGroupOffsetTime')
+    swarcoUTCTrafftechFixedTimeStatus = os.getenv('swarcoUTCTrafftechFixedTimeStatus')
     potokS_UTCCommandAllRed = os.getenv('potokS_UTCCommandAllRed')
     potokS_UTCSetGetLocal = os.getenv('potokS_UTCSetGetLocal')
     potokS_UTCprohibitionManualPanel = os.getenv('potokS_UTCprohibitionManualPanel')

@@ -161,6 +161,21 @@ class SwarcoSnmp(BaseSTCIP):
         '6': str(FieldsNames.all_red),
     }
 
+    plan_source = {
+        '1': 'trafficActuatedPlanSelectionCommand',
+        '2': 'currentTrafficSituationCentral',
+        '3': 'controlBlockOrInput',
+        '4': 'manuallyFromWorkstation',
+        '5': 'emergencyRoute',
+        '6': 'currentTrafficSituation',
+        '7': 'calendarClock',
+        '8': 'controlBlockInLocal',
+        '9': 'forcedByParameterBP40',
+        '10': 'startUpPlan',
+        '11': 'localPlan',
+        '12': 'manualControlPlan',
+    }
+
     def convert_val_to_num_stage_get_req(self, val: str) -> int | None:
         """
         Конвертирует значение из oid фазы в номер фазы из get заспроа
@@ -181,8 +196,14 @@ class SwarcoSnmp(BaseSTCIP):
         values = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
         return values.get(val)
 
+    def get_plan_source(self, value: str) -> str:
+        return value
+
     def get_status(self, value: str) -> str:
         return self.status_equipment.get(value)
+
+    def get_fixed_time_status(self, value: str) -> str:
+        return value
 
     def get_plan(self, value: str) -> str:
         return value
@@ -190,8 +211,12 @@ class SwarcoSnmp(BaseSTCIP):
     def get_num_det(self, value: str) -> str:
         return value
 
-    def get_soft_flags_status(self, octet_string: str, start: int = 180, stop: int = 182, ) -> str:
+    def get_soft_flags_status(self, octet_string: str, start: int = 179, stop: int = 181, ) -> str:
         return octet_string[start: stop]
+
+    def get_current_mode(self, response_data: dict[str, str]):
+        if response_data.get(FieldsNames.fixed_time_status) == '1':
+            return
 
     def get_oid_val(self, var_binds: tuple[ObjectType]):
         return [x.prettyPrint() for x in var_binds]
@@ -226,6 +251,8 @@ class SwarcoSnmp(BaseSTCIP):
 class SwarcoSnmpCurrentStates(SwarcoSnmp):
 
     state_base: dict = {
+        Oids.swarcoUTCTrafftechFixedTimeStatus: (FieldsNames.fixed_time_status, SwarcoSnmp.get_fixed_time_status),
+        Oids.swarcoUTCTrafftechPlanSource: (FieldsNames.plan_source, SwarcoSnmp.get_plan_source),
         Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, SwarcoSnmp.get_status),
         Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, SwarcoSnmp.convert_val_to_num_stage_get_req),
         Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, SwarcoSnmp.get_plan),
@@ -233,11 +260,18 @@ class SwarcoSnmpCurrentStates(SwarcoSnmp):
         Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, SwarcoSnmp.get_soft_flags_status)
     }
 
-    def parse_response(self, response: Generator) -> dict[str, str]:
+    def parse_response(
+            self,
+            response: [tuple[ObjectIdentity, OctetString | Gauge32 | Integer | Unsigned32]]
+    ) -> dict[str, str]:
+        # print(f'response: {response}')
         resp = {}
+        # for oid, val in ((str(x[0]), str(x[1])) for x in response):
         for oid, val in response:
+            oid, val = str(oid), str(val)
             field_name, fn = SwarcoSnmpCurrentStates.state_base.get(oid)
             resp[str(field_name)] = fn(self, val)
+        resp[str(FieldsNames.curr_mode)] = self.get_current_mode(resp)
         print(f'resp: {resp}')
         return resp
 
@@ -246,6 +280,6 @@ class SwarcoSnmpCurrentStates(SwarcoSnmp):
             oids=SwarcoSnmpCurrentStates.state_base.keys()
         )
 
-        return error_indication, self.parse_response(((str(x[0]), str(x[1])) for x in var_binds))
+        return error_indication, self.parse_response(var_binds)
 
 
