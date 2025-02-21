@@ -1,9 +1,11 @@
-import abc
+from collections.abc import KeysView
 import os
+from typing import Generator
 
 from pysnmp.hlapi.v3arch.asyncio import *
 
 from .snmp_oids import Oids
+from .responce import FieldsNames
 from sdp_lib.utils_common import check_is_ipv4
 
 
@@ -101,7 +103,7 @@ class SnmpRequest(SnmpHost):
 
     async def get_request(
             self,
-            oids: list[str | Oids],
+            oids: list[str | Oids] | KeysView[str | Oids],
             timeout: float = 0.2,
             retries: int = 0
     ) -> tuple:
@@ -150,16 +152,16 @@ class BaseSTCIP(SnmpRequest):
 
 class SwarcoSnmp(BaseSTCIP):
 
-    oids_get_state_base = [
-        Oids.swarcoUTCStatusEquipment,
-        Oids.swarcoUTCTrafftechPhaseStatus,
-        Oids.swarcoUTCTrafftechPlanCurrent,
-        Oids.swarcoUTCDetectorQty,
-        Oids.swarcoSoftIOStatus
-    ]
+    status_equipment = {
+        '0': 'noInformation',
+        '1': str(FieldsNames.three_light),
+        '2': str(FieldsNames.power_up),
+        '3': str(FieldsNames.dark),
+        '4': str(FieldsNames.flash),
+        '6': str(FieldsNames.all_red),
+    }
 
-    @staticmethod
-    def convert_val_to_num_stage_get_req(val: str) -> int | None:
+    def convert_val_to_num_stage_get_req(self, val: str) -> int | None:
         """
         Конвертирует значение из oid фазы в номер фазы из get заспроа
         :param val: значение, которое будет сконвертировано в десятичный номер фазы.
@@ -169,8 +171,7 @@ class SwarcoSnmp(BaseSTCIP):
         values = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
         return values.get(val)
 
-    @staticmethod
-    def convert_val_to_num_stage_set_req(val: str) -> int | None:
+    def convert_val_to_num_stage_set_req(self, val: str) -> int | None:
         """
         Конвертирует номер фазы в значение для установки в oid фазы
         :param val: номер фазы, который будет сконвертирован в соответствующее значение
@@ -179,6 +180,21 @@ class SwarcoSnmp(BaseSTCIP):
 
         values = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
         return values.get(val)
+
+    def get_status(self, value: str) -> str:
+        return self.status_equipment.get(value)
+
+    def get_plan(self, value: str) -> str:
+        return value
+
+    def get_num_det(self, value: str) -> str:
+        return value
+
+    def get_soft_flags_status(self, octet_string: str, start: int = 180, stop: int = 182, ) -> str:
+        return octet_string[start: stop]
+
+    def get_oid_val(self, var_binds: tuple[ObjectType]):
+        return [x.prettyPrint() for x in var_binds]
 
     async def get_stage(self):
         error_indication, var_binds = await self.get_request(
@@ -190,22 +206,46 @@ class SwarcoSnmp(BaseSTCIP):
             return self.convert_val_to_num_stage_get_req(var_binds)
         return error_indication
 
-    async def get_data_for_basic_current_state(self):
-        error_indication, var_binds = await self.get_request(
-            oids=SwarcoSnmp.oids_get_state_base
-        )
+        # return error_indication, [(str(x[0]), str(x[1])) for x in var_binds]
 
-        self.parse_raw_data_for_basic_current_state(var_binds)
-        return error_indication, var_binds
+    def parse_raw_data_for_basic_current_state(self, raw_data: tuple):
+        # print(f'raw_data:: {raw_data}')
+        # print(f'len(raw_data):: {len(raw_data)}')
+        # print(f'raw_data[0]:: {raw_data[0]}')
+        print([(x[0].prettyPrint(), x[1].prettyPrint()) for x in raw_data])
+        print([(str(x[0]), str(x[1])) for x in raw_data])
 
-    def parse_raw_data_for_basic_current_state(self, raw_data: tuple[ObjectType]):
         for varBind in raw_data:
-            print(" = ".join([x.prettyPrint() for x in varBind]))
+            # print(f'varBind:: {varBind}')
+            # print(f'type(varBind):: {type(varBind)}')
+
+            print(" <><> ".join([x.prettyPrint() for x in varBind]))
+            print([x.prettyPrint() for x in varBind])
+
 
 class SwarcoSnmpCurrentStates(SwarcoSnmp):
-    pass
 
+    state_base: dict = {
+        Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, SwarcoSnmp.get_status),
+        Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, SwarcoSnmp.convert_val_to_num_stage_get_req),
+        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, SwarcoSnmp.get_plan),
+        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, SwarcoSnmp.get_num_det),
+        Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, SwarcoSnmp.get_soft_flags_status)
+    }
 
+    def parse_response(self, response: Generator) -> dict[str, str]:
+        resp = {}
+        for oid, val in response:
+            field_name, fn = SwarcoSnmpCurrentStates.state_base.get(oid)
+            resp[str(field_name)] = fn(self, val)
+        print(f'resp: {resp}')
+        return resp
 
+    async def get_data_for_basic_current_state(self):
+        error_indication, var_binds = await self.get_request(
+            oids=SwarcoSnmpCurrentStates.state_base.keys()
+        )
+
+        return error_indication, self.parse_response(((str(x[0]), str(x[1])) for x in var_binds))
 
 
