@@ -6,6 +6,7 @@ from pysnmp.hlapi.v3arch.asyncio import *
 
 from .snmp_oids import Oids
 from .responce import FieldsNames
+from .constants import NamesMode
 from sdp_lib.utils_common import check_is_ipv4
 
 
@@ -214,9 +215,29 @@ class SwarcoSnmp(BaseSTCIP):
     def get_soft_flags_status(self, octet_string: str, start: int = 179, stop: int = 181, ) -> str:
         return octet_string[start: stop]
 
-    def get_current_mode(self, response_data: dict[str, str]):
-        if response_data.get(FieldsNames.fixed_time_status) == '1':
-            return
+    def get_current_mode(self, response_data: dict[str, str], mode=None) -> str | None:
+
+        if response_data.get(FieldsNames.curr_plan) == '16' and response_data.get(FieldsNames.plan_source) == '3':
+            mode = str(NamesMode.CENTRAL)
+        elif (
+            response_data.get(FieldsNames.fixed_time_status) == '1'
+            or '1' in response_data.get(FieldsNames.status_soft_flag180_181)
+            or response_data.get(FieldsNames.num_detectors) == '0'
+        ):
+            mode = str(NamesMode.FT)
+        elif (
+            response_data.get(FieldsNames.fixed_time_status) == '0'
+            and '1' not in response_data.get(FieldsNames.status_soft_flag180_181)
+            and int(response_data.get(FieldsNames.num_detectors)) > 0
+        ):
+            mode = str(NamesMode.VA)
+        elif response_data.get(FieldsNames.curr_plan) == '15' and response_data.get(FieldsNames.plan_source) == '3':
+            mode = str(NamesMode.MANUAL)
+        elif response_data.get(FieldsNames.curr_plan) == '13' and response_data.get(FieldsNames.plan_source) == '3':
+            mode = str(NamesMode.SYNC)
+        return mode
+
+
 
     def get_oid_val(self, var_binds: tuple[ObjectType]):
         return [x.prettyPrint() for x in var_binds]

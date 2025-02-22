@@ -23,9 +23,4 @@ class FieldsNames(StrEnum):
     three_light = '3_light'
     all_red = 'all_red'
 
-    VA = 'VA'
-    FT = 'FT'
-    CENTRAL = 'CENTRAL'
-    MANUAL = 'MANUAL'
-
     red_yellow_green = 'red_yellow_green'
