@@ -1,14 +1,12 @@
 from collections.abc import KeysView
 import os
-from typing import Generator
 
 from pysnmp.hlapi.v3arch.asyncio import *
 
-from .snmp_oids import Oids
-from .responce import FieldsNames
-from .constants import NamesMode
+from sdp_lib.management_controllers.snmp.oids import Oids
+from sdp_lib.management_controllers.responce import FieldsNames
+from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.utils_common import check_is_ipv4
-
 
 
 
@@ -26,7 +24,6 @@ class Host:
         return (
             f'ip_v4: {self.ip_v4}\n'
             f'host_id: {self.host_id}\n'
-            f'scn: {self.scn}'
         )
 
     def __setattr__(self, key, value):
@@ -52,10 +49,10 @@ class SnmpHost(Host):
         self.community_r, self.community_w = self.get_community()
 
     def get_community(self) -> tuple[str, str]:
-        ...
+        raise NotImplemented()
 
 
-class SnmpRequest(SnmpHost):
+class BaseSnmp(SnmpHost):
     """
     Интерфейс отправки snmp запросов.
     """
@@ -130,7 +127,7 @@ class SnmpRequest(SnmpHost):
         ******************************
         """
         error_indication, error_status, error_index, var_binds = await get_cmd(
-            SnmpRequest.snmp_engine,
+            BaseSnmp.snmp_engine,
             CommunityData(self.community_r),
             await UdpTransportTarget.create((self.ip_v4, 161), timeout=timeout, retries=retries),
             ContextData(),
@@ -139,7 +136,7 @@ class SnmpRequest(SnmpHost):
         return error_indication, var_binds
 
 
-class BaseSTCIP(SnmpRequest):
+class BaseSTCIP(BaseSnmp):
 
     def get_community(self) -> tuple[str, str]:
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
@@ -151,7 +148,7 @@ class BaseSTCIP(SnmpRequest):
         return res
 
 
-class SwarcoSnmp(BaseSTCIP):
+class SwarcoSTCIP(BaseSTCIP):
 
     status_equipment = {
         '0': 'noInformation',
@@ -200,8 +197,8 @@ class SwarcoSnmp(BaseSTCIP):
     def get_plan_source(self, value: str) -> str:
         return value
 
-    def get_status(self, value: str) -> str:
-        return self.status_equipment.get(value)
+    def get_status(self, value: str, status_equipment: dict[str, str]) -> str:
+        return status_equipment.get(value)
 
     def get_fixed_time_status(self, value: str) -> str:
         return value
@@ -237,8 +234,6 @@ class SwarcoSnmp(BaseSTCIP):
             mode = str(NamesMode.SYNC)
         return mode
 
-
-
     def get_oid_val(self, var_binds: tuple[ObjectType]):
         return [x.prettyPrint() for x in var_binds]
 
@@ -269,16 +264,16 @@ class SwarcoSnmp(BaseSTCIP):
             print([x.prettyPrint() for x in varBind])
 
 
-class SwarcoSnmpCurrentStates(SwarcoSnmp):
+class SwarcoCurrentStatesSTCIP(SwarcoSTCIP):
 
     state_base: dict = {
-        Oids.swarcoUTCTrafftechFixedTimeStatus: (FieldsNames.fixed_time_status, SwarcoSnmp.get_fixed_time_status),
-        Oids.swarcoUTCTrafftechPlanSource: (FieldsNames.plan_source, SwarcoSnmp.get_plan_source),
-        Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, SwarcoSnmp.get_status),
-        Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, SwarcoSnmp.convert_val_to_num_stage_get_req),
-        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, SwarcoSnmp.get_plan),
-        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, SwarcoSnmp.get_num_det),
-        Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, SwarcoSnmp.get_soft_flags_status)
+        Oids.swarcoUTCTrafftechFixedTimeStatus: (FieldsNames.fixed_time_status, SwarcoSTCIP.get_fixed_time_status),
+        Oids.swarcoUTCTrafftechPlanSource: (FieldsNames.plan_source, SwarcoSTCIP.get_plan_source),
+        Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, SwarcoSTCIP.get_status),
+        Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, SwarcoSTCIP.convert_val_to_num_stage_get_req),
+        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, SwarcoSTCIP.get_plan),
+        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, SwarcoSTCIP.get_num_det),
+        Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, SwarcoSTCIP.get_soft_flags_status)
     }
 
     def parse_response(
@@ -290,7 +285,7 @@ class SwarcoSnmpCurrentStates(SwarcoSnmp):
         # for oid, val in ((str(x[0]), str(x[1])) for x in response):
         for oid, val in response:
             oid, val = str(oid), str(val)
-            field_name, fn = SwarcoSnmpCurrentStates.state_base.get(oid)
+            field_name, fn = SwarcoCurrentStatesSTCIP.state_base.get(oid)
             resp[str(field_name)] = fn(self, val)
         resp[str(FieldsNames.curr_mode)] = self.get_current_mode(resp)
         print(f'resp: {resp}')
@@ -298,7 +293,7 @@ class SwarcoSnmpCurrentStates(SwarcoSnmp):
 
     async def get_data_for_basic_current_state(self):
         error_indication, var_binds = await self.get_request(
-            oids=SwarcoSnmpCurrentStates.state_base.keys()
+            oids=SwarcoCurrentStatesSTCIP.state_base.keys()
         )
 
         return error_indication, self.parse_response(var_binds)

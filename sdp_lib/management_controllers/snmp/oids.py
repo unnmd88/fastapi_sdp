@@ -1,5 +1,5 @@
 import os
-from enum import StrEnum, Enum
+from enum import StrEnum
 from dotenv import load_dotenv
 
 
@@ -11,7 +11,7 @@ class Oids(StrEnum):
     В классе собраны оиды для ДК по протоколам STCIP и UG405
     """
 
-    """" STCIP """
+    """ STCIP """
     # Command
     swarcoUTCTrafftechPhaseCommand = os.getenv('swarcoUTCTrafftechPhaseCommand')
     swarcoUTCCommandDark = os.getenv('swarcoUTCCommandDark')
@@ -33,7 +33,7 @@ class Oids(StrEnum):
     potokS_UTCCommandRestartProgramm = os.getenv('potokS_UTCCommandRestartProgramm')
     potokS_UTCStatusMode = os.getenv('potokS_UTCStatusMode')
 
-    """" UG405 """
+    """ UG405 """
     # -- Control Bits --#
     utcControlLO = os.getenv('utcControlLO')
     utcControlFF = os.getenv('utcControlFF')
