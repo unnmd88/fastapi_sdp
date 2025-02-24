@@ -1,17 +1,14 @@
-import abc
 from collections.abc import KeysView
 from typing import Callable
 
 from pysnmp.hlapi.v3arch.asyncio import *
 
 from sdp_lib.management_controllers.hosts import *
-from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.responce import FieldsNames
-from sdp_lib.management_controllers.controller_modes import NamesMode
+from sdp_lib.management_controllers.snmp.oids import Oids
 
 
 snmp_engine = SnmpEngine()
-
 
 async def get_request_base(
         ip_v4: str,
@@ -85,6 +82,11 @@ class BaseSnmp(SnmpHost):
         asyncio.run(set_request(ip_adress, community, oids))
         ******************************
         """
+
+        print(f'snmp_engine: < {snmp_engine} >')
+        print(f'snmp_engine: < {snmp_engine.cache} >')
+
+        # snmp_engine = SnmpEngine()
         error_indication, error_status, error_index, var_binds = await get_cmd(
             snmp_engine,
             CommunityData(self.community_r),
@@ -104,21 +106,23 @@ class SnmpAllProtocols(BaseSnmp):
 
     stage_values_get: dict
     stage_values_set: dict
-    parse_response: Callable
+    # parse_response: Callable
+    matches: dict
 
     async def get_request_and_parse_response(
             self,
             oids: list[str | Oids] | KeysView[str | Oids],
             timeout: float = 0.2,
-            retries: int = 0
+            retries: int = 0,
+            include_current_mode=False
     ) -> tuple:
-
+        # print(f'func.name: < get_request_and_parse_response >')
         error_indication, var_binds = await self.get_request(
             oids=oids,
             timeout=timeout,
             retries=retries
         )
-        return error_indication, self.parse_response(var_binds)
+        return error_indication, self.parse_response(var_binds, include_current_mode=include_current_mode)
 
     def get_plan(self, value: str) -> str:
         return value
@@ -138,3 +142,25 @@ class SnmpAllProtocols(BaseSnmp):
         :return: Значение фазы, которое будет установлено.
         """
         return self.stage_values_set.get(val)
+
+    def parse_response(
+            self,
+            response: [tuple[ObjectIdentity, OctetString | Gauge32 | Integer | Unsigned32]],
+            include_current_mode=False
+    ) -> dict[str, str]:
+        resp = {}
+        for oid, val in response:
+            oid, val = str(oid), str(val)
+            field_name, fn = self.matches.get(oid)
+            resp[str(field_name)] = fn(val)
+        if include_current_mode and resp:
+            resp[str(FieldsNames.curr_mode)] = self.get_current_mode(resp)
+        print(f'ip: {self.ip_v4} | resp: {resp}')
+        return resp
+
+
+    def get_current_mode(
+            self,
+            response
+    ):
+        raise NotImplemented()

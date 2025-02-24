@@ -4,6 +4,9 @@ from enum import StrEnum
 class FieldsNames(StrEnum):
 
     protocol_snmp = 'snmp'
+    protocol_stcip = 'stcip'
+    protocol_ug405 = 'ug405'
+    protocol_utmc = 'utmc'
     protocol_http = 'http'
     web_content = 'web_content'
     source = 'source'
@@ -14,6 +17,7 @@ class FieldsNames(StrEnum):
     curr_plan = 'current_plan'
     curr_mode = 'current_mode'
     curr_status = 'current_status'
+    curr_status_mode = 'curr_status_mode'
     plan_source = 'plan_source'
     fixed_time_status = 'fixed_time_status'
 

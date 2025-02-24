@@ -27,11 +27,12 @@ class Oids(StrEnum):
     swarcoUTCSignalGroupState = os.getenv('swarcoUTCSignalGroupState')
     swarcoUTCSignalGroupOffsetTime = os.getenv('swarcoUTCSignalGroupOffsetTime')
     swarcoUTCTrafftechFixedTimeStatus = os.getenv('swarcoUTCTrafftechFixedTimeStatus')
+    swarcoUTCStatusMode = os.getenv('swarcoUTCStatusMode')
     potokS_UTCCommandAllRed = os.getenv('potokS_UTCCommandAllRed')
     potokS_UTCSetGetLocal = os.getenv('potokS_UTCSetGetLocal')
     potokS_UTCprohibitionManualPanel = os.getenv('potokS_UTCprohibitionManualPanel')
     potokS_UTCCommandRestartProgramm = os.getenv('potokS_UTCCommandRestartProgramm')
-    potokS_UTCStatusMode = os.getenv('potokS_UTCStatusMode')
+    # potokS_UTCStatusMode = os.getenv('potokS_UTCStatusMode')
 
     """ UG405 """
     # -- Control Bits --#

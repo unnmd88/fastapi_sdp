@@ -1,5 +1,6 @@
 import pprint
 import time
+from asyncio import TaskGroup
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .crud import SearchHosts
 from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
 from .services import logger, HostSorterSearchInDB, HostSorterGetStateNoSearchInDB
+
+
+from sdp_lib.management_controllers.snmp import stcip
+
 
 router = APIRouter(tags=['traffic-lights'])
 
@@ -73,36 +78,56 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     return data_hosts.bad_hosts
 
 
+async def main(objs):
+    # taks = [o.get_multiple(oids=oids_swarco) for o in objs]
+    # res = await asyncio.gather(*taks)
+    # async with TaskGroup() as tg:
+    #     print('tg1')
+    #     # res = [tg.create_task(coro=o.get_multiple(oids=oids_swarco), name=o.ip_v4)  for o in objs]
+    #     res = [tg.create_task(coro=o.get_data_for_basic_current_state(), name=o.ip_v4).add_done_callback(tets_callback)  for o in objs]
+
+    async with TaskGroup() as tg:
+        print('tg2')
+        # res = [tg1.create_task(coro=o.get_multiple(oids=oids_swarco), name=o.ip_v4)  for o in objs]
+        res = [tg.create_task(coro=o.get_data_for_basic_current_state(), name=o.ip_v4)  for o in objs]
+
+    return res
 
 
+@router.post('/get-state-test')
+async def get_state():
+    start_time = time.time()
+    ipv4_swarco = (
+        '10.45.154.16',
+        '10.179.18.49',
+        '10.179.100.113',
+        '10.179.33.41',
+        '10.179.100.121',
+        '10.179.20.153',
+        '10.179.96.233',
+        '10.179.52.105',
+        '10.179.52.113',
+        '10.179.48.1',
+        '10.179.24.97',
+        '10.179.20.169',
+        '10.179.8.25',
+        '10.179.40.9',
+        '10.179.52.129',
+        '10.179.56.73',
+        '10.179.24.121',
+        '10.179.52.137',
+        '10.179.72.65',
+        '10.179.68.33',
+    )
 
+    objs = [stcip.SwarcoCurrentStatesSTCIP(ip) for ip in ipv4_swarco]
 
-# @router.post('/get-state')
-# async def get_state(data: RequestMonitoringAndManagement):
-#
-#     logger.debug(data)
-#     logger.debug(data.hosts)
-#     logger.debug(data.model_fields)
-#     logger.debug(data.model_config)
-#     logger.debug(data.model_json_schema())
-#     return data
-#
-#     _data = data
-#     logger.debug(f'dDATA:: {_data}')
-#
-#     data_hosts = GetStates(data.model_dump().get('hosts'))
-#
-#     data_hosts.sorting_income_data()
-#
-#     if data_hosts.search_in_db_hosts:
-#         db = SearchHosts()
-#         data_hosts.hosts_after_search_in_db = await db.get_hosts_where(
-#             stmt=db.get_stmt_where(hosts=data_hosts.search_in_db_hosts)
-#         )
-#         data_hosts.sorting_hosts_after_search_from_db()
-#
-#     print(f'data_hosts >> {data_hosts}')
-#     print(f'data_hosts >> {data}')
-#
-#     return data_hosts.allowed_hosts
-#     print(f'data_hosts >> {data_hosts}')
+    res = await main(objs)
+    print(f'res:::: {res}')
+
+    r = {}
+    for task in res:
+        r[task.get_name()] = task.result()
+    print(f'Время составило: {time.time() - start_time}')
+    r['Execution time'] = time.time() - start_time
+    return r
