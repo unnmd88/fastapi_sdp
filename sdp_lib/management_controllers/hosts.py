@@ -3,13 +3,12 @@ from sdp_lib.utils_common import check_is_ipv4
 
 class Host:
     """
-    Базовый класс для любого хоста.
+    Базовый класс хоста.
     """
+
     def __init__(self, ip_v4: str, host_id=None):
         self.ip_v4 = ip_v4
         self.host_id = host_id
-        # self.scn = scn
-        # self.query_data = []
 
     def __repr__(self):
         return (
@@ -33,11 +32,3 @@ class Host:
             self.__dict__[key] = value
 
 
-class SnmpHost(Host):
-    def __init__(self, ip_v4: str, host_id: str = None, scn: str = None):
-        Host.__init__(self, ip_v4, host_id)
-        self.scn = scn
-        self.community_r, self.community_w = self.get_community()
-
-    def get_community(self) -> tuple[str, str]:
-        raise NotImplemented()

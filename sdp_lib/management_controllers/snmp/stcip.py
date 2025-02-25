@@ -2,11 +2,11 @@ import os
 
 from sdp_lib.management_controllers.responce import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
-from sdp_lib.management_controllers.snmp.snmp_base import SnmpApi
+from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-class BaseSTCIP(SnmpApi):
+class BaseSTCIP(SnmpHost):
 
     status_equipment = {
         '0': 'noInformation',
@@ -21,6 +21,9 @@ class BaseSTCIP(SnmpApi):
     def host_protocol(self):
         return str(FieldsNames.protocol_stcip)
 
+    def get_plan(self, value: str) -> str:
+        return value
+
     def get_community(self) -> tuple[str, str]:
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
 
@@ -30,30 +33,15 @@ class BaseSTCIP(SnmpApi):
         print('я в функции get_multiple перед return')
         return res
 
-    async def get_stage_val(self):
-        return await self.get_request_and_parse_response(
-            oids=[Oids.swarcoUTCTrafftechPhaseStatus]
-        )
-
-    async def get_status_val(self):
-        return await self.get_request_and_parse_response(
-            oids=[Oids.swarcoUTCStatusEquipment]
-        )
-
     def get_status(self, value: str, ) -> str:
         return self.status_equipment.get(value)
 
     def get_num_det(self, value: str) -> str:
         return value
 
-    async def get_data_for_basic_current_state(self):
-        return await self.get_request_and_parse_response(
-            oids=self.matches.keys(),
-            include_current_mode=True
-        )
-
     def get_plan_source(self, value: str) -> str:
         return value
+
 
 class SwarcoSTCIP(BaseSTCIP):
 
@@ -86,8 +74,6 @@ class SwarcoSTCIP(BaseSTCIP):
         Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_status)
     }
 
-
-
     def get_fixed_time_status(self, value: str) -> str:
         return value
 
@@ -119,8 +105,8 @@ class SwarcoSTCIP(BaseSTCIP):
 
 class PotokS(BaseSTCIP):
 
-    stage_values_get = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
-
+    stage_values_get = {str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))}
+    stage_values_set = {str(k): str(v) if k > 0 else '0' for k, v in zip(range(65), range(1, 66))}
     modes = {
         '8': str(NamesMode.VA),
         '10': str(NamesMode.MANUAL),
@@ -131,14 +117,11 @@ class PotokS(BaseSTCIP):
     @property
     def matches(self):
         return {
-        # Oids.swarcoUTCTrafftechFixedTimeStatus: (FieldsNames.fixed_time_status, self.get_fixed_time_status),
-        # Oids.swarcoUTCTrafftechPlanSource: (FieldsNames.plan_source, self.get_plan_source),
         Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, self.get_status),
         Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, self.convert_val_to_num_stage_get_req),
         Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_plan),
         Oids.swarcoUTCStatusMode: (FieldsNames.curr_status_mode, self.get_status_mode),
         Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_num_det),
-        # Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_status)
     }
 
     def get_status_mode(self, value: str) -> str:
@@ -146,6 +129,4 @@ class PotokS(BaseSTCIP):
 
     def get_current_mode(self, response_data: dict[str, str], mode=None) -> str | None:
         return self.modes.get(response_data.get(FieldsNames.curr_status_mode))
-
-
 
