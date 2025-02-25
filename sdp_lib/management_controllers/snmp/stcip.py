@@ -1,5 +1,7 @@
 import os
 
+from pysnmp.proto.rfc1902 import Unsigned32
+
 from sdp_lib.management_controllers.responce import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
@@ -35,6 +37,7 @@ class BaseSTCIP(SnmpHost):
 
     def get_plan_source(self, value: str) -> str:
         return value
+
 
 
 class SwarcoSTCIP(BaseSTCIP):
@@ -96,6 +99,16 @@ class SwarcoSTCIP(BaseSTCIP):
             mode = str(NamesMode.SYNC)
         return mode
 
+    async def set_stage(self, val: str):
+        oids = [
+            (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(self.stage_values_set.get(val)))
+        ]
+        res = await self.set(
+            oids=oids,
+
+        )
+
+        print(f'res::>> {res}')
 
 class PotokS(BaseSTCIP):
 
