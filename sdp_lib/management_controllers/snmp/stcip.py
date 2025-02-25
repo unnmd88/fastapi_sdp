@@ -2,11 +2,11 @@ import os
 
 from sdp_lib.management_controllers.responce import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
-from sdp_lib.management_controllers.snmp.snmp_base import SnmpAllProtocols
+from sdp_lib.management_controllers.snmp.snmp_base import SnmpApi
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-class BaseSTCIP(SnmpAllProtocols):
+class BaseSTCIP(SnmpApi):
 
     status_equipment = {
         '0': 'noInformation',
@@ -52,6 +52,8 @@ class BaseSTCIP(SnmpAllProtocols):
             include_current_mode=True
         )
 
+    def get_plan_source(self, value: str) -> str:
+        return value
 
 class SwarcoSTCIP(BaseSTCIP):
 
@@ -84,8 +86,7 @@ class SwarcoSTCIP(BaseSTCIP):
         Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_status)
     }
 
-    def get_plan_source(self, value: str) -> str:
-        return value
+
 
     def get_fixed_time_status(self, value: str) -> str:
         return value
