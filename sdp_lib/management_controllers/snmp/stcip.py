@@ -27,12 +27,6 @@ class BaseSTCIP(SnmpHost):
     def get_community(self) -> tuple[str, str]:
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
 
-    async def get_multiple(self, oids: list[str | Oids]):
-        print('я в функции get_multiple')
-        res = await self.get_request(oids=oids)
-        print('я в функции get_multiple перед return')
-        return res
-
     def get_status(self, value: str, ) -> str:
         return self.status_equipment.get(value)
 
