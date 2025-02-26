@@ -11,10 +11,15 @@ class Host:
         self.host_id = host_id
 
     def __repr__(self):
-        return (
-            f'ip_v4: {self.ip_v4}\n'
-            f'host_id: {self.host_id}\n'
-        )
+        # return (
+        #     f'ip_v4: {self.ip_v4}\n'
+        #     f'host_id: {self.host_id}\n'
+        # )
+
+        return self.__dict__
+
+    def __str__(self):
+        return self.__dict__
 
     def __setattr__(self, key, value):
         if key == 'ip_v4':
