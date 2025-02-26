@@ -11,17 +11,18 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 class PotokP(SnmpHost):
 
     def __init__(self, ip_v4: str, host_id=None, scn=None):
-        super().__init__(ip_v4, host_id, scn)
-        self.scn_as_ascii = self.get_scn_as_ascii()
+        super().__init__(ip_v4, host_id)
+        self.scn_chars = scn
+        self.scn_dec = self.get_scn_as_ascii()
 
     def set_scn(self, var_binds: list):
         if var_binds:
-            self.scn = str(var_binds[0][1])
-            self.scn_as_ascii = self.get_scn_as_ascii()
+            self.scn_chars = str(var_binds[0][1])
+            self.scn_dec = self.get_scn_as_ascii()
 
     def get_scn_as_ascii(self):
-        if self.scn is not None:
-            return self.convert_scn(self.scn)
+        if self.scn_chars is not None:
+            return self.convert_scn(self.scn_chars)
         return None
 
     def get_community(self) -> tuple[str, str]:
@@ -41,5 +42,5 @@ class PotokP(SnmpHost):
             oids=[Oids.utcReplySiteID]
         )
         if err is None:
-            self.scn = str(var_b[0][1])
-            self.scn_as_ascii = self.get_scn_as_ascii()
+            self.scn_chars = str(var_b[0][1])
+            self.scn_dec = self.get_scn_as_ascii()

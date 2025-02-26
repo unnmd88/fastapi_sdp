@@ -51,9 +51,8 @@ class SnmpHost(Host):
     stage_values_set: dict
     matches: dict
 
-    def __init__(self, ip_v4: str, host_id: str = None, scn: str = None):
+    def __init__(self, ip_v4: str, host_id: str = None):
         super().__init__(ip_v4, host_id)
-        self.scn = scn
         self.community_r, self.community_w = self.get_community()
 
     def get_community(self) -> tuple[str, str]:
