@@ -21,6 +21,9 @@ class FieldsNames(StrEnum):
     plan_source = 'plan_source'
     fixed_time_status = 'fixed_time_status'
 
+    bit_TO = 'TO_bit'
+    operation_mode = 'operation_mode'
+
     power_up = 'powerUp'
     dark = 'dark'
     flash = 'flash'

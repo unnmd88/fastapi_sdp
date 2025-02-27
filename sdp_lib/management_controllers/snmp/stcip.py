@@ -1,5 +1,6 @@
 import os
 
+from pysnmp.entity.engine import SnmpEngine
 from pysnmp.proto.rfc1902 import Unsigned32
 
 from sdp_lib.management_controllers.responce import FieldsNames
@@ -23,21 +24,32 @@ class BaseSTCIP(SnmpHost):
     def host_protocol(self):
         return str(FieldsNames.protocol_stcip)
 
-    def get_plan(self, value: str) -> str:
-        return value
-
     def get_community(self) -> tuple[str, str]:
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
+
+    def get_oids_for_get_request(self):
+        return self.matches.keys()
+
+    async def get_and_parse(self, engine: SnmpEngine = None):
+        error_indication, var_binds = await self.get(
+            oids=self.get_oids_for_get_request(),
+            engine=engine
+        )
+        if error_indication is not None or not var_binds:
+            return error_indication, var_binds
+        parsed_response = self.parse_var_binds_from_response(var_binds)
+        parsed_response = self.add_extras_for_response(parsed_response)
+        return error_indication, parsed_response
+
+    def processing_oid_from_response(self, oid: str) -> str:
+        return oid
 
     def get_status(self, value: str, ) -> str:
         return self.status_equipment.get(value)
 
-    def get_num_det(self, value: str) -> str:
-        return value
-
-    def get_plan_source(self, value: str) -> str:
-        return value
-
+    def add_extras_for_response(self, response_data: dict[str, str]) -> dict[str, str]:
+        response_data[str(FieldsNames.curr_mode)] = self.get_current_mode(response_data)
+        return response_data
 
 
 class SwarcoSTCIP(BaseSTCIP):
@@ -62,17 +74,14 @@ class SwarcoSTCIP(BaseSTCIP):
     @property
     def matches(self):
         return {
-        Oids.swarcoUTCTrafftechFixedTimeStatus: (FieldsNames.fixed_time_status, self.get_fixed_time_status),
-        Oids.swarcoUTCTrafftechPlanSource: (FieldsNames.plan_source, self.get_plan_source),
+        Oids.swarcoUTCTrafftechFixedTimeStatus: (FieldsNames.fixed_time_status, self.get_val_as_str),
+        Oids.swarcoUTCTrafftechPlanSource: (FieldsNames.plan_source, self.get_val_as_str),
         Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, self.get_status),
         Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, self.convert_val_to_num_stage_get_req),
-        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_plan),
-        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_num_det),
+        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_val_as_str),
+        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
         Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_status)
     }
-
-    def get_fixed_time_status(self, value: str) -> str:
-        return value
 
     def get_soft_flags_status(self, octet_string: str, start: int = 179, stop: int = 181, ) -> str:
         return octet_string[start: stop]
@@ -103,12 +112,10 @@ class SwarcoSTCIP(BaseSTCIP):
         oids = [
             (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(self.stage_values_set.get(val)))
         ]
-        res = await self.set(
-            oids=oids,
-
-        )
+        res = await self.set(oids=oids)
 
         print(f'res::>> {res}')
+
 
 class PotokS(BaseSTCIP):
 
@@ -126,13 +133,10 @@ class PotokS(BaseSTCIP):
         return {
         Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, self.get_status),
         Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, self.convert_val_to_num_stage_get_req),
-        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_plan),
-        Oids.swarcoUTCStatusMode: (FieldsNames.curr_status_mode, self.get_status_mode),
-        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_num_det),
+        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_val_as_str),
+        Oids.swarcoUTCStatusMode: (FieldsNames.curr_status_mode, self.get_val_as_str),
+        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
     }
-
-    def get_status_mode(self, value: str) -> str:
-        return value
 
     def get_current_mode(self, response_data: dict[str, str], mode=None) -> str | None:
         return self.modes.get(response_data.get(FieldsNames.curr_status_mode))

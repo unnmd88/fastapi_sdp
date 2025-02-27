@@ -14,7 +14,7 @@ async def snmp_get(
         ipv4: str,
         community: str,
         oids: list[str | Oids] | KeysView[str | Oids],
-        engine: SnmpEngine = snmp_engine or SnmpEngine(),
+        engine: SnmpEngine = SnmpEngine(),
         timeout: float = 0.2,
         retries: int = 0
 ):
@@ -31,7 +31,7 @@ async def snmp_get_next(
         ipv4: str,
         community: str,
         oids: list[str | Oids] | KeysView[str | Oids],
-        engine: SnmpEngine = snmp_engine or SnmpEngine(),
+        engine: SnmpEngine = SnmpEngine(),
         timeout: float = 0.2,
         retries: int = 0
 ):
@@ -56,6 +56,21 @@ class SnmpHost(Host):
         self.community_r, self.community_w = self.get_community()
 
     def get_community(self) -> tuple[str, str]:
+        raise NotImplemented
+
+    def get_oids_for_get_request(self):
+        raise NotImplemented
+
+    # def get_stage_values(self) -> tuple[dict, dict]:
+    #     raise NotImplemented
+
+    def get_current_mode(self, response):
+        raise NotImplemented
+
+    def processing_oid_from_response(self, oid: str) -> str:
+        raise NotImplemented
+
+    async def get_and_parse(self):
         raise NotImplemented
 
     async def get(
@@ -113,38 +128,17 @@ class SnmpHost(Host):
         )
         return error_indication, var_binds
 
-    async def get_and_parse(self):
-        error_indication, var_binds = await self.get(
-            engine=snmp_engine,
-            oids=self.matches.keys()
-        )
-        if error_indication is not None or not var_binds:
-            return error_indication, var_binds
-        parsed_response = self.parse_response(
-            response=var_binds,
-        )
-        return error_indication, parsed_response
-
-    def parse_response(
+    def parse_var_binds_from_response(
             self,
             response: [tuple[ObjectIdentity, OctetString | Gauge32 | Integer | Unsigned32]],
-            include_current_mode=True
     ) -> dict[str, str]:
         resp = {}
         for oid, val in response:
-            oid, val = str(oid), str(val)
+            oid, val = self.processing_oid_from_response(str(oid)), val.prettyPrint()
             field_name, fn = self.matches.get(oid)
             resp[str(field_name)] = fn(val)
-        if include_current_mode and resp:
-            resp[str(FieldsNames.curr_mode)] = self.get_current_mode(resp)
         print(f'ip: {self.ip_v4} | resp: {resp}')
         return resp
-
-    def get_stage_values(self) -> tuple[dict, dict]:
-        raise NotImplemented
-
-    def get_current_mode(self, response):
-        raise NotImplemented
 
     def convert_val_to_num_stage_get_req(self, val: str) -> int | None:
         """
@@ -162,3 +156,5 @@ class SnmpHost(Host):
         """
         return self.stage_values_set.get(val)
 
+    def get_val_as_str(self, val: str | int) -> str:
+        return str(val)
