@@ -13,6 +13,7 @@ class FieldsNames(StrEnum):
 
     curr_stage = 'current_stage'
     num_detectors = 'num_detectors'
+    has_det_faults = 'has_det_faults'
     status_soft_flag180_181 = 'status_soft_flag180_181'
     curr_plan = 'current_plan'
     curr_mode = 'current_mode'
@@ -20,6 +21,8 @@ class FieldsNames(StrEnum):
     curr_status_mode = 'curr_status_mode'
     plan_source = 'plan_source'
     fixed_time_status = 'fixed_time_status'
+    local_adaptive_status = 'local_adaptive_status'
+    is_mode_man = 'is_mode_man'
 
     bit_TO = 'TO_bit'
     operation_mode = 'operation_mode'
@@ -31,3 +34,7 @@ class FieldsNames(StrEnum):
     all_red = 'all_red'
 
     red_yellow_green = 'red_yellow_green'
+
+
+class ErrorMessages(StrEnum):
+    bad_controller_type = 'bad_controller_type'

@@ -30,17 +30,6 @@ class BaseSTCIP(SnmpHost):
     def get_oids_for_get_request(self):
         return self.matches.keys()
 
-    async def get_and_parse(self, engine: SnmpEngine = None):
-        error_indication, var_binds = await self.get(
-            oids=self.get_oids_for_get_request(),
-            engine=engine
-        )
-        if error_indication is not None or not var_binds:
-            return error_indication, var_binds
-        parsed_response = self.parse_var_binds_from_response(var_binds)
-        parsed_response = self.add_extras_for_response(parsed_response)
-        return error_indication, parsed_response
-
     def processing_oid_from_response(self, oid: str) -> str:
         return oid
 

@@ -2,6 +2,7 @@ import abc
 import math
 import os
 
+from pysnmp.entity.engine import SnmpEngine
 from pysnmp.proto.rfc1902 import Unsigned32, OctetString, Gauge32, Integer
 from pysnmp.smi.rfc1902 import ObjectIdentity
 
@@ -14,12 +15,12 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 class BaseUG405(SnmpHost):
 
     scn_required_oids = {
-        Oids.utcReplyGn.value, Oids.utcReplyFR.value, Oids.utcReplyDF.value, Oids.utcControlTO.value,
-        Oids.utcControlFn.value, Oids.potokP_utcReplyPlanStatus.value, Oids.potokP_utcReplyPlanSource.value,
-        Oids.potokP_utcReplyPlanSource.value, Oids.potokP_utcReplyDarkStatus.value,
-        Oids.potokP_utcReplyLocalAdaptiv.value, Oids.potokP_utcReplyHardwareErr.value,
-        Oids.potokP_utcReplySoftwareErr.value, Oids.potokP_utcReplyElectricalCircuitErr.value,
-        Oids.utcReplyMC.value, Oids.utcReplyCF.value, Oids.utcReplyVSn.value
+        Oids.utcReplyGn, Oids.utcReplyFR, Oids.utcReplyDF, Oids.utcControlTO,
+        Oids.utcControlFn, Oids.potokP_utcReplyPlanStatus, Oids.potokP_utcReplyPlanSource,
+        Oids.potokP_utcReplyPlanSource, Oids.potokP_utcReplyDarkStatus,
+        Oids.potokP_utcReplyLocalAdaptiv, Oids.potokP_utcReplyHardwareErr,
+        Oids.potokP_utcReplySoftwareErr, Oids.potokP_utcReplyElectricalCircuitErr,
+        Oids.utcReplyMC, Oids.utcReplyCF, Oids.utcReplyVSn, Oids.utcType2ScootDetectorCount
     }
 
     def __init__(self, ip_v4: str, host_id=None, scn=None):
@@ -49,7 +50,7 @@ class BaseUG405(SnmpHost):
         return str(FieldsNames.protocol_ug405)
 
     def add_scn_to_oids(self, oids):
-        return [f'{oid}{self.scn_as_dec}' for oid in oids if oid in self.scn_required_oids]
+        return [f'{oid}{self.scn_as_dec}' if oid in self.scn_required_oids else oid for oid in oids]
 
     def processing_oid_from_response(self, oid: str) -> str:
         return oid.replace(self.scn_as_dec, '')
@@ -57,33 +58,16 @@ class BaseUG405(SnmpHost):
     def get_oids_for_get_request(self):
         return self.add_scn_to_oids(self.matches.keys())
 
-class PotokP(BaseUG405):
+    async def get_and_parse(self, engine: SnmpEngine = None):
+        if self.scn_as_dec is None:
+            err, var_b = await self.get(oids=[Oids.utcReplySiteID], engine=engine)
+            if self.set_scn_from_response(err, var_b) is None:
+                return err, var_b
+        error_indication, parsed_response =  await super().get_and_parse(engine=engine)
+        return error_indication, parsed_response
 
-    @property
-    def matches(self):
-        return {
-        Oids.utcType2OperationMode: (FieldsNames.operation_mode, self.get_val_as_str),
-        Oids.potokP_utcReplyDarkStatus: (FieldsNames.dark, self.get_val_as_str),
-        Oids.utcReplyFR: (FieldsNames.flash, self.get_val_as_str),
-        Oids.utcReplyGn: (FieldsNames.curr_stage, self.convert_val_to_num_stage_get_req),
-        Oids.potokP_utcReplyPlanStatus: (FieldsNames.curr_plan, self.get_val_as_str),
-        # Oids.swarcoUTCStatusMode: (FieldsNames.curr_status_mode, self.get_status_mode),
-
-        # Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_num_det),
-        # Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_status)
-    }
-
-    get_state_oids = {
-        Oids.utcType2OperationMode.value,
-        Oids.utcReplyCF.value,
-        Oids.utcReplyFR.value,
-        Oids.potokP_utcReplyDarkStatus.value,
-        Oids.utcReplyMC.value,
-        Oids.potokP_utcReplyPlanStatus.value,
-        Oids.utcReplyGn.value,
-        Oids.utcReplyDF.value,
-        Oids.potokP_utcReplyLocalAdaptiv.value,
-    }
+    def set_scn_from_response(self, error_indication, var_binds: list):
+        raise NotImplemented
 
     def convert_val_to_num_stage_get_req(self, val: str) -> int:
         """
@@ -102,6 +86,23 @@ class PotokP(BaseUG405):
         except ValueError:
             print(f'Значение val: {val}')
 
+
+class PotokP(BaseUG405):
+
+    @property
+    def matches(self):
+        return {
+        Oids.utcType2OperationMode: (FieldsNames.operation_mode, self.get_val_as_str),
+        Oids.potokP_utcReplyDarkStatus: (FieldsNames.dark, self.get_val_as_str),
+        Oids.utcReplyFR: (FieldsNames.flash, self.get_val_as_str),
+        Oids.utcReplyGn: (FieldsNames.curr_stage, self.convert_val_to_num_stage_get_req),
+        Oids.potokP_utcReplyPlanStatus: (FieldsNames.curr_plan, self.get_val_as_str),
+        Oids.potokP_utcReplyLocalAdaptiv: (FieldsNames.local_adaptive_status, self.get_val_as_str),
+        Oids.utcType2ScootDetectorCount: (FieldsNames.num_detectors, self.get_val_as_str),
+        Oids.utcReplyDF: (FieldsNames.has_det_faults, self.get_val_as_str),
+        Oids.utcReplyMC: (FieldsNames.is_mode_man, self.get_val_as_str),
+    }
+
     def set_scn_from_response(self, error_indication, var_binds: list) -> bool | None:
 
         if error_indication is not None or not var_binds:
@@ -113,35 +114,24 @@ class PotokP(BaseUG405):
         except IndexError:
             return None
 
-    async def get_scn_snmp(self):
-        if self.scn_as_dec is None:
-            err, var_b = await self.get(
-                oids=[Oids.utcReplySiteID]
-            )
-            if self.set_scn_from_response(err, var_b) is None:
-                return err, var_b
-
-        return None, []
-
-    async def get_and_parse(self):
-        if self.scn_as_dec is None:
-            err, var_b = await self.get(
-                oids=[Oids.utcReplySiteID]
-            )
-            if self.set_scn_from_response(err, var_b) is None:
-                return err, var_b
-        error_indication, var_binds = await self.get(
-            oids=self.get_oids_for_get_request()
-        )
-        if error_indication is not None or not var_binds:
-            return error_indication, var_binds
-        parsed_response = self.parse_var_binds_from_response(var_binds)
-        parsed_response = self.add_extras_for_response(parsed_response)
-        print(f'ip: {self.ip_v4} | resp: {parsed_response}')
-        return error_indication, parsed_response
-
     def get_current_mode(self, response_data: dict[str, str], mode=None) -> str | None:
-        return 'Tets'
+        operation_mode, local_adaptive_status, num_detectors, has_det_faults, is_mode_man = (
+            response_data.get(FieldsNames.operation_mode),
+            response_data.get(FieldsNames.local_adaptive_status),
+            response_data.get(FieldsNames.num_detectors),
+            response_data.get(FieldsNames.has_det_faults),
+            response_data.get(FieldsNames.is_mode_man),
+        )
+        match (operation_mode, local_adaptive_status, num_detectors, has_det_faults, is_mode_man):
+            case ['1', '1', num_det, '0', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+                return str(NamesMode.VA)
+            case ['1', '0', '0', _, _]:
+                return str(NamesMode.FT)
+            case['3', _, _, _, _]:
+                return str(NamesMode.CENTRAL)
+            case[_, _, _, _, '1']:
+                return str(NamesMode.MANUAL)
+        return 'undefined'
 
     def get_current_status_mode(self, response_data: dict[str, str]) -> str | None:
         dark, flash = response_data.get(FieldsNames.dark), response_data.get(FieldsNames.flash)
