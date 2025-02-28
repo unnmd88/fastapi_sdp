@@ -69,10 +69,13 @@ class SwarcoSTCIP(BaseSTCIP):
         Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, self.convert_val_to_num_stage_get_req),
         Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_val_as_str),
         Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
-        Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_status)
+        Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_180_181_status)
     }
 
-    def get_soft_flags_status(self, octet_string: str, start: int = 179, stop: int = 181, ) -> str:
+    def get_soft_flags_180_181_status(self, octet_string: str) -> str:
+        return octet_string[179: 181]
+
+    def get_soft_flags_status(self, octet_string: str, start: int, stop: int, ) -> str:
         return octet_string[start: stop]
 
     def get_current_mode(self, response_data: dict[str, str], mode=None) -> str | None:
