@@ -1,4 +1,3 @@
-import abc
 import math
 import os
 
@@ -63,10 +62,10 @@ class BaseUG405(SnmpHost):
             err, var_b = await self.get(oids=[Oids.utcReplySiteID], engine=engine)
             if self.set_scn_from_response(err, var_b) is None:
                 return err, var_b
-        error_indication, parsed_response =  await super().get_and_parse(engine=engine)
-        return error_indication, parsed_response
+        error, parsed_response =  await super().get_and_parse(engine=engine)
+        return error, parsed_response
 
-    def set_scn_from_response(self, error_indication, var_binds: list):
+    def set_scn_from_response(self, error_indication, var_binds: tuple):
         raise NotImplemented
 
     def convert_val_to_num_stage_get_req(self, val: str) -> int:
@@ -103,9 +102,9 @@ class PotokP(BaseUG405):
         Oids.utcReplyMC: (FieldsNames.is_mode_man, self.get_val_as_str),
     }
 
-    def set_scn_from_response(self, error_indication, var_binds: list) -> bool | None:
+    def set_scn_from_response(self, error, var_binds: tuple) -> bool | None:
 
-        if error_indication is not None or not var_binds:
+        if error is not None or not var_binds:
             return None
         try:
             self.scn_as_chars = str(var_binds[0][1])

@@ -2,6 +2,7 @@ from collections.abc import KeysView
 from typing import Any
 
 from pysnmp.hlapi.v3arch.asyncio import *
+from pysnmp.proto import errind
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
@@ -71,36 +72,25 @@ class SnmpHost(Host):
     def add_extras_for_response(self, parsed_responce: dict) -> dict:
         raise NotImplemented
 
-    async def get_and_parse(self, engine: SnmpEngine = None):
-
-        error_indication, var_binds = await self.get(
-            oids=self.get_oids_for_get_request(),
-            engine=engine
-        )
-        if error_indication is not None or not var_binds:
-            return error_indication, var_binds
-
-        #DEBUG
-        # for oid, val in var_binds:
-        #     print(f'oid, val: {str(oid)} val: {val.prettyPrint()}')
-        #     print(f'type val: {type(val)}')
-        #     print(f'type val pretty : {type(val.prettyPrint())}')
-
-        parsed_response = self.parse_var_binds_from_response(var_binds)
-        if not parsed_response:
-            error_indication = BadControllerType()
-            return error_indication, parsed_response
-        parsed_response = self.add_extras_for_response(parsed_response)
-        print(f'ip: {self.ip_v4} | resp: {parsed_response}')
-        return error_indication, parsed_response
+    def check_error(
+            self,
+            error_indication: errind.ErrorIndication,
+            error_status: Integer32 | int,
+            error_index: Integer32 | int
+    ) -> errind.ErrorIndication | BadControllerType | None:
+        if error_indication is not None:
+            return error_indication
+        elif error_status or error_index:
+            return BadControllerType()
+        return None
 
     async def get(
             self,
             oids: list[str | Oids] | KeysView[str | Oids],
             engine: snmp_engine or SnmpEngine(),
-            timeout: float = 0.8,
+            timeout: float = 0.4,
             retries: int = 0
-    ) -> tuple:
+    ) -> tuple[errind.ErrorIndication | BadControllerType | None, tuple[ObjectType, ...]]:
         """
         Метод get запросов по snmp
         :param ip_v4:
@@ -131,11 +121,11 @@ class SnmpHost(Host):
             ContextData(),
             *[ObjectType(ObjectIdentity(oid)) for oid in oids]
         )
-        print(f'error_indication{error_indication}\n'
-              f'error_status, {error_status}\n'
-              f'error_index, {error_index}\n'
-              f'var_binds')
-        return error_indication, var_binds
+        print(f'error_indication: {error_indication}\n'
+              f'error_status: {error_status}\n'
+              f'error_index: {error_index}\n'
+              f'var_binds: {var_binds}')
+        return self.check_error(error_indication, error_status, error_index), var_binds
 
     async def set(
             self,
@@ -152,6 +142,29 @@ class SnmpHost(Host):
             *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
         )
         return error_indication, var_binds
+
+    async def get_and_parse(self, engine: SnmpEngine = None):
+
+        error_indication, var_binds = await self.get(
+            oids=self.get_oids_for_get_request(),
+            engine=engine
+        )
+        if error_indication is not None or not var_binds:
+            return error_indication, var_binds
+
+        #DEBUG
+        # for oid, val in var_binds:
+        #     print(f'oid, val: {str(oid)} val: {val.prettyPrint()}')
+        #     print(f'type val: {type(val)}')
+        #     print(f'type val pretty : {type(val.prettyPrint())}')
+
+        parsed_response = self.parse_var_binds_from_response(var_binds)
+        if not parsed_response:
+            error_indication = BadControllerType()
+            return error_indication, parsed_response
+        parsed_response = self.add_extras_for_response(parsed_response)
+        print(f'ip: {self.ip_v4} | resp: {parsed_response}')
+        return error_indication, parsed_response
 
     def parse_var_binds_from_response(
             self,
