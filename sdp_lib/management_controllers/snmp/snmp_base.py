@@ -6,7 +6,7 @@ from pysnmp.proto import errind
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
-from sdp_lib.management_controllers.responce import FieldsNames, ErrorMessages
+from sdp_lib.management_controllers.fields_names import FieldsNames, ErrorMessages
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
@@ -121,10 +121,10 @@ class SnmpHost(Host):
             ContextData(),
             *[ObjectType(ObjectIdentity(oid)) for oid in oids]
         )
-        print(f'error_indication: {error_indication}\n'
-              f'error_status: {error_status}\n'
-              f'error_index: {error_index}\n'
-              f'var_binds: {var_binds}')
+        # print(f'error_indication: {error_indication}\n'
+        #       f'error_status: {error_status}\n'
+        #       f'error_index: {error_index}\n'
+        #       f'var_binds: {var_binds}')
         return self.check_error(error_indication, error_status, error_index), var_binds
 
     async def set(
@@ -150,7 +150,8 @@ class SnmpHost(Host):
             engine=engine
         )
         if error_indication is not None or not var_binds:
-            return error_indication, var_binds
+            self.response = error_indication, var_binds
+            return self
 
         #DEBUG
         # for oid, val in var_binds:
@@ -161,10 +162,12 @@ class SnmpHost(Host):
         parsed_response = self.parse_var_binds_from_response(var_binds)
         if not parsed_response:
             error_indication = BadControllerType()
-            return error_indication, parsed_response
+            self.response = error_indication, var_binds
+            return self
         parsed_response = self.add_extras_for_response(parsed_response)
         print(f'ip: {self.ip_v4} | resp: {parsed_response}')
-        return error_indication, parsed_response
+        self.response = error_indication, parsed_response
+        return self
 
     def parse_var_binds_from_response(
             self,

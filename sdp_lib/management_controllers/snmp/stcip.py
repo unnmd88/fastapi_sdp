@@ -3,7 +3,7 @@ import os
 from pysnmp.entity.engine import SnmpEngine
 from pysnmp.proto.rfc1902 import Unsigned32
 
-from sdp_lib.management_controllers.responce import FieldsNames
+from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
 from sdp_lib.management_controllers.snmp.oids import Oids

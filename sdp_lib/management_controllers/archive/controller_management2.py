@@ -4,7 +4,7 @@ import os
 from pysnmp.hlapi.v3arch.asyncio import *
 
 from sdp_lib.management_controllers.snmp.oids import Oids
-from sdp_lib.management_controllers.responce import FieldsNames
+from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.utils_common import check_is_ipv4
 

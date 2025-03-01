@@ -1,6 +1,7 @@
 import asyncio
 import time
 from asyncio import TaskGroup
+from typing import Self
 
 import aiohttp
 from dulwich.porcelain import fetch
@@ -8,7 +9,7 @@ from dulwich.porcelain import fetch
 from sdp_lib.management_controllers.exceptions import BadControllerType, ConnectionTimeout
 from sdp_lib.management_controllers.http.hosts import HttpHost
 from sdp_lib.management_controllers.http.parsers_peek import MainPageParser
-from sdp_lib.management_controllers.responce import FieldsNames
+from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
 # from sdp_lib.management_controllers.http.session import ClientHTTP
 
@@ -30,7 +31,7 @@ class MainPage(PeekWeb):
 
     main_route = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
 
-    async def get_and_parse(self, session: aiohttp.ClientSession) -> tuple[None | Exception, dict]:
+    async def get_and_parse(self, session: aiohttp.ClientSession) -> Self:
 
         error, content_data = None, {}
         try:
@@ -47,7 +48,8 @@ class MainPage(PeekWeb):
             error = BadControllerType()
         except aiohttp.client_exceptions.ClientConnectorError:
             error = ConnectionTimeout('from connector')
-        return error, content_data
+        self.response = error, content_data
+        return self
 
 u = f'http://10.179.16.121/hvi?file=m001a.hvi&pos1=0&pos2=-1'
 main_route = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'

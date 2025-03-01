@@ -2,7 +2,7 @@ import json
 import pprint
 import time
 
-from sdp_lib.management_controllers.responce import FieldsNames
+from sdp_lib.management_controllers.fields_names import FieldsNames
 
 
 class Parser:

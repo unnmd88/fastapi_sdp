@@ -9,13 +9,9 @@ class Host:
     def __init__(self, ip_v4: str, host_id=None):
         self.ip_v4 = ip_v4
         self.host_id = host_id
+        self.response: tuple[None | Exception, dict] | None = None
 
     def __repr__(self):
-        # return (
-        #     f'ip_v4: {self.ip_v4}\n'
-        #     f'host_id: {self.host_id}\n'
-        # )
-
         return self.__dict__
 
     def __str__(self):
