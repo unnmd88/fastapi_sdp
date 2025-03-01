@@ -1,7 +1,21 @@
+import functools
 import ipaddress
 import random
+import time
 from datetime import datetime as dt
 from string import ascii_letters
+from typing import Callable
+
+
+def timed(func: Callable):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        print(f'func__name: {func.__name__}')
+        func(*args, **kwargs)
+        print(f'Время работы: {time.time() - start_time}')
+        return func
+    return wrapper
 
 
 def set_curr_datetime(sep: str = ':') -> str:
@@ -55,6 +69,7 @@ def check_is_ipv4(ip_v4: str) -> bool:
         return True
     except ipaddress.AddressValueError:
         return False
+
 
 def get_random_word(chars: int = 6):
     return "".join([random.choice(ascii_letters) for _ in range(chars)])
