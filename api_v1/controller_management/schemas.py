@@ -46,6 +46,7 @@ class AllowedProtocolsRequest(StrEnum):
 class AllowedDataHostFields(StrEnum):
     errors = 'errors'
     host_id = 'host_id'
+    type_controller = 'type_controller'
     search_in_db = 'search_in_db'
     ip_or_name_from_user = 'ip_or_name_from_user'
     entity = 'entity'
@@ -183,7 +184,7 @@ class T(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     type_controller: AllowedControllers
-    entity: AllowedMonitoringEntity
+    # entity: AllowedMonitoringEntity
     host_id: str
     # host_fields_monitoring: Annotated[dict[AllowedMonitoringEntity, str], Field(repr=True)]
 

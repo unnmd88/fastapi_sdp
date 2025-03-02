@@ -1,17 +1,23 @@
+import abc
 import functools
 import json
 import logging
+from collections.abc import Callable
 from enum import StrEnum
 from typing import Any
 
 from pydantic import ValidationError, BaseModel
 
 from sdp_lib.utils_common import check_is_ipv4
+from sdp_lib.management_controllers import exceptions as client_exceptions
 from .schemas import (
     AllowedMonitoringEntity,
     TrafficLightsObjectsTableFields,
     AllowedDataHostFields,
-    BaseSearchHostsInDb, BaseMonitoringHostBody, GetState
+    BaseSearchHostsInDb,
+    BaseMonitoringHostBody,
+    GetState,
+    AllowedControllers
 )
 import logging_config
 
@@ -23,6 +29,7 @@ class ErrorMessages(StrEnum):
     invalid_ip_or_num_for_search_in_db = 'invalid data for search host in database'
     invalid_ip_or_num = 'invalid number or ip v4 address'
     invalid_ip = 'invalid ip v4 address'
+    invalid_type_controller = 'invalid_type_controller'
     invalid_host_data = 'invalid host data'
     not_found_in_database = 'not found in database'
 
@@ -44,7 +51,7 @@ class HostData:
             f'self.ip_or_name_and_properties_as_dict: {json.dumps(self.ip_or_name_and_properties_as_dict, indent=2)}\n'
         )
 
-    def _add_errors_field_to_current_data_host_if_have_not(self) -> None:
+    def _add_errors_field_for_current_data_host_if_have_not(self) -> None:
         """
         Добавляет к self.properties свойство в виде dict: {"errors": []}.
         :return: None.
@@ -52,15 +59,17 @@ class HostData:
         if self.properties.get(AllowedDataHostFields.errors) is None:
             self.properties |= {str(AllowedDataHostFields.errors): []}
 
-    def add_message_to_error_field_to_current_host(self, message: list | str) -> None:
+    def add_message_to_error_field_for_current_host(self, message: str | list | ErrorMessages | Exception) -> None:
         """
         Добавляет сообщение с текстом ошибки.
         :param message: Строка с текстом сообщения
         :return: None
         """
-        self._add_errors_field_to_current_data_host_if_have_not()
+        self._add_errors_field_for_current_data_host_if_have_not()
         if isinstance(message, str):
-            self.properties[str(AllowedDataHostFields.errors)].append(message)
+            self.properties[str(AllowedDataHostFields.errors)].append(str(message))
+        elif isinstance(message, Exception):
+            self.properties[str(AllowedDataHostFields.errors)].append(str(message))
         elif isinstance(message, list):
             self.properties[str(AllowedDataHostFields.errors)] += message
 
@@ -73,6 +82,28 @@ class HostData:
 
     def _get_full_host_data_as_dict(self) -> dict[str, Any]:
         return self.properties | {str(AllowedDataHostFields.ipv4): self.ip_or_name}
+
+
+class MonitoringHostDataChecker(HostData):
+
+    def validate_ipv4(self, add_to_bad_hosts_if_not_valid=True) -> bool:
+        if check_is_ipv4(self.ip_or_name):
+            return True
+        if add_to_bad_hosts_if_not_valid:
+            self.add_message_to_error_field_for_current_host(client_exceptions.BadIpv4())
+        return False
+
+    def validate_type_controller(self, add_to_bad_hosts_if_not_valid=True) -> bool:
+        try:
+            AllowedControllers(self.properties[str(AllowedDataHostFields.type_controller)])
+            return True
+        except ValueError:
+            if add_to_bad_hosts_if_not_valid:
+                self.add_message_to_error_field_for_current_host(client_exceptions.BadControllerType())
+            return False
+
+    def get_validate_methods(self):
+        return [self.validate_ipv4, self.validate_type_controller]
 
 
 class BaseHostsSorters:
@@ -222,7 +253,7 @@ class HostSorterSearchInDB(BaseHostsSorters):
 
         for current_name_or_ipv4, current_data_host in self._stack_hosts.items():
             current_host = HostData(ip_or_name=current_name_or_ipv4, properties=current_data_host)
-            current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.not_found_in_database))
+            current_host.add_message_to_error_field_for_current_host(str(ErrorMessages.not_found_in_database))
             self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
         self.hosts = founded_in_db_hosts
         return self.hosts
@@ -271,43 +302,28 @@ class HostSorterSearchInDB(BaseHostsSorters):
         return {ipv4: record_from_db}
 
 
-class HostSorterGetStateNoSearchInDB(BaseHostsSorters):
+class BaseHostSorterNoSearchInDB(BaseHostsSorters):
 
-
-
-    def get_model_for_body(self):
-        return GetState
+    @abc.abstractmethod
+    def get_checker_class(self):
+        ...
 
     def sorting(self):
         allowed_to_request_hosts = {}
+        checker_class = self.get_checker_class()
         for curr_host_ipv4, current_data_host in self.hosts.items():
-            current_host = HostData(ip_or_name=curr_host_ipv4, properties=current_data_host)
-            # if not check_is_ipv4(curr_host_ipv4):
-            #     current_host.add_message_to_error_field_to_current_host(str(ErrorMessages.invalid_ip))
-            #     self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
-            #     continue
-            model = self.get_model_for_body()
-            print(f"current_host.properties: {current_host.properties}"),
-            try:
-                m = model(**current_host._get_full_host_data_as_dict())
-                logger.debug(f'm:: {m}')
-            except ValidationError as e:
-                current_host.add_message_to_error_field_to_current_host(e.errors())
-                self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
-
-                print(f'current_host: {current_host.ip_or_name}')
-                print(f'e >>>> {e}')
-
-            # type_controller: Annotated[AllowedControllers, AfterValidator(value_to_string)]
-            # number: Annotated[str, Field(default=None, max_length=20)]
-            # scn: Annotated[str, Field(default=None, max_length=10)]
-            # errors: Annotated[list, Field(default=[])]
-
-            allowed_to_request_hosts |= current_host.ip_or_name_and_properties_as_dict
-
-
+            current_host = checker_class(ip_or_name=curr_host_ipv4, properties=current_data_host)
+            for validate_method in current_host.get_validate_methods():
+                if validate_method():
+                    allowed_to_request_hosts |= current_host.ip_or_name_and_properties_as_dict
+                else:
+                    self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+            print(f"current_host.properties: {current_host.properties}")
         self.hosts = allowed_to_request_hosts
         return self.hosts
-        logger.debug(f'sorting result: {allowed_to_request_hosts}')
-        logger.debug(f'self.bad_hosts result: {self.bad_hosts}')
 
+
+class HostSorterNoSearchInDBMonitoring(BaseHostSorterNoSearchInDB):
+
+    def get_checker_class(self):
+        return MonitoringHostDataChecker
