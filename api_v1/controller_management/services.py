@@ -208,7 +208,7 @@ class HostSorterSearchInDB(BaseHostsSorters):
 
     def sorting_hosts_after_search_from_db(self) -> dict[str, dict[str, Any]]:
         """
-        Сортирует хосты: если хост был найден в БД, отправляет в self.hosts, иначе в self.bad_hosts.
+        Сортирует хосты: если хост был найден в БД, отправляет в self.good_hosts, иначе в self.bad_hosts.
         Также приводит свойства хостов(dict) к общему виду, см. описание founded_in_db_hosts и self.bad_hosts.
         founded_in_db_hosts: dict, в который будут добавляться хосты, найденные в БД.
                              Пример:
@@ -229,26 +229,36 @@ class HostSorterSearchInDB(BaseHostsSorters):
         self.bad_hosts: В контексте данного метода это list с хостами, которые не были найдены в БД.
                         Пример:
                         [
-                        {'string': {'entity': 'get_host_property', 'errors': ['not found in database']}},
-                        {'abra': {'entity': 'get_host_property', 'errors': ['not found in database']}},
-                        {'cadabra': {'entity': 'get_host_property', 'errors': ['not found in database']}}
+                        {'string': {'errors': ['not found in database']}},
+                        {'abra': {'errors': ['not found in database']}},
+                        {'cadabra': {'errors': ['not found in database']}}
                         ]
-        :return: self.hosts
+        :return: Атрибут self.good_hosts с хостами, найденными в БД.
         """
 
-        founded_in_db_hosts = {}
+        self.good_hosts = {}
         self._stack_hosts = self._get_income_hosts_as_set(self.income_hosts)
         for found_record in self.hosts_after_search:
             found_record = dict(found_record)
             self._remove_found_host_from_stack_hosts(found_record)
-            founded_in_db_hosts |= self._build_properties_for_good_host(found_record)
+            self.good_hosts |= self._build_properties_for_good_host(found_record)
+        self.process_hosts_not_found_in_db()
+        return self.good_hosts
 
+    def process_hosts_not_found_in_db(self) -> None:
+        """
+        Обрабатывает хосты из self._stack_hosts, которые не были найдены в БД. Добавляет
+        словарь с полем errors(list) и текстом ошибки методом self.add_host_to_container_with_bad_hosts.
+        Пример:
+            "abra": {
+                "errors": ["Не найден в базе данных, ip: 'abra'"]
+            }
+        :return: None.
+        """
         for current_name_or_ipv4 in self._stack_hosts:
             current_host = HostData(ip_or_name=current_name_or_ipv4, properties={})
             current_host.add_message_to_error_field_for_current_host(str(client_exceptions.NotFoundInDB(current_name_or_ipv4)))
             self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
-        self.good_hosts = founded_in_db_hosts
-        return self.good_hosts
 
     def _remove_found_host_from_stack_hosts(self, found_host: dict[str, str]):
         """
