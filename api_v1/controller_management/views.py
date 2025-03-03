@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .crud import SearchHosts
 from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
-from .services import logger, HostSorterSearchInDB, _BaseHostSorterMonitoringAndManagement, HostSorterMonitoring
+from .sorters import logger, HostSorterSearchInDB, _HostSorterMonitoringAndManagement, HostSorterMonitoring
 
 from sdp_lib.management_controllers.snmp import stcip
 
@@ -71,12 +71,12 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     data_hosts = HostSorterMonitoring(data)
     print(data_hosts)
     # print(data_hosts.hosts)
-    data_hosts.sorting()
-    pprint.pprint(data_hosts.hosts)
+    data_hosts.sort()
+    pprint.pprint(data_hosts.good_hosts)
     print('Bad hosts: ')
     pprint.pprint(data_hosts.bad_hosts)
     # logger.debug(f' Hosts\n {data_hosts.hosts}')
-    return data_hosts.bad_hosts
+    return data_hosts.get_good_hosts_and_bad_hosts_as_dict()
 
 
 async def main(objs):

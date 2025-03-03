@@ -1,8 +1,9 @@
 from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields
-from api_v1.controller_management.services import logger
+# from api_v1.controller_management.sorters import logger
 from core.models import db_helper, TrafficLightsObjects
 from sqlalchemy import select, or_, Select
 from sqlalchemy.engine.row import RowMapping
+
 
 class BaseSearch:
     """

@@ -1,6 +1,6 @@
 import pytest
 
-from api_v1.controller_management import services, schemas
+from api_v1.controller_management import sorters, schemas
 
 
 def test_instance_HostSorterSearchInDB():

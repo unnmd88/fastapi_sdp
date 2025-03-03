@@ -1,25 +1,18 @@
 import abc
 import functools
-import json
 import logging
 from collections.abc import KeysView
 from collections.abc import Callable
-from enum import StrEnum
-from typing import Any, Type
+from typing import Any, Type, TypeVar
 
-from pydantic import ValidationError, BaseModel
+from pydantic import BaseModel
 
-from sdp_lib.utils_common import check_is_ipv4
 from sdp_lib.management_controllers import exceptions as client_exceptions
 from .checkers import HostData, MonitoringHostDataChecker
 from .schemas import (
-    AllowedMonitoringEntity,
     TrafficLightsObjectsTableFields,
-    AllowedDataHostFields,
     SearchHostsInDb,
-    BaseMonitoringHostBody,
-    GetState,
-    AllowedControllers, GetHostsStaticDataFromDb
+    GetHostsStaticDataFromDb
 )
 import logging_config
 
@@ -27,34 +20,18 @@ import logging_config
 logger = logging.getLogger(__name__)
 
 
-class ErrorMessages(StrEnum):
-    invalid_ip_or_num_for_search_in_db = 'invalid data for search host in database'
-    invalid_ip_or_num = 'invalid number or ip v4 address'
-    invalid_ip = 'invalid ip v4 address'
-    invalid_type_controller = 'invalid_type_controller'
-    invalid_host_data = 'invalid host data'
-    not_found_in_database = 'not found in database'
+T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel)
 
 
-class BaseHostsSorters:
+class _BaseHostsSorters:
     """
     Базовый класс сортировок хостов, переданных пользователем.
     """
-    def __init__(self, income_data: BaseModel):
+    def __init__(self, income_data: T_PydanticModel):
         self.income_data = income_data
-        self.income_hosts: list[str] | dict[str, str] | dict[str, dict[str, str]] = income_data.hosts
+        self.income_hosts = income_data.hosts
         self.good_hosts: dict | None = None
         self.bad_hosts = []
-
-    # def get_pydantic_model_or_none(self, data_host: dict, model) -> BaseModel | None:
-    #     logger.debug(f'data_host get_model_host_data: {data_host}')
-    #     try:
-    #         return model(**data_host)
-    #     except ValidationError:
-    #         return None
-    #
-    # def get_model_for_body(self):
-    #     raise NotImplemented
 
     def add_host_to_container_with_bad_hosts(self, host: dict[str, Any]):
         """
@@ -84,7 +61,7 @@ class BaseHostsSorters:
         return functools.reduce(lambda x, y: x | y, self.bad_hosts, {})
 
 
-class HostSorterSearchInDB(BaseHostsSorters):
+class HostSorterSearchInDB(_BaseHostsSorters):
     """
     Класс сортировок хостов, преданных пользователем для последующего
     поиска в БД.
@@ -239,27 +216,25 @@ class HostSorterSearchInDB(BaseHostsSorters):
         return {ipv4: record_from_db}
 
 
-class _BaseHostSorterMonitoringAndManagement(BaseHostsSorters):
+class _HostSorterMonitoringAndManagement(_BaseHostsSorters):
 
     @abc.abstractmethod
-    def get_checker_class(self) -> Type[MonitoringHostDataChecker]:
-        ...
+    def _get_checker_class(self) -> Type[MonitoringHostDataChecker]:
+        pass
 
-    def sorting(self):
+    def sort(self):
+        """
+        Основной метод сортировки данных из json.
+        :return: None.
+        """
         self.good_hosts = {}
-        checker_class = self.get_checker_class()
+        checker_class = self._get_checker_class()
         for curr_host_ipv4, current_data_host in self.income_hosts.items():
             current_host = checker_class(ip_or_name=curr_host_ipv4, properties=current_data_host)
-
-            for validate_method in current_host.get_validate_methods():
-                if validate_method():
-                    self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
-                else:
-                    self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
-            print(f"current_host.properties: {current_host.properties}")
+            self._sort_current_host(current_host)
         return self.good_hosts
 
-    def _call_validate_methods_and_sort_current_host(self, current_host):
+    def _sort_current_host(self, current_host: MonitoringHostDataChecker) -> None:
         for validate_method in current_host.get_validate_methods():
             if validate_method():
                 self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
@@ -267,12 +242,17 @@ class _BaseHostSorterMonitoringAndManagement(BaseHostsSorters):
                 self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
 
 
-class HostSorterMonitoring(_BaseHostSorterMonitoringAndManagement):
+class HostSorterMonitoring(_HostSorterMonitoringAndManagement):
 
-    def get_checker_class(self):
+    def _get_checker_class(self):
+        """
+        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+        :return:
+        """
         return MonitoringHostDataChecker
 
-class HostSorterManagement(_BaseHostSorterMonitoringAndManagement):
 
-    def get_checker_class(self):
+class HostSorterManagement(_HostSorterMonitoringAndManagement):
+
+    def _get_checker_class(self):
         raise NotImplementedError

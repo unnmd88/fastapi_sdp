@@ -6,7 +6,7 @@ import json
 from typing import Any
 
 from api_v1.controller_management.schemas import AllowedDataHostFields, AllowedControllers
-from sdp_lib.management_controllers import exceptions as client_exceptions
+from sdp_lib.management_controllers import exceptions as my_exceptions
 from sdp_lib.utils_common import check_is_ipv4
 
 
@@ -61,23 +61,46 @@ class HostData:
 
 
 class MonitoringHostDataChecker(HostData):
+    """
+    Класс с реализацией проверки данных для запроса,
+    принадлежащего к разделу 'Мониторинг'(Режимы дк, поиск в базе и т.д.)
+    """
 
-    def validate_ipv4(self, add_to_bad_hosts_if_not_valid=True) -> bool:
+    def validate_ipv4(self, add_message_to_errors_field_if_not_valid=True) -> bool:
+        """
+        Проверяет валидность ipv4 self.ip_or_name.
+        :param add_message_to_errors_field_if_not_valid: Добавить сообщение в поле errors.
+        :return: True если ipv4 валиден, иначе False
+        """
         if check_is_ipv4(self.ip_or_name):
             return True
-        if add_to_bad_hosts_if_not_valid:
-            self.add_message_to_error_field_for_current_host(client_exceptions.BadIpv4())
+        if add_message_to_errors_field_if_not_valid:
+            self.add_message_to_error_field_for_current_host(my_exceptions.BadIpv4())
         return False
 
-    def validate_type_controller(self, add_to_bad_hosts_if_not_valid=True) -> bool:
+    def validate_type_controller(self, add_message_to_errors_field_if_not_valid=True) -> bool:
+        """
+        Проверяет наличие поля type_controller и валидность типа ДК в данном поле.
+        :param add_message_to_errors_field_if_not_valid: Добавить сообщение в поле errors.
+        :return: True если type_controller валиден, иначе False
+        """
         try:
             AllowedControllers(self.properties[str(AllowedDataHostFields.type_controller)])
             return True
         except ValueError:
-            if add_to_bad_hosts_if_not_valid:
-                self.add_message_to_error_field_for_current_host(client_exceptions.BadControllerType())
-            return False
+             exc = my_exceptions.BadControllerType(self.properties[str(AllowedDataHostFields.type_controller)])
+        except KeyError:
+            exc = my_exceptions.HasNotRequiredField(str(AllowedDataHostFields.type_controller))
+
+        if add_message_to_errors_field_if_not_valid:
+            self.add_message_to_error_field_for_current_host(exc)
+        return False
 
     def get_validate_methods(self):
+        """
+        Возвращает список с методами валидаций.
+        :return:
+        """
         return [self.validate_ipv4, self.validate_type_controller]
+
 

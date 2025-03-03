@@ -47,6 +47,7 @@ class AllowedDataHostFields(StrEnum):
     errors = 'errors'
     host_id = 'host_id'
     type_controller = 'type_controller'
+    scn = 'scn'
     search_in_db = 'search_in_db'
     ip_or_name_from_user = 'ip_or_name_from_user'
     entity = 'entity'
