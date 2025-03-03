@@ -15,6 +15,9 @@ class HostData:
     Класс - обработчик данных хоста.
     """
 
+    type_err_required_field = 'required_field'
+    type_err_invalid_value = 'invalid_value'
+
     def __init__(self, ip_or_name: str, properties: dict):
         self.ip_or_name = ip_or_name
         self.properties = properties
@@ -35,19 +38,59 @@ class HostData:
         if self.properties.get(AllowedDataHostFields.errors) is None:
             self.properties |= {str(AllowedDataHostFields.errors): []}
 
-    def add_message_to_error_field_for_current_host(self, message: str | list | Exception) -> None:
+    # def add_message_to_error_field_for_current_host(
+    #         self,
+    #         message: str | list | Exception,
+    #         field_name: str,
+    #         type_err: str = None
+    # ) -> None:
+    #     """
+    #     Добавляет сообщение с текстом ошибки.
+    #     :param message: Строка с текстом сообщения
+    #     :return: None
+    #     """
+    #
+    #     pattern = {
+    #         "detail": [
+    #             {
+    #                 'field_name': field_name,
+    #                 'msg': message,
+    #                 'type': type_err
+    #             }
+    #         ]
+    #     }
+    #
+    #     self._add_errors_field_for_current_data_host_if_have_not()
+    #     if isinstance(message, str):
+    #         self.properties[str(AllowedDataHostFields.errors)].append(str(message))
+    #     elif isinstance(message, Exception):
+    #         self.properties[str(AllowedDataHostFields.errors)].append(str(message))
+    #     elif isinstance(message, list):
+    #         self.properties[str(AllowedDataHostFields.errors)] += message
+
+    def add_message_to_error_field_for_current_host(
+            self,
+            message: str | Exception,
+            field_name: str,
+            type_err: str
+    ) -> None:
         """
         Добавляет сообщение с текстом ошибки.
         :param message: Строка с текстом сообщения
         :return: None
         """
+
         self._add_errors_field_for_current_data_host_if_have_not()
-        if isinstance(message, str):
-            self.properties[str(AllowedDataHostFields.errors)].append(str(message))
-        elif isinstance(message, Exception):
-            self.properties[str(AllowedDataHostFields.errors)].append(str(message))
-        elif isinstance(message, list):
-            self.properties[str(AllowedDataHostFields.errors)] += message
+        if isinstance(message, Exception):
+            message = str(message)
+        if not isinstance(message, str):
+            raise ValueError('Ошибка должна быть строкой или наследником класса < Exception >')
+        pattern = {
+            'field_name': field_name,
+            'msg': message,
+            'type': type_err
+        }
+        self.properties[str(AllowedDataHostFields.errors)].append(pattern)
 
     def get_full_host_data_as_dict(self) -> dict[str, dict[str, Any]]:
         """
@@ -75,7 +118,11 @@ class MonitoringHostDataChecker(HostData):
         if check_is_ipv4(self.ip_or_name):
             return True
         if add_message_to_errors_field_if_not_valid:
-            self.add_message_to_error_field_for_current_host(my_exceptions.BadIpv4())
+            self.add_message_to_error_field_for_current_host(
+                message=my_exceptions.BadIpv4(),
+                field_name=str(AllowedDataHostFields.ipv4),
+                type_err=self.type_err_invalid_value
+            )
         return False
 
     def validate_type_controller(self, add_message_to_errors_field_if_not_valid=True) -> bool:
@@ -88,12 +135,18 @@ class MonitoringHostDataChecker(HostData):
             AllowedControllers(self.properties[str(AllowedDataHostFields.type_controller)])
             return True
         except ValueError:
-             exc = my_exceptions.BadControllerType(self.properties[str(AllowedDataHostFields.type_controller)])
+            exc = my_exceptions.BadControllerType(self.properties[str(AllowedDataHostFields.type_controller)])
+            type_err = self.type_err_invalid_value
         except KeyError:
             exc = my_exceptions.HasNotRequiredField(str(AllowedDataHostFields.type_controller))
+            type_err = self.type_err_required_field
 
         if add_message_to_errors_field_if_not_valid:
-            self.add_message_to_error_field_for_current_host(exc)
+            self.add_message_to_error_field_for_current_host(
+                message=exc,
+                field_name=str(AllowedDataHostFields.type_controller),
+                type_err=type_err
+            )
         return False
 
     def get_validate_methods(self):
