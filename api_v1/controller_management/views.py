@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .crud import SearchHosts
 from .schemas import RequestMonitoringAndManagement, T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
-from .services import logger, HostSorterSearchInDB, BaseHostSorterNoSearchInDB, HostSorterNoSearchInDBMonitoring
+from .services import logger, HostSorterSearchInDB, _BaseHostSorterMonitoringAndManagement, HostSorterMonitoring
 
 from sdp_lib.management_controllers.snmp import stcip
 
@@ -31,7 +31,7 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
     logger.debug(data.hosts)
     data_hosts = HostSorterSearchInDB(data)
     db = SearchHosts()
-    search_entity = data_hosts.get_hosts_data_for_search_db()
+    search_entity = data_hosts.get_hosts_data_for_search_in_db()
 
     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(search_entity))
     data_hosts.sorting_hosts_after_search_from_db()
@@ -68,7 +68,7 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     logger.debug(data)
     logger.debug(data.hosts)
     # return data
-    data_hosts = HostSorterNoSearchInDBMonitoring(data)
+    data_hosts = HostSorterMonitoring(data)
     print(data_hosts)
     # print(data_hosts.hosts)
     data_hosts.sorting()

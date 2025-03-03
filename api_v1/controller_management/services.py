@@ -5,20 +5,21 @@ import logging
 from collections.abc import KeysView
 from collections.abc import Callable
 from enum import StrEnum
-from typing import Any
+from typing import Any, Type
 
 from pydantic import ValidationError, BaseModel
 
 from sdp_lib.utils_common import check_is_ipv4
 from sdp_lib.management_controllers import exceptions as client_exceptions
+from .checkers import HostData, MonitoringHostDataChecker
 from .schemas import (
     AllowedMonitoringEntity,
     TrafficLightsObjectsTableFields,
     AllowedDataHostFields,
-    BaseSearchHostsInDb,
+    SearchHostsInDb,
     BaseMonitoringHostBody,
     GetState,
-    AllowedControllers
+    AllowedControllers, GetHostsStaticDataFromDb
 )
 import logging_config
 
@@ -33,78 +34,6 @@ class ErrorMessages(StrEnum):
     invalid_type_controller = 'invalid_type_controller'
     invalid_host_data = 'invalid host data'
     not_found_in_database = 'not found in database'
-
-
-class HostData:
-    """
-    Класс - обработчик данных хоста.
-    """
-
-    def __init__(self, ip_or_name: str, properties: dict):
-        self.ip_or_name = ip_or_name
-        self.properties = properties
-        self.ip_or_name_and_properties_as_dict = self.get_full_host_data_as_dict()
-
-    def __repr__(self):
-        return (
-            f'self.ip_or_name: {self.ip_or_name}\n'
-            f'self.properties: {json.dumps(self.properties, indent=2)}\n'
-            f'self.ip_or_name_and_properties_as_dict: {json.dumps(self.ip_or_name_and_properties_as_dict, indent=2)}\n'
-        )
-
-    def _add_errors_field_for_current_data_host_if_have_not(self) -> None:
-        """
-        Добавляет к self.properties свойство в виде dict: {"errors": []}.
-        :return: None.
-        """
-        if self.properties.get(AllowedDataHostFields.errors) is None:
-            self.properties |= {str(AllowedDataHostFields.errors): []}
-
-    def add_message_to_error_field_for_current_host(self, message: str | list | ErrorMessages | Exception) -> None:
-        """
-        Добавляет сообщение с текстом ошибки.
-        :param message: Строка с текстом сообщения
-        :return: None
-        """
-        self._add_errors_field_for_current_data_host_if_have_not()
-        if isinstance(message, str):
-            self.properties[str(AllowedDataHostFields.errors)].append(str(message))
-        elif isinstance(message, Exception):
-            self.properties[str(AllowedDataHostFields.errors)].append(str(message))
-        elif isinstance(message, list):
-            self.properties[str(AllowedDataHostFields.errors)] += message
-
-    def get_full_host_data_as_dict(self) -> dict[str, dict[str, Any]]:
-        """
-        Возвращает словарь вида {self.ip_or_name: self.properties}
-        :return:
-        """
-        return {self.ip_or_name: self.properties}
-
-    def _get_full_host_data_as_dict(self) -> dict[str, Any]:
-        return self.properties | {str(AllowedDataHostFields.ipv4): self.ip_or_name}
-
-
-class MonitoringHostDataChecker(HostData):
-
-    def validate_ipv4(self, add_to_bad_hosts_if_not_valid=True) -> bool:
-        if check_is_ipv4(self.ip_or_name):
-            return True
-        if add_to_bad_hosts_if_not_valid:
-            self.add_message_to_error_field_for_current_host(client_exceptions.BadIpv4())
-        return False
-
-    def validate_type_controller(self, add_to_bad_hosts_if_not_valid=True) -> bool:
-        try:
-            AllowedControllers(self.properties[str(AllowedDataHostFields.type_controller)])
-            return True
-        except ValueError:
-            if add_to_bad_hosts_if_not_valid:
-                self.add_message_to_error_field_for_current_host(client_exceptions.BadControllerType())
-            return False
-
-    def get_validate_methods(self):
-        return [self.validate_ipv4, self.validate_type_controller]
 
 
 class BaseHostsSorters:
@@ -140,30 +69,6 @@ class BaseHostsSorters:
         else:
             raise TypeError(f'DEBUG: Тип контейнера < self.bad_hosts > должен быть dict или list')
 
-
-class HostSorterSearchInDB(BaseHostsSorters):
-    """
-    Класс сортировок хостов, преданных пользователем с учётом поиска хостов в БД.
-    """
-
-    def __init__(self, income_data: BaseModel):
-        super().__init__(income_data)
-        self._stack_hosts: set | None = None
-        self.hosts_after_search: list | None = None
-        self.model_for_search_in_db = self._get_model_for_search_in_db()
-
-    def __repr__(self):
-        return (
-            f'self.income_data: {self.income_data}\n'
-            f'self.model_for_search_in_db: {self.model_for_search_in_db}\n'
-            f'self.hosts_after_search: {self.hosts_after_search}\n'
-            f'self._stack_hosts: {self._stack_hosts}\n'
-            f'self.good_hosts: {self.good_hosts}\n'
-            f'self.hosts: {self.income_hosts}\n'
-            f'self.bad_hosts: {self.bad_hosts}\n'
-            # f'self.hosts_after_search_in_db: {self.hosts_after_search}\n'
-        )
-
     def get_good_hosts_and_bad_hosts_as_dict(self) -> dict:
         """
         Возвращает словарь всех хостов(прошедших валидацию и хостов с ошибками)
@@ -178,6 +83,29 @@ class HostSorterSearchInDB(BaseHostsSorters):
         """
         return functools.reduce(lambda x, y: x | y, self.bad_hosts, {})
 
+
+class HostSorterSearchInDB(BaseHostsSorters):
+    """
+    Класс сортировок хостов, преданных пользователем для последующего
+    поиска в БД.
+    """
+
+    def __init__(self, income_data: GetHostsStaticDataFromDb):
+        super().__init__(income_data)
+        self._stack_hosts: set | None = None
+        self.hosts_after_search: list | None = None
+
+    def __repr__(self):
+        return (
+            f'self.income_data: {self.income_data}\n'
+            f'self.hosts_after_search: {self.hosts_after_search}\n'
+            f'self._stack_hosts: {self._stack_hosts}\n'
+            f'self.good_hosts: {self.good_hosts}\n'
+            f'self.hosts: {self.income_hosts}\n'
+            f'self.bad_hosts: {self.bad_hosts}\n'
+            # f'self.hosts_after_search_in_db: {self.hosts_after_search}\n'
+        )
+
     def _get_income_hosts_as_set(self, income_hosts: list | dict) -> set[str]:
         """
         Преобразует income_hosts хостов в set.
@@ -190,21 +118,28 @@ class HostSorterSearchInDB(BaseHostsSorters):
             return set(income_hosts.keys())
         raise ValueError('Переданный тип должен быть list или dict')
 
-    def _get_model_for_search_in_db(self):
-        """
-        Возвращает модель pydantic, которой будут переданы данные хоста для валидации
-        на предмет возможности хоста в БД.
-        :return: Модель pydantic.
-        """
-        return BaseSearchHostsInDb
+    # def _get_model_for_search_in_db(self):
+    #     """
+    #     Возвращает модель pydantic, которой будут переданы данные хоста для валидации
+    #     на предмет возможности хоста в БД.
+    #     :return: Модель pydantic.
+    #     """
+    #     return SearchHostsInDb
 
-    def get_hosts_data_for_search_db(self):
+    def get_hosts_data_for_search_in_db(self) -> list[SearchHostsInDb]:
         """
-        Возвращает список с экземплярами модели, полученной в self._get_model_for_search_in_db()
-        для каждого хоста, для формирования stmt запрос.
-        :return: list с экземплярами модели, полученной self._get_model_for_search_in_db()
+        Возвращает список с экземплярами модели, полученной в self._get_model_for_search_in_db(),
+        для формирования stmt.
+        :return: list с экземплярами модели, полученной self._get_model_for_search_in_db().
+                 Пример:
+                 [
+                 SearchHostsInDb(ip_or_name_from_user='10.45.154.16', search_in_db_field='ip_adress'),
+                 SearchHostsInDb(ip_or_name_from_user='11', search_in_db_field='number'),
+                 SearchHostsInDb(ip_or_name_from_user='abracadabra', search_in_db_field='number'),
+                 SearchHostsInDb(ip_or_name_from_user='413-P', search_in_db_field='number')
+                 ]
         """
-        return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.income_hosts]
+        return [SearchHostsInDb(ip_or_name_from_user=host) for host in self.income_hosts]
 
     def sorting_hosts_after_search_from_db(self) -> dict[str, dict[str, Any]]:
         """
@@ -242,10 +177,10 @@ class HostSorterSearchInDB(BaseHostsSorters):
             found_record = dict(found_record)
             self._remove_found_host_from_stack_hosts(found_record)
             self.good_hosts |= self._build_properties_for_good_host(found_record)
-        self.process_hosts_not_found_in_db()
+        self._process_hosts_not_found_in_db()
         return self.good_hosts
 
-    def process_hosts_not_found_in_db(self) -> None:
+    def _process_hosts_not_found_in_db(self) -> None:
         """
         Обрабатывает хосты из self._stack_hosts, которые не были найдены в БД. Добавляет
         словарь с полем errors(list) и текстом ошибки методом self.add_host_to_container_with_bad_hosts.
@@ -304,28 +239,40 @@ class HostSorterSearchInDB(BaseHostsSorters):
         return {ipv4: record_from_db}
 
 
-class BaseHostSorterNoSearchInDB(BaseHostsSorters):
+class _BaseHostSorterMonitoringAndManagement(BaseHostsSorters):
 
     @abc.abstractmethod
-    def get_checker_class(self):
+    def get_checker_class(self) -> Type[MonitoringHostDataChecker]:
         ...
 
     def sorting(self):
-        allowed_to_request_hosts = {}
+        self.good_hosts = {}
         checker_class = self.get_checker_class()
         for curr_host_ipv4, current_data_host in self.income_hosts.items():
             current_host = checker_class(ip_or_name=curr_host_ipv4, properties=current_data_host)
+
             for validate_method in current_host.get_validate_methods():
                 if validate_method():
-                    allowed_to_request_hosts |= current_host.ip_or_name_and_properties_as_dict
+                    self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
                 else:
                     self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
             print(f"current_host.properties: {current_host.properties}")
-        self.hosts = allowed_to_request_hosts
-        return self.hosts
+        return self.good_hosts
+
+    def _call_validate_methods_and_sort_current_host(self, current_host):
+        for validate_method in current_host.get_validate_methods():
+            if validate_method():
+                self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
+            else:
+                self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
 
 
-class HostSorterNoSearchInDBMonitoring(BaseHostSorterNoSearchInDB):
+class HostSorterMonitoring(_BaseHostSorterMonitoringAndManagement):
 
     def get_checker_class(self):
         return MonitoringHostDataChecker
+
+class HostSorterManagement(_BaseHostSorterMonitoringAndManagement):
+
+    def get_checker_class(self):
+        raise NotImplementedError

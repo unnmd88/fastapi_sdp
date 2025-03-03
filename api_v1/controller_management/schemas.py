@@ -132,7 +132,7 @@ def get_value_as_string(value: Any) -> str:
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-class BaseSearchHostsInDb(BaseModel):
+class SearchHostsInDb(BaseModel):
 
     ip_or_name_from_user: ip_or_name
 

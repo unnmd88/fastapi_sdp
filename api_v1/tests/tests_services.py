@@ -27,9 +27,9 @@ def test_get_hosts_data_for_search_db_HostSorterSearchInDB():
     obj = services.HostSorterSearchInDB(m)
 
     hosts_as_model = [
-        schemas.BaseSearchHostsInDb(ip_or_name_from_user=ip_or_name_from_user) for ip_or_name_from_user in hosts
+        schemas.SearchHostsInDb(ip_or_name_from_user=ip_or_name_from_user) for ip_or_name_from_user in hosts
     ]
-    assert obj.get_hosts_data_for_search_db() == hosts_as_model
+    assert obj.get_hosts_data_for_search_in_db() == hosts_as_model
 
 def test_get_model_HostSorterSearchInDB():
     model = schemas.GetHostsStaticDataFromDb(hosts=['3230', '11', '10.45.154.16'])
