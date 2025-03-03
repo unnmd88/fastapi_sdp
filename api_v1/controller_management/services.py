@@ -206,50 +206,6 @@ class HostSorterSearchInDB(BaseHostsSorters):
         """
         return [self.model_for_search_in_db(ip_or_name_from_user=host) for host in self.income_hosts]
 
-    # def sorting_hosts_after_search_from_db(self) -> dict[str, dict[str, Any]]:
-    #     """
-    #     Сортирует хосты: если хост был найден в БД, отправляет в self.hosts, иначе в self.bad_hosts.
-    #     Также приводит свойства хостов(dict) к общему виду, см. описание founded_in_db_hosts и self.bad_hosts.
-    #     founded_in_db_hosts: dict, в который будут добавляться хосты, найденные в БД.
-    #                          Пример:
-    #                          {
-    #                          "10.179.56.1": {
-    #                          "number": "12",
-    #                          "type_controller": "Поток (P)",
-    #                          "address": "Щербаковская ул. - Вельяминовская ул. д.6к1,32   ВАО (ВАО-4)",
-    #                          "description": "Приоритет ОТ"
-    #                          },
-    #                          "10.179.40.9": {
-    #                          "number": "13",
-    #                          "type_controller": "Swarco",
-    #                          "address": "Шереметьевская ул. д.60,62,29,27к1 - Марьиной Рощи 11-й пр-д (СВАО-2)",
-    #                          "description": null
-    #                          }
-    #                          }
-    #     self.bad_hosts: В контексте данного метода это list с хостами, которые не были найдены в БД.
-    #                     Пример:
-    #                     [
-    #                     {'string': {'entity': 'get_host_property', 'errors': ['not found in database']}},
-    #                     {'abra': {'entity': 'get_host_property', 'errors': ['not found in database']}},
-    #                     {'cadabra': {'entity': 'get_host_property', 'errors': ['not found in database']}}
-    #                     ]
-    #     :return: self.hosts
-    #     """
-    #
-    #     founded_in_db_hosts = {}
-    #     self._stack_hosts = self._get_income_hosts_as_set(self.income_hosts)
-    #     for found_record in self.hosts_after_search:
-    #         found_record = dict(found_record)
-    #         self._pop_found_host_from_stack_hosts(found_record)
-    #         founded_in_db_hosts |= self._build_properties_for_good_host(found_record)
-    #
-    #     for current_name_or_ipv4, current_data_host in self._stack_hosts:
-    #         current_host = HostData(ip_or_name=current_name_or_ipv4, properties=current_data_host)
-    #         current_host.add_message_to_error_field_for_current_host(str(ErrorMessages.not_found_in_database))
-    #         self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
-    #     self.good_hosts = founded_in_db_hosts
-    #     return self.good_hosts
-
     def sorting_hosts_after_search_from_db(self) -> dict[str, dict[str, Any]]:
         """
         Сортирует хосты: если хост был найден в БД, отправляет в self.hosts, иначе в self.bad_hosts.
