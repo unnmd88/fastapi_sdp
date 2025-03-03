@@ -38,7 +38,7 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
     pprint.pprint(data_hosts)
 
     print(f'Время запроса составило: {time.time() - start_time}')
-    return data_hosts.get_hosts_and_bad_hosts_as_dict()
+    return data_hosts.get_good_hosts_and_bad_hosts_as_dict()
 
 
 
