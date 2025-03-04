@@ -24,10 +24,10 @@ class ConnectionTimeout(ClientException):
         return f'Превышено время подключения, ip: {self.ipv4!r}'
 
 
-class NotFoundInDB(ClientException):
-
-    def __str__(self):
-        return f'Не найден в базе данных, ip: {self.ipv4!r}'
+# class NotFoundInDB(ClientException):
+#
+#     def __str__(self):
+#         return f'Не найден в базе данных, ip/name: {self.ipv4!r}'
 
 
 class HasNotRequiredField(ClientException):

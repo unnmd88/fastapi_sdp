@@ -3,20 +3,20 @@
 """
 
 import json
-from typing import Any
+from typing import Any, TypeVar
 
 from api_v1.controller_management.schemas import AllowedDataHostFields, AllowedControllers
-from sdp_lib.management_controllers import exceptions as my_exceptions
+from core.user_exceptions import validate_exceptions
 from sdp_lib.utils_common import check_is_ipv4
+
+
+E = TypeVar('E', bound=validate_exceptions.BaseClientException)
 
 
 class HostData:
     """
     Класс - обработчик данных хоста.
     """
-
-    type_err_required_field = 'required_field'
-    type_err_invalid_value = 'invalid_value'
 
     def __init__(self, ip_or_name: str, properties: dict):
         self.ip_or_name = ip_or_name
@@ -38,59 +38,22 @@ class HostData:
         if self.properties.get(AllowedDataHostFields.errors) is None:
             self.properties |= {str(AllowedDataHostFields.errors): []}
 
-    # def add_message_to_error_field_for_current_host(
-    #         self,
-    #         message: str | list | Exception,
-    #         field_name: str,
-    #         type_err: str = None
-    # ) -> None:
-    #     """
-    #     Добавляет сообщение с текстом ошибки.
-    #     :param message: Строка с текстом сообщения
-    #     :return: None
-    #     """
-    #
-    #     pattern = {
-    #         "detail": [
-    #             {
-    #                 'field_name': field_name,
-    #                 'msg': message,
-    #                 'type': type_err
-    #             }
-    #         ]
-    #     }
-    #
-    #     self._add_errors_field_for_current_data_host_if_have_not()
-    #     if isinstance(message, str):
-    #         self.properties[str(AllowedDataHostFields.errors)].append(str(message))
-    #     elif isinstance(message, Exception):
-    #         self.properties[str(AllowedDataHostFields.errors)].append(str(message))
-    #     elif isinstance(message, list):
-    #         self.properties[str(AllowedDataHostFields.errors)] += message
-
-    def add_message_to_error_field_for_current_host(
-            self,
-            message: str | Exception,
-            field_name: str,
-            type_err: str
-    ) -> None:
+    def add_error_entity_for_current_host(self, exc: E | str) -> None:
         """
         Добавляет сообщение с текстом ошибки.
-        :param message: Строка с текстом сообщения
+        :param exc: Экземпляр пользовательского класса ошибки.
         :return: None
         """
-
         self._add_errors_field_for_current_data_host_if_have_not()
-        if isinstance(message, Exception):
-            message = str(message)
-        if not isinstance(message, str):
-            raise ValueError('Ошибка должна быть строкой или наследником класса < Exception >')
-        pattern = {
-            'field_name': field_name,
-            'msg': message,
-            'type': type_err
-        }
-        self.properties[str(AllowedDataHostFields.errors)].append(pattern)
+        # if isinstance(exc, validate_exceptions.BaseClientException):
+        #     e = exc.get_data_about_exc()
+        # elif isinstance(exc, str):
+        #     e = exc
+        # else:
+        #     raise ValueError
+        if not isinstance(exc, validate_exceptions.BaseClientException):
+            raise ValueError
+        self.properties[str(AllowedDataHostFields.errors)].append(exc.get_data_about_exc())
 
     def get_full_host_data_as_dict(self) -> dict[str, dict[str, Any]]:
         """
@@ -109,7 +72,7 @@ class MonitoringHostDataChecker(HostData):
     принадлежащего к разделу 'Мониторинг'(Режимы дк, поиск в базе и т.д.)
     """
 
-    def validate_ipv4(self, add_message_to_errors_field_if_not_valid=True) -> bool:
+    def validate_ipv4(self) -> bool:
         """
         Проверяет валидность ipv4 self.ip_or_name.
         :param add_message_to_errors_field_if_not_valid: Добавить сообщение в поле errors.
@@ -117,36 +80,31 @@ class MonitoringHostDataChecker(HostData):
         """
         if check_is_ipv4(self.ip_or_name):
             return True
-        if add_message_to_errors_field_if_not_valid:
-            self.add_message_to_error_field_for_current_host(
-                message=my_exceptions.BadIpv4(),
-                field_name=str(AllowedDataHostFields.ipv4),
-                type_err=self.type_err_invalid_value
-            )
+        exc = validate_exceptions.InvalidValue(
+            field_name=str(AllowedDataHostFields.ipv4),
+            input_val=self.ip_or_name
+        )
+        self.add_error_entity_for_current_host(exc)
         return False
 
-    def validate_type_controller(self, add_message_to_errors_field_if_not_valid=True) -> bool:
+    def validate_type_controller(self) -> bool:
         """
         Проверяет наличие поля type_controller и валидность типа ДК в данном поле.
-        :param add_message_to_errors_field_if_not_valid: Добавить сообщение в поле errors.
         :return: True если type_controller валиден, иначе False
         """
+        type_controller = str(AllowedDataHostFields.type_controller)
         try:
-            AllowedControllers(self.properties[str(AllowedDataHostFields.type_controller)])
+            AllowedControllers(self.properties[type_controller])
             return True
         except ValueError:
-            exc = my_exceptions.BadControllerType(self.properties[str(AllowedDataHostFields.type_controller)])
-            type_err = self.type_err_invalid_value
-        except KeyError:
-            exc = my_exceptions.HasNotRequiredField(str(AllowedDataHostFields.type_controller))
-            type_err = self.type_err_required_field
-
-        if add_message_to_errors_field_if_not_valid:
-            self.add_message_to_error_field_for_current_host(
-                message=exc,
-                field_name=str(AllowedDataHostFields.type_controller),
-                type_err=type_err
+            exc = validate_exceptions.InvalidValue(
+                field_name=type_controller,
+                input_val=self.properties[type_controller]
             )
+            exc.ctx = exc.get_allowed_controller_types()
+        except KeyError:
+            exc = validate_exceptions.RequiredField(field_name=str(AllowedDataHostFields.type_controller))
+        self.add_error_entity_for_current_host(exc)
         return False
 
     def get_validate_methods(self):

@@ -9,10 +9,11 @@ from pydantic import BaseModel
 
 from sdp_lib.management_controllers import exceptions as client_exceptions
 from .checkers import HostData, MonitoringHostDataChecker
+from core.user_exceptions.validate_exceptions import NotFoundInDB
 from .schemas import (
     TrafficLightsObjectsTableFields,
     SearchHostsInDb,
-    GetHostsStaticDataFromDb
+    GetHostsStaticDataFromDb, AllowedDataHostFields
 )
 import logging_config
 
@@ -95,14 +96,6 @@ class HostSorterSearchInDB(_BaseHostsSorters):
             return set(income_hosts.keys())
         raise ValueError('Переданный тип должен быть list или dict')
 
-    # def _get_model_for_search_in_db(self):
-    #     """
-    #     Возвращает модель pydantic, которой будут переданы данные хоста для валидации
-    #     на предмет возможности хоста в БД.
-    #     :return: Модель pydantic.
-    #     """
-    #     return SearchHostsInDb
-
     def get_hosts_data_for_search_in_db(self) -> list[SearchHostsInDb]:
         """
         Возвращает список с экземплярами модели, полученной в self._get_model_for_search_in_db(),
@@ -169,7 +162,8 @@ class HostSorterSearchInDB(_BaseHostsSorters):
         """
         for current_name_or_ipv4 in self._stack_hosts:
             current_host = HostData(ip_or_name=current_name_or_ipv4, properties={})
-            current_host.add_message_to_error_field_for_current_host(str(client_exceptions.NotFoundInDB(current_name_or_ipv4)))
+            e = NotFoundInDB(field_name=str(AllowedDataHostFields.ip_or_name), input_val=current_name_or_ipv4)
+            current_host.add_error_entity_for_current_host(e)
             self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
 
     def _remove_found_host_from_stack_hosts(self, found_host: dict[str, str]):
@@ -220,6 +214,11 @@ class _HostSorterMonitoringAndManagement(_BaseHostsSorters):
 
     @abc.abstractmethod
     def _get_checker_class(self) -> Type[MonitoringHostDataChecker]:
+        """
+        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+        Необходимо использовать класс из модуля checkers.py.
+        :return:
+        """
         pass
 
     def sort(self):
