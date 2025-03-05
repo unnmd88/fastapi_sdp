@@ -2,7 +2,9 @@ import pprint
 import time
 from asyncio import TaskGroup
 
+import aiohttp
 from fastapi import APIRouter, HTTPException, status, Depends
+from pysnmp.entity.engine import SnmpEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import services
@@ -73,7 +75,8 @@ async def get_state(data: FastRequestMonitoringAndManagement):
 
     data_hosts = HostSorterMonitoring(data)
     print(data_hosts)
-    data_hosts.sort()
+    print(data_hosts.sort())
+    print(data_hosts)
 
     states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
                                        bad_hosts=data_hosts.bad_hosts)

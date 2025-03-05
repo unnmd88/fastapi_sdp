@@ -14,14 +14,11 @@ class BaseClientException(Exception):
 
 class ClientException(BaseClientException):
     type_exc: str
-
     _field_name = 'field_name'
     _ctx = 'ctx'
     _msg = 'msg'
     _type = 'type'
     _input = 'input'
-
-
 
     def __init__(self, field_name, ctx=None, input_val=None):
         self.field_name = field_name

@@ -34,6 +34,14 @@ class _BaseHostsSorters:
         self.good_hosts: dict | None = None
         self.bad_hosts = []
 
+    def __repr__(self):
+        return (
+            f'self.income_data: {self.income_data}\n'
+            f'self.income_hosts: {self.income_hosts}\n'
+            f'self.good_hosts: {self.good_hosts}\n'
+            f'self.bad_hosts: {self.bad_hosts}\n'
+        )
+
     def add_host_to_container_with_bad_hosts(self, host: dict[str, Any]):
         """
         Добавляет хост с ошибками в контейнер self.bad_hosts
@@ -234,11 +242,10 @@ class _HostSorterMonitoringAndManagement(_BaseHostsSorters):
         return self.good_hosts
 
     def _sort_current_host(self, current_host: MonitoringHostDataChecker) -> None:
-        for validate_method in current_host.get_validate_methods():
-            if validate_method():
-                self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
-            else:
-                self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+        if all(validate_method() for validate_method in current_host.get_validate_methods()):
+            self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
+        else:
+            self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
 
 
 class HostSorterMonitoring(_HostSorterMonitoringAndManagement):

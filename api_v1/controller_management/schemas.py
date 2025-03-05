@@ -24,12 +24,9 @@ class AllowedControllers(StrEnum):
 
 
 class AllowedMonitoringEntity(StrEnum):
-    GET_STATE_BASE = 'get_state_base'
-    GET_STATE_FULL = 'get_state_full'
-    GET_FROM_DB = 'get_host_property'
-    # GET_FULL_DATA = 'get_all_states'
-    # SET_STAGE = 'set_stage'
-    # SET_FLASH = 'set_flash'
+    BASE = 'base'
+    ADVANCED = 'advanced'
+
 
 
 class AllowedManagementEntity(StrEnum):
@@ -53,6 +50,7 @@ class AllowedDataHostFields(StrEnum):
     entity = 'entity'
     ipv4 = 'ip_address'
     ip_or_name = 'ip/name'
+    options = 'options'
 
 
 class TrafficLightsObjectsTableFields(StrEnum):
@@ -157,10 +155,10 @@ class BaseMonitoringHostBody(BaseModel):
     errors: Annotated[list, Field(default=[])]
 
 
-class GetState(BaseMonitoringHostBody):
-
-    entity: Annotated[Literal[str(AllowedMonitoringEntity.GET_STATE_BASE), str(AllowedMonitoringEntity.GET_STATE_FULL)],
-                      AfterValidator(get_value_as_string)]
+# class GetState(BaseMonitoringHostBody):
+#
+#     entity: Annotated[Literal[str(AllowedMonitoringEntity.GET_STATE_BASE), str(AllowedMonitoringEntity.GET_STATE_FULL)],
+#                       AfterValidator(get_value_as_string)]
 
 
 """ Проверка данных(свойств) определённого хоста """

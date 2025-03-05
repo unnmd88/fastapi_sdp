@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 
+import aiohttp
 from fastapi import FastAPI
 import uvicorn
+from pysnmp.entity.engine import SnmpEngine
 
 from core.models import Base, db_helper
 from api_v1 import router as router_v1
@@ -15,6 +17,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router=router_v1, prefix=settings.api_v1_prefix)
+
 
 @app.get('/')
 def root():
