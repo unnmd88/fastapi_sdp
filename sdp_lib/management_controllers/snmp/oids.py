@@ -32,7 +32,7 @@ class Oids(StrEnum):
     potokS_UTCSetGetLocal = os.getenv('potokS_UTCSetGetLocal')
     potokS_UTCprohibitionManualPanel = os.getenv('potokS_UTCprohibitionManualPanel')
     potokS_UTCCommandRestartProgramm = os.getenv('potokS_UTCCommandRestartProgramm')
-    potokS_UTCStatusMode = os.getenv('potokS_UTCStatusMode')
+    # potokS_UTCStatusMode = os.getenv('potokS_UTCStatusMode')
 
     """ UG405 """
     # -- Control Bits --#

@@ -8,7 +8,7 @@ from typing import Any, Type, TypeVar
 from pydantic import BaseModel
 
 from sdp_lib.management_controllers import exceptions as client_exceptions
-from .checkers import HostData, MonitoringHostDataChecker
+from .checkers.custom_checkers import HostData, MonitoringHostDataChecker
 from core.user_exceptions.validate_exceptions import NotFoundInDB
 from .schemas import (
     TrafficLightsObjectsTableFields,
@@ -224,7 +224,7 @@ class _HostSorterMonitoringAndManagement(_BaseHostsSorters):
     def _get_checker_class(self) -> Type[MonitoringHostDataChecker]:
         """
         Возвращает класс для валидации данных полей, применяемый в методе self.sort.
-        Необходимо использовать класс из модуля checkers.py.
+        Необходимо использовать класс из модуля custom_checkers.py.
         :return:
         """
         pass

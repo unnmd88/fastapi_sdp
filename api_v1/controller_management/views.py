@@ -7,9 +7,10 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from pysnmp.entity.engine import SnmpEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import services
+from . import services, sorters
 from .schemas import T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
-from .sorters import logger, HostSorterMonitoring
+from .sorters.by_custom_checkers import logger, HostSorterMonitoring
+from .sorters import by_pydantic_checkers
 
 from sdp_lib.management_controllers.snmp import stcip
 
@@ -78,11 +79,12 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     print(data_hosts.sort())
     print(data_hosts)
 
-    states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
-                                       bad_hosts=data_hosts.bad_hosts)
-    res = await states.main()
 
-    print(f'res:: {res}')
+    # states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
+    #                                    bad_hosts=data_hosts.bad_hosts)
+    # res = await states.main()
+    #
+    # print(f'res:: {res}')
     # pprint.pprint(data_hosts.good_hosts)
     # print('Bad hosts: ')
     # pprint.pprint(data_hosts.bad_hosts)
@@ -90,7 +92,37 @@ async def get_state(data: FastRequestMonitoringAndManagement):
 
 
     print(f'Время составило: {time.time() - start_time}')
+    return {'Время составило': time.time() - start_time} | data_hosts.get_bad_hosts_as_dict()
+
     return data_hosts.get_good_hosts_and_bad_hosts_as_dict()
+
+
+@router.post('/get-state-test')
+async def get_state(data: FastRequestMonitoringAndManagement):
+    start_time = time.time()
+
+    data_hosts = by_pydantic_checkers.HostSorterMonitoring(data)
+    print(data_hosts)
+    print(data_hosts.sort())
+    print(data_hosts)
+
+    for host in data_hosts.bad_hosts:
+        pprint.pprint(f'{host}')
+
+    # states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
+    #                                    bad_hosts=data_hosts.bad_hosts)
+    # res = await states.main()
+
+    # print(f'res:: {data_hosts}')
+
+    print(f'Время составило: {time.time() - start_time}')
+    return {'Время составило': time.time() - start_time} | data_hosts.get_bad_hosts_as_dict()
+
+    return {'Время составило': time.time() - start_time}
+
+
+
+
 
 async def main(objs):
     # taks = [o.get_multiple(oids=oids_swarco) for o in objs]
@@ -108,40 +140,3 @@ async def main(objs):
     return res
 
 
-@router.post('/get-state-test')
-async def get_state():
-    start_time = time.time()
-    ipv4_swarco = (
-        '10.45.154.16',
-        '10.179.18.49',
-        '10.179.100.113',
-        '10.179.33.41',
-        '10.179.100.121',
-        '10.179.20.153',
-        '10.179.96.233',
-        '10.179.52.105',
-        '10.179.52.113',
-        '10.179.48.1',
-        '10.179.24.97',
-        '10.179.20.169',
-        '10.179.8.25',
-        '10.179.40.9',
-        '10.179.52.129',
-        '10.179.56.73',
-        '10.179.24.121',
-        '10.179.52.137',
-        '10.179.72.65',
-        '10.179.68.33',
-    )
-
-    objs = [stcip.SwarcoCurrentStatesSTCIP(ip) for ip in ipv4_swarco]
-
-    res = await main(objs)
-    print(f'res:::: {res}')
-
-    r = {}
-    for task in res:
-        r[task.get_name()] = task.result()
-    print(f'Время составило: {time.time() - start_time}')
-    r['Execution time'] = time.time() - start_time
-    return r

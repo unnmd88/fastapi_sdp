@@ -9,7 +9,7 @@ from pysnmp.entity.engine import SnmpEngine
 from api_v1.controller_management.crud import SearchHosts
 from api_v1.controller_management.schemas import GetHostsStaticDataFromDb, AllowedControllers, AllowedProtocolsRequest, \
     AllowedDataHostFields, AllowedMonitoringEntity
-from api_v1.controller_management.sorters import HostSorterSearchInDB
+from api_v1.controller_management.sorters._core import HostSorterSearchInDB
 from sdp_lib.management_controllers.snmp import stcip, ug405
 from sdp_lib.management_controllers.http import peek_web
 
