@@ -7,6 +7,7 @@ class FieldsNames(StrEnum):
     error = 'error'
     entity = 'entity'
     data = 'data'
+    response = 'response'
 
     protocol = 'protocol'
     protocol_snmp = 'snmp'

@@ -111,12 +111,12 @@ async def get_state(data: FastRequestMonitoringAndManagement):
 
     states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
                                        bad_hosts=data_hosts.bad_hosts)
-    g, b = await states.main()
+    await states.main()
     #
     # print(f'res:: {res}')
 
     print(f'Время составило: {time.time() - start_time}')
-    return {'Время составило': time.time() - start_time} | g | {'BAD': b}
+    return {'Время составило': time.time() - start_time} | states.get_all_hosts_as_dict()
 
     return {'Время составило': time.time() - start_time}
 
