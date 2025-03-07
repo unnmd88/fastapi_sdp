@@ -10,9 +10,6 @@ from sdp_lib.management_controllers.fields_names import FieldsNames, ErrorMessag
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-
-
-
 class SnmpHost(Host):
 
     stage_values_get: dict
