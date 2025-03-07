@@ -1,6 +1,4 @@
 
-
-
 class BadIpv4(Exception):
 
     def __str__(self):
