@@ -1,7 +1,5 @@
 import abc
-import collections
 
-from api_v1.controller_management.schemas import AllowedDataHostFields
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.utils_common import check_is_ipv4
 
