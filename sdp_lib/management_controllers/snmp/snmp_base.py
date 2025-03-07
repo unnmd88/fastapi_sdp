@@ -1,5 +1,5 @@
 from collections.abc import KeysView
-from typing import Any
+from typing import Any, Self
 
 from pysnmp.hlapi.v3arch.asyncio import *
 from pysnmp.proto import errind
@@ -10,41 +10,7 @@ from sdp_lib.management_controllers.fields_names import FieldsNames, ErrorMessag
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-snmp_engine = SnmpEngine()
 
-async def snmp_get(
-        ipv4: str,
-        community: str,
-        oids: list[str | Oids] | KeysView[str | Oids],
-        engine: SnmpEngine = SnmpEngine(),
-        timeout: float = 0.2,
-        retries: int = 0
-):
-    error_indication, error_status, error_index, var_binds = await get_cmd(
-        engine,
-        CommunityData(community),
-        await UdpTransportTarget.create((ipv4, 161), timeout=timeout, retries=retries),
-        ContextData(),
-        *[ObjectType(ObjectIdentity(oid)) for oid in oids]
-    )
-    return error_indication, var_binds
-
-async def snmp_get_next(
-        ipv4: str,
-        community: str,
-        oids: list[str | Oids] | KeysView[str | Oids],
-        engine: SnmpEngine = SnmpEngine(),
-        timeout: float = 0.2,
-        retries: int = 0
-):
-    error_indication, error_status, error_index, var_binds = await next_cmd(
-        engine,
-        CommunityData(community),
-        await UdpTransportTarget.create((ipv4, 161), timeout=timeout, retries=retries),
-        ContextData(),
-        *[ObjectType(ObjectIdentity(oid)) for oid in oids]
-    )
-    return error_indication, var_binds
 
 
 class SnmpHost(Host):
@@ -58,36 +24,28 @@ class SnmpHost(Host):
         self.community_r, self.community_w = self.get_community()
 
     def get_community(self) -> tuple[str, str]:
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_oids_for_get_request(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_current_mode(self, response):
-        raise NotImplemented
+        raise NotImplementedError
 
     def processing_oid_from_response(self, oid: str) -> str:
-        raise NotImplemented
+        raise NotImplementedError
 
-    def add_extras_for_response(self, parsed_responce: dict) -> dict:
-        raise NotImplemented
+    def add_extras_for_response(self, parsed_response: dict) -> dict:
+        raise NotImplementedError
 
-    def check_error(
-            self,
-            error_indication: errind.ErrorIndication,
-            error_status: Integer32 | int,
-            error_index: Integer32 | int
-    ) -> errind.ErrorIndication | BadControllerType | None:
-        if error_indication is not None:
-            return error_indication
-        elif error_status or error_index:
-            return BadControllerType()
-        return None
+    @property
+    def protocol(self):
+        return str(FieldsNames.protocol_snmp)
 
     async def get(
             self,
             oids: list[str | Oids] | KeysView[str | Oids],
-            engine: snmp_engine or SnmpEngine(),
+            engine: SnmpEngine,
             timeout: float = 0.4,
             retries: int = 0
     ) -> tuple[errind.ErrorIndication | BadControllerType | None, tuple[ObjectType, ...]]:
@@ -130,7 +88,7 @@ class SnmpHost(Host):
     async def set(
             self,
             oids: list[tuple[str | Oids, Any]],
-            engine: SnmpEngine = snmp_engine or SnmpEngine(),
+            engine: SnmpEngine,
             timeout: float = 0.2,
             retries: int = 0
     ):
@@ -143,7 +101,19 @@ class SnmpHost(Host):
         )
         return error_indication, var_binds
 
-    async def get_and_parse(self, engine: SnmpEngine = None):
+    def check_error(
+            self,
+            error_indication: errind.ErrorIndication,
+            error_status: Integer32 | int,
+            error_index: Integer32 | int
+    ) -> str | None:
+        if error_indication is not None:
+            return str(error_indication)
+        elif error_status or error_index:
+            return str(BadControllerType())
+        return None
+
+    async def get_and_parse(self, engine: SnmpEngine) -> Self:
 
         error_indication, var_binds = await self.get(
             oids=self.get_oids_for_get_request(),

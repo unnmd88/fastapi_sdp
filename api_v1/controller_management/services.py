@@ -52,43 +52,40 @@ class Controllers:
         self.bad_hosts = bad_hosts
 
 
-T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_web.PeekWeb)
+T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_web.MainPage)
 
 
 class StatesMonitoring(Controllers):
 
     classes_for_request = {
 
-        (str(AllowedControllers.SWARCO), None): stcip.SwarcoSTCIP,
-        (str(AllowedControllers.POTOK_S), None): stcip.PotokS,
-        (str(AllowedControllers.POTOK_S), None): ug405.PotokP,
-        (str(AllowedControllers.PEEK), None): peek_web.MainPage,
+        # (str(AllowedControllers.SWARCO), None): stcip.SwarcoSTCIP,
+        # (str(AllowedControllers.POTOK_S), None): stcip.PotokS,
+        # (str(AllowedControllers.POTOK_S), None): ug405.PotokP,
+        # (str(AllowedControllers.PEEK), None): peek_web.MainPage,
 
-        # (str(AllowedControllers.SWARCO),  None): (stcip.SwarcoSTCIP, AllowedProtocolsRequest.SNMP),
-        # (str(AllowedControllers.POTOK_S), None): (stcip.PotokS, AllowedProtocolsRequest.SNMP),
-        # (str(AllowedControllers.POTOK_S), None): (ug405.PotokP, AllowedProtocolsRequest.SNMP),
-        # (str(AllowedControllers.PEEK),    None): (peek_web.MainPage, AllowedProtocolsRequest.HTTP),
+        (str(AllowedControllers.SWARCO),  None): (stcip.SwarcoSTCIP, AllowedProtocolsRequest.SNMP),
+        (str(AllowedControllers.POTOK_S), None): (stcip.PotokS, AllowedProtocolsRequest.SNMP),
+        (str(AllowedControllers.POTOK_S), None): (ug405.PotokP, AllowedProtocolsRequest.SNMP),
+        (str(AllowedControllers.PEEK),    None): (peek_web.MainPage, AllowedProtocolsRequest.HTTP),
 
         # (str(AllowedControllers.SWARCO), AllowedMonitoringEntity.ADVANCED):
         #     (stcip.SwarcoSTCIP, AllowedProtocolsRequest.SNMP),
 
     }
 
-    def _get_task(self, ipv4: str, data_host: dict[str, str]) -> Coroutine:
+    def _get_object(self, ipv4: str, data_host: dict[str, str]) -> tuple[Type[T], AllowedProtocolsRequest]:
         type_controller = data_host[AllowedDataHostFields.type_controller]
         option = data_host.get(AllowedDataHostFields.options)
-        scn = data_host.get(AllowedDataHostFields.scn)
+        print(f'R:: {self.classes_for_request.get((type_controller, option))}')
         a_class, protocol = self.classes_for_request.get((type_controller, option))
-
         if protocol == AllowedProtocolsRequest.SNMP and a_class in self.has_scn_classes:
-             obj = a_class(ipv4=ipv4, scn=scn)
-             return obj.get_and_parse(engine=snmp_engine)
-        elif protocol == AllowedProtocolsRequest.SNMP:
-            return a_class(ipv4=ipv4)
+            scn = data_host.get(AllowedDataHostFields.scn)
+            return a_class(ip_v4=ipv4, scn=scn), protocol
+        elif protocol == AllowedProtocolsRequest.SNMP or protocol == AllowedProtocolsRequest.HTTP:
+            return a_class(ip_v4=ipv4), protocol
 
-
-
-        return matches.get(data_for_match)
+        raise ValueError
 
     def get_class_and_protocol(self, type_controller: str, **kwargs) -> tuple[Type[T], AllowedProtocolsRequest]:
         option = kwargs.get(AllowedDataHostFields.options)
@@ -99,18 +96,18 @@ class StatesMonitoring(Controllers):
         print(f'self.allowed_hosts: {self.allowed_hosts}')
         async with aiohttp.ClientSession() as session:
             async with TaskGroup() as tg:
-                for ipv4, data_host in self.allowed_hosts.items():
-                    a_class, protocol = self.get_class_and_protocol(**data_host)
-
-
+                for ip_v4, data_host in self.allowed_hosts.items():
+                    obj, protocol = self._get_object(ip_v4, data_host)
                     if protocol == AllowedProtocolsRequest.SNMP:
-                        tasks.append(tg.create_task(c.get_and_parse(engine=snmp_engine), name=ipv4))
+                        tasks.append(tg.create_task(obj.get_and_parse(engine=snmp_engine), name=ip_v4))
                     else:
-                        tasks.append(tg.create_task(c.get_and_parse(session=session), name=ipv4))
+                        tasks.append(tg.create_task(obj.get_and_parse(session=session), name=ip_v4))
 
         print(tasks)
         for r in tasks:
+            self.allowed_hosts[r.get_name()]['response'] = r.result().response_as_dict
             print(f'res: {r.result().response}')
+        return self.allowed_hosts, self.bad_hosts
 
 
 

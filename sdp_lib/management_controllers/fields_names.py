@@ -3,6 +3,12 @@ from enum import StrEnum
 
 class FieldsNames(StrEnum):
 
+    ipv4_address = "ip_address"
+    error = 'error'
+    entity = 'entity'
+    data = 'data'
+
+    protocol = 'protocol'
     protocol_snmp = 'snmp'
     protocol_stcip = 'stcip'
     protocol_ug405 = 'ug405'
@@ -46,3 +52,4 @@ class FieldsNames(StrEnum):
 
 class ErrorMessages(StrEnum):
     bad_controller_type = 'bad_controller_type'
+

@@ -8,5 +8,5 @@ class HttpHost(Host):
         self.base_url = f'http://{self.ip_v4}'
 
     @property
-    def host_protocol(self):
+    def protocol(self):
         return str(FieldsNames.protocol_http)

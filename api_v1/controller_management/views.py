@@ -80,11 +80,11 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     print(data_hosts)
 
 
-    # states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
-    #                                    bad_hosts=data_hosts.bad_hosts)
-    # res = await states.main()
+    states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
+                                       bad_hosts=data_hosts.bad_hosts)
+    res = await states.main()
     #
-    # print(f'res:: {res}')
+    print(f'res:: {res}')
     # pprint.pprint(data_hosts.good_hosts)
     # print('Bad hosts: ')
     # pprint.pprint(data_hosts.bad_hosts)
@@ -109,14 +109,14 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     for host in data_hosts.bad_hosts:
         pprint.pprint(f'{host}')
 
-    # states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
-    #                                    bad_hosts=data_hosts.bad_hosts)
-    # res = await states.main()
-
-    # print(f'res:: {data_hosts}')
+    states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
+                                       bad_hosts=data_hosts.bad_hosts)
+    g, b = await states.main()
+    #
+    # print(f'res:: {res}')
 
     print(f'Время составило: {time.time() - start_time}')
-    return {'Время составило': time.time() - start_time} | data_hosts.get_bad_hosts_as_dict()
+    return {'Время составило': time.time() - start_time} | g | {'BAD': b}
 
     return {'Время составило': time.time() - start_time}
 
