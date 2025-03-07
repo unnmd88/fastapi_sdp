@@ -6,7 +6,7 @@ from pysnmp.proto import errind
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
-from sdp_lib.management_controllers.fields_names import FieldsNames, ErrorMessages
+from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
