@@ -18,7 +18,7 @@ from sdp_lib.management_controllers.snmp import stcip, ug405
 from sdp_lib.management_controllers.http import peek_web
 
 
-snmp_engine = SnmpEngine()
+
 
 
 async def search_hosts_from_db(income_data) -> HostSorterSearchInDB:
@@ -40,6 +40,8 @@ async def search_hosts_from_db(income_data) -> HostSorterSearchInDB:
 
 class Controllers:
 
+    snmp_engine = SnmpEngine()
+
     def __init__(self, allowed_hosts: dict, bad_hosts: list):
         self.allowed_to_request_hosts = allowed_hosts
         self.bad_hosts = bad_hosts
@@ -57,12 +59,12 @@ class StatesMonitoring(Controllers):
         option = data_host.get(AllowedDataHostFields.options)
         match (type_controller, option):
             case (AllowedControllers.SWARCO, None):
-                return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=snmp_engine)
+                return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_S, None):
-                return stcip.PotokS(ip_v4=ip).get_and_parse(engine=snmp_engine)
+                return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
                 scn = data_host.get(AllowedDataHostFields.scn)
-                return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=snmp_engine)
+                return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
                 return peek_web.MainPage(ip_v4=ip).get_and_parse(session=self._session)
         raise TypeError('DEBUG')
