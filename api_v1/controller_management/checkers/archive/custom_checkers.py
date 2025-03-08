@@ -2,7 +2,7 @@
 Модуль с классами проверки валидности данных тела json.
 """
 
-from api_v1.controller_management.checkers._core import HostData
+from api_v1.controller_management.checkers.checkers_core import HostData
 from api_v1.controller_management.schemas import AllowedDataHostFields, AllowedControllers
 from core.user_exceptions import validate_exceptions
 from sdp_lib.utils_common import check_is_ipv4

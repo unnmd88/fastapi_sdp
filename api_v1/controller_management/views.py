@@ -1,3 +1,4 @@
+import logging
 import pprint
 import time
 from asyncio import TaskGroup
@@ -7,13 +8,16 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from pysnmp.entity.engine import SnmpEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .crud import search_hosts_from_db
 from . import services, sorters
+from api_v1.controller_management.sorters import sorters
 from .schemas import T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
-from .sorters.by_custom_checkers import logger, HostSorterMonitoring
-from .sorters import by_pydantic_checkers
+import logging_config
+
 
 from sdp_lib.management_controllers.snmp import stcip
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=['traffic-lights'])
 
@@ -48,7 +52,7 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
 
     start_time = time.time()
     logger.debug(data.hosts)
-    hosts_from_db = await services.search_hosts_from_db(data)
+    hosts_from_db = await search_hosts_from_db(data)
     pprint.pprint(hosts_from_db)
 
 
@@ -74,7 +78,7 @@ async def get_state(data: FastRequestMonitoringAndManagement):
 async def get_state(data: FastRequestMonitoringAndManagement):
     start_time = time.time()
 
-    data_hosts = HostSorterMonitoring(data)
+    data_hosts = sorters.HostSorterMonitoring(data)
     print(data_hosts)
     print(data_hosts.sort())
     print(data_hosts)
@@ -101,7 +105,7 @@ async def get_state(data: FastRequestMonitoringAndManagement):
 async def get_state(data: FastRequestMonitoringAndManagement):
     start_time = time.time()
 
-    data_hosts = by_pydantic_checkers.HostSorterMonitoring(data)
+    data_hosts = sorters.HostSorterMonitoring(data)
     print(data_hosts)
     print(data_hosts.sort())
     print(data_hosts)
@@ -112,6 +116,7 @@ async def get_state(data: FastRequestMonitoringAndManagement):
     states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
                                        bad_hosts=data_hosts.bad_hosts)
     await states.main()
+    states.add_response_to_data_hosts()
     #
     # print(f'res:: {res}')
 

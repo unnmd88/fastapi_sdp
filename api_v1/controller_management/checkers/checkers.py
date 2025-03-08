@@ -1,8 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict, AfterValidator, IPvAnyAddress, ValidationError
-from typing_extensions import Annotated
+from pydantic import BaseModel, ConfigDict, IPvAnyAddress
+from pydantic_core import ValidationError
 
-from api_v1.controller_management.checkers._core import HostData
-from api_v1.controller_management.schemas import AllowedControllers, get_value_as_string
+from api_v1.controller_management.schemas import AllowedControllers
+from api_v1.controller_management.checkers.archive.custom_checkers import HostData
 
 
 class Base(BaseModel):
@@ -38,6 +38,3 @@ class MonitoringHostDataChecker(HostData):
         return [self.validate_all]
 
 
-if __name__ == '__main__':
-    x = TypeController(type_controller='Swarco')
-    print(x)

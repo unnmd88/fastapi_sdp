@@ -1,8 +1,26 @@
 from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields
+from api_v1.controller_management.sorters.sorters import HostSorterSearchInDB
 # from api_v1.controller_management.sorters import logger
 from core.models import db_helper, TrafficLightsObjects
 from sqlalchemy import select, or_, Select
 from sqlalchemy.engine.row import RowMapping
+
+
+async def search_hosts_from_db(income_data) -> HostSorterSearchInDB:
+    """
+    Производит поиск и сортировку хостов после поиска в БД.
+    Возвращает экземпляр класса HostSorterSearchInDB, который содержит
+    атрибуты с данными о результатах поиска.
+    :param income_data: Экземпляр модели pydantic с хостами из views.py.
+    :return: Экземпляр модели HostSorterSearchInDB.
+    """
+    data_hosts = HostSorterSearchInDB(income_data)
+    search_entity = data_hosts.get_hosts_data_for_search_in_db()
+    db = SearchHosts()
+
+    data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(search_entity))
+    data_hosts.sorting_hosts_after_search_from_db()
+    return data_hosts
 
 
 class BaseSearch:
