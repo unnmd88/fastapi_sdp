@@ -276,6 +276,7 @@ class InputsPageParser(Parser):
     ACTUATOR = 5
 
     pattern_input_data = ':D;'
+
     def __init__(self, content: str):
         super().__init__(content)
         self.inputs_from_page = {}

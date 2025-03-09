@@ -1,44 +1,21 @@
 import abc
 import asyncio
 import time
+from typing import Self, TypeVar, Coroutine, Type
 from asyncio import TaskGroup, Task
-from typing import Self, TypeVar, Coroutine
 
 import aiohttp
 
 from sdp_lib.management_controllers.exceptions import BadControllerType, ConnectionTimeout
-from sdp_lib.management_controllers.http.http_core import HttpHost
-from sdp_lib.management_controllers.http.peek.parsers_peek import MainPageParser, InputsPageParser
+from sdp_lib.management_controllers.http.peek.parsers_peek import Parser, MainPageParser, InputsPageParser
+from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
 
 
-# from sdp_lib.management_controllers.http.session import ClientHTTP
-
-
-class PeekWeb(HttpHost):
-
-    async def fetch(
-            self,
-            route: str,
-            session: aiohttp.ClientSession,
-            timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(connect=.6)
-    ) -> str:
-        async with session.get(route, timeout=timeout) as response:
-            assert response.status == 200
-            return await response.text()
-
-    # async def fetch(
-    #         self,
-    #         routes,
-    #         session: aiohttp.ClientSession,
-    #         timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(connect=.6)
-    # ) -> str:
-    #     async with session.get(route, timeout=timeout) as response:
-    #         assert response.status == 200
-    #         return await response.text()
-
+P = TypeVar('P', bound=Parser, covariant=True)
 
 
 class GetData(PeekWeb):
+
     main_route: str
 
     def __repr__(self):
@@ -52,13 +29,12 @@ class GetData(PeekWeb):
         error, content_data = None, {}
         try:
             content = await self.fetch(
-                route=f'{self.base_url}{self.main_route}',
+                url=f'{self.base_url}{self.main_route}',
                 session=session
             )
-            parser = self.parser_class(content)
-            # parser.parse()
-            # content_data = parser.parsed_content_as_dict
-            content_data = parser.parse()
+            self.parser = self.parser_class(content)
+            # content_data = parser.parse()
+            self.parser.parse()
 
         except asyncio.TimeoutError:
             error = ConnectionTimeout()
@@ -66,12 +42,12 @@ class GetData(PeekWeb):
             error = BadControllerType()
         except aiohttp.client_exceptions.ClientConnectorError:
             error = ConnectionTimeout('from connector')
-        self.response = error, content_data
+        self.response = error, self.parser.parsed_content_as_dict or {}
         return self
 
     @property
     @abc.abstractmethod
-    def parser_class(self):
+    def parser_class(self) -> Type[P]:
         ...
 
 
@@ -80,7 +56,7 @@ class MainPage(GetData):
     main_route = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
 
     @property
-    def parser_class(self):
+    def parser_class(self) -> Type[MainPageParser]:
         return MainPageParser
 
 
@@ -88,14 +64,14 @@ class InputsPage(GetData):
     main_route = '/hvi?file=cell1020.hvi&pos1=0&pos2=-1'
 
     @property
-    def parser_class(self):
+    def parser_class(self) -> Type[InputsPageParser]:
         return InputsPageParser
 
 
 T = TypeVar('T', bound=GetData, covariant=True)
 
 
-class MultipleData(HttpHost):
+class MultipleData(PeekWeb):
     """
     Класс запросов для получения данных различных веб страниц(маршрутов)
     одного контроллера.
