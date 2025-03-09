@@ -1,6 +1,6 @@
 import abc
 from asyncio import TaskGroup
-from typing import Type, Coroutine
+from typing import Coroutine
 import aiohttp
 from typing import TypeVar
 from pysnmp.entity.engine import SnmpEngine
@@ -11,10 +11,9 @@ from api_v1.controller_management.schemas import (
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
-from sdp_lib.management_controllers.http import peek_web
+from sdp_lib.management_controllers.http.peek import peek_web_monitoring
 
-
-T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_web.MainPage)
+T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_web_monitoring.MainPage)
 
 
 class Controllers(metaclass=abc.ABCMeta):
@@ -68,11 +67,11 @@ class StatesMonitoring(Controllers):
                 scn = data_host.get(AllowedDataHostFields.scn)
                 return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
-                return peek_web.MainPage(ip_v4=ip).get_and_parse(session=self._session)
+                return peek_web_monitoring.MainPage(ip_v4=ip).get_and_parse(session=self._session)
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                return peek_web.MultipleData(ip_v4=ip).get_and_parse(session=self._session)
+                return peek_web_monitoring.MultipleData(ip_v4=ip).get_and_parse(session=self._session)
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_web.MultipleData(ip_v4=ip).get_and_parse(session=self._session, main_page=False)
+                return peek_web_monitoring.MultipleData(ip_v4=ip).get_and_parse(session=self._session, main_page=False)
         raise TypeError('DEBUG')
 
 
