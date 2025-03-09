@@ -25,7 +25,9 @@ class AllowedControllers(StrEnum):
 
 class AllowedMonitoringEntity(StrEnum):
     BASE = 'base'
+    INPUTS = 'inputs'
     ADVANCED = 'advanced'
+    BASE_AND_INPUTS = 'base_and_inputs'
 
 
 

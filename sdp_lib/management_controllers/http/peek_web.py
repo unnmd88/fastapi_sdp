@@ -1,8 +1,8 @@
 import abc
 import asyncio
 import time
-from asyncio import TaskGroup
-from typing import Self
+from asyncio import TaskGroup, Task
+from typing import Self, Iterable, Container, TypeVar, Coroutine
 
 import aiohttp
 from watchfiles import awatch
@@ -27,9 +27,23 @@ class PeekWeb(HttpHost):
             assert response.status == 200
             return await response.text()
 
+    # async def fetch(
+    #         self,
+    #         routes,
+    #         session: aiohttp.ClientSession,
+    #         timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(connect=.6)
+    # ) -> str:
+    #     async with session.get(route, timeout=timeout) as response:
+    #         assert response.status == 200
+    #         return await response.text()
+
+
 
 class GetData(PeekWeb):
     main_route: str
+
+    def __repr__(self):
+        return f'repr_{self.__class__}'
 
     async def get_and_parse(
             self,
@@ -74,71 +88,63 @@ class MainPage(GetData):
 class InputsPage(GetData):
     main_route = '/hvi?file=cell1020.hvi&pos1=0&pos2=-1'
 
-    # async def get_and_parse(self, session: aiohttp.ClientSession) -> Self:
-    #
-    #     error, content_data = None, {}
-    #     try:
-    #         content = await self.fetch(
-    #             route=f'{self.base_url}{self.main_route}',
-    #             session=session
-    #         )
-    #         parser = MainPageParser(content)
-    #         parser.parse()
-    #         content_data = parser.parsed_content_as_dict
-    #     except asyncio.TimeoutError:
-    #         error = ConnectionTimeout()
-    #     except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
-    #         error = BadControllerType()
-    #     except aiohttp.client_exceptions.ClientConnectorError:
-    #         error = ConnectionTimeout('from connector')
-    #     self.response = error, content_data
-    #     return self
-
     @property
     def parser_class(self):
         return InputsPageParser
 
 
+T = TypeVar('T', bound=GetData, covariant=True)
+
+
 class MultipleData(HttpHost):
+    """
+    Класс запросов для получения данных различных веб страниц(маршрутов)
+    одного контроллера.
+    """
 
-    available = (MainPage, InputsPage)
-
-    def __init__(
+    async def get_and_parse(
             self,
-            ip_v4: str,
+            session,
             *,
-            main_page=None,
-            inputs=None
+            main_page=True,
+            inputs_page=True
     ):
-        super().__init__(ip_v4)
-        self.main_page = MainPage if main_page else None
-        self.inputs = InputsPage if inputs else None
+            tasks = self._get_tasks(session, main_page, inputs_page)
+            async with asyncio.TaskGroup() as tg1:
+                result = [tg1.create_task(_coro) for _coro in tasks]
+            self.response = self.merge_all_responses(result)
 
+            print(f'self.response: {self.response}')
+            return self
 
-    async def get_and_parse(self, session):
-        match self.available:
-            case [self.main_page, self.inputs]:
-                print(f'case 1')
-                # main_page = MainPage(ip_v4=self.ip_v4)
-                # print(f'r1: {main_page}')
-                inputs_page = InputsPage(ip_v4=self.ip_v4)
-                # print(f'r1: {inputs_page}')
+    def _get_tasks(
+            self,
+            session: aiohttp.ClientSession,
+            main_page: bool,
+            inputs_page: bool
+    ) -> tuple[Coroutine, ...]:
 
-                r = await inputs_page.get_and_parse(session)
-                # r2 = await inputs_page.get_and_parse(session)
-                # print(f'r1: {inputs_page}')
-                # print(f'r2: {r2}')
-                return r
+        match [main_page, inputs_page]:
+            case [True, True]:
+                return (
+                    MainPage(ip_v4=self.ip_v4).get_and_parse(session),
+                    InputsPage(ip_v4=self.ip_v4).get_and_parse(session)
+                )
+            case [True, False]:
+                return (MainPage(ip_v4=self.ip_v4).get_and_parse(session), )
+            case [False, True]:
+                return (InputsPage(ip_v4=self.ip_v4).get_and_parse(session),)
+            case _:
+                raise ValueError('Не предоставлено данных')
 
+    def merge_all_responses(self, results: list[Task]) -> tuple[None | str, dict]:
 
-                # async with asyncio.TaskGroup() as tg1:
-                #     tasks = [tg1.create_task(main_page.get_and_parse(session)),
-                #              tg1.create_task(inputs_page.get_and_parse(session)),
-                #              ]
-                #     print(tasks)
-                #     for t in tasks:
-                #         print(f't: {t.result()}')
-
+        error,response = None, {}
+        for r in results:
+            curr_err, curr_res = r.result().response
+            response |= curr_res
+            error = curr_err or error
+        return error, response
 
 
 # u = f'http://10.179.16.121/hvi?file=m001a.hvi&pos1=0&pos2=-1'
@@ -159,7 +165,7 @@ async def main():
         pass
         # print(_r.result().splitlines())
         print(_r)
-        print(_r.result().response)
+        print(_r.result())
         # print(f'{_r.exception()!r}')
         print(f'{_r.cancelled()!r}')
     return r

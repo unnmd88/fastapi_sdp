@@ -7,7 +7,7 @@ from pysnmp.entity.engine import SnmpEngine
 
 from api_v1.controller_management.schemas import (
     AllowedControllers,
-    AllowedDataHostFields,
+    AllowedDataHostFields, AllowedMonitoringEntity,
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
@@ -69,6 +69,10 @@ class StatesMonitoring(Controllers):
                 return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
                 return peek_web.MainPage(ip_v4=ip).get_and_parse(session=self._session)
+            case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
+                return peek_web.MultipleData(ip_v4=ip).get_and_parse(session=self._session)
+            case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
+                return peek_web.MultipleData(ip_v4=ip).get_and_parse(session=self._session, main_page=False)
         raise TypeError('DEBUG')
 
 

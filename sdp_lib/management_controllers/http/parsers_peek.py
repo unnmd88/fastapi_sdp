@@ -278,6 +278,7 @@ class InputsPageParser(Parser):
     pattern_input_data = ':D;'
     def __init__(self, content: str):
         super().__init__(content)
+        self.inputs_from_page = {}
         self.parsed_content_as_dict: dict[str, INPUT_DATA] = {}
 
     def parse(self):
@@ -291,8 +292,9 @@ class InputsPageParser(Parser):
         for line in self.content_as_list:
             if self.pattern_input_data in line:
                 index, num, name, state, _time, actuator = self.extract_data_from_line(line)
-                self.parsed_content_as_dict[name] = (index, num, name, state, _time, actuator)
+                self.inputs_from_page[name] = (index, num, name, state, _time, actuator)
         print(f'inputs_data: {self.parsed_content_as_dict}')
+        self.parsed_content_as_dict = self.get_parsed_data_as_dict()
         return self.parsed_content_as_dict
 
     def extract_data_from_line(self, line: str):
@@ -303,39 +305,11 @@ class InputsPageParser(Parser):
         Формирует словарь с распарменными данными о состоянии ДК. Данные берёт из соответствующих атрибутов.
         :return: Словарь с данными о текущем состоянии ДК.
                  Пример:
-                 {
-                    "current_address": "Moscow: Панфиловс пр / Андреевка",
-                    "current_plan": "005",
-                    "current_plan_parameter": "005",
-                    "current_time": "2025-03-01 16:08:41",
-                    "current_alarms": "ISWC",
-                    "number_of_streams": 2,
-                    "streams_data": [
-                        {
-                            "xp": "1",
-                            "current_status": "УПРАВЛЕНИЕ",
-                            "current_mode": "FT",
-                            "current_stage": "3"
-                        },
-                        {
-                            "xp": "2",
-                            "current_status": "УПРАВЛЕНИЕ",
-                            "current_mode": "FT",
-                            "current_stage": "6"
-                        }
-                    ]
-                }
+
         """
-        return
-        return {
-            str(FieldsNames.curr_address): self.address,
-            str(FieldsNames.curr_plan): self.current_plan,
-            str(FieldsNames.curr_plan_param): self.current_plan_param,
-            str(FieldsNames.curr_time): self.current_time,
-            str(FieldsNames.curr_alarms): self.current_alarms,
-            str(FieldsNames.num_streams): len(self.all_xp_data),
-            str(FieldsNames.streams_data): [self._get_xp_data_as_dict(xp_data) for xp_data in self.all_xp_data]
-        }
+        return {str(FieldsNames.inputs): self.inputs_from_page,}
+
+
 
 
 if __name__ == '__main__':

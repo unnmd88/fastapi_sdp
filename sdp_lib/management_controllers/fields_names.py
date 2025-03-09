@@ -38,6 +38,7 @@ class FieldsNames(StrEnum):
     fixed_time_status = 'fixed_time_status'
     local_adaptive_status = 'local_adaptive_status'
     is_mode_man = 'is_mode_man'
+    inputs = 'inputs'
 
     bit_TO = 'TO_bit'
     operation_mode = 'operation_mode'
