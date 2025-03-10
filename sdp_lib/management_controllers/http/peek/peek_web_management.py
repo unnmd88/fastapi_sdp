@@ -1,63 +1,95 @@
+import abc
 import asyncio
 import os
 from asyncio import TaskGroup
+from typing import Self, Type
 
 import aiohttp
 from dotenv import load_dotenv
 
-from sdp_lib.management_controllers.http.peek.peek_web_monitoring import MultipleData, InputsPage
+from sdp_lib.management_controllers.exceptions import ConnectionTimeout, BadControllerType, ErrorSetValue
+from sdp_lib.management_controllers.http.peek import routes
+from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
+from sdp_lib.management_controllers.http.peek.peek_web_monitoring import MultipleData, InputsPage, T
+
 
 load_dotenv()
 
 
-class SetInputs(InputsPage):
+class SetData(PeekWeb):
 
-    route_set_inp = os.getenv('ROUTE_SET_INPUTS')
-    prefix_inputs = os.getenv('INPUT_NAME_FOR_SET_VAL')
+    # main_route: str
+
+    def __init__(self, ip_v4: str):
+        super().__init__(ip_v4=ip_v4)
+        self.get_data_from_web_page_obj: T = self.get_web_page_obj()
+
+    async def set_and_parse(
+            self,
+            url,
+            session,
+            payload
+    ) -> Self:
+
+        error, req_status = None, None
+        try:
+            req_status = await self.post(
+                url=url,
+                session=session,
+                payload=payload
+            )
+        except asyncio.TimeoutError:
+            error = ConnectionTimeout()
+        except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
+            error = BadControllerType()
+        except aiohttp.client_exceptions.ClientConnectorError:
+            error = ConnectionTimeout('from connector')
+        self.response = error, req_status
+        return self
+
+    @abc.abstractmethod
+    def get_web_page_obj(self) -> T:
+        ...
+
+
+class SetInputs(SetData):
+
+    route = routes.set_inputs
+    prefix_inputs = os.getenv('INPUT_PREFIX_FOR_SET_VAL')
 
     INDEX, NUM, NAME, STATE, TIME, VALUE = range(6)
+    RESULT = 1
 
+    def get_web_page_obj(self) -> T:
+        return InputsPage(self.ip_v4)
 
-    async def set_vals(self, session, inps: dict[str, str] = None):
-        url = f'{self.base_url}{self.route_set_inp}'
-        # payload = {'par_name': f'{self.prefix_inputs}16', 'par_value': '0'}
-
-
-        # request_inputs = await MultipleData(ip_v4=self.ip_v4).get_and_parse(session, main_page=False)
-        await self.get_and_parse(session)
-        err, inputs = self.response
-        print(self.parser.inputs_from_page)
-
+    async def set_any_vals(
+            self,
+            session,
+            inps: dict[str, str | int]
+    ):
+        await self.get_data_from_web_page_obj.get_and_parse(session)
+        err, response = self.get_data_from_web_page_obj.response
         if err is not None:
-            self.response = err, inputs
+            self.response = err, response
             return self
-
         async with TaskGroup() as tg2:
             res = [
                 tg2.create_task(
-                    self.post(session=session, url=url, payload=self._get_payload(inp, val)))
+                    self.set_and_parse(session=session, url=self.full_url, payload=self._get_payload(inp, val)))
                     for inp, val in inps.items()
             ]
-        print(f'err: {err}\ninputs: {inputs}')
+        if any(res_task.result().response[self.RESULT] != 200 for res_task in res):
+            self.response = ErrorSetValue(), {}
+            return self
+        await self.get_data_from_web_page_obj.get_and_parse(session)
+        self.response = self.get_data_from_web_page_obj.response
+        return self
 
-        return res
-
-
-
-        # res = await self.post(
-        #     session=session,
-        #     url=url,
-        #     payload=payload
-        # )
-        # return res
-
-    def _get_payload(self, inp_name, val):
-        inp_index = self.parser.inputs_from_page.get(inp_name)[self.parser.INDEX]
-        # print({'par_name': f'{self.prefix_inputs}{inp_index}', 'par_value': val})
+    def _get_payload(self, inp_name, val, inp_index=None):
+        if inp_index is None:
+            inp_index = self.get_data_from_web_page_obj.parser.inputs_from_page.get(inp_name)[self.INDEX]
         return {'par_name': f'{self.prefix_inputs}{inp_index}', 'par_value': val}
-
-
-
 
 
 async def main():
@@ -66,7 +98,9 @@ async def main():
 
     async with aiohttp.ClientSession() as sess:
         obj = SetInputs(ip_v4='10.179.112.241')
-        v = 0
+        # obj = SetInputs(ip_v4='10.45.154.19')
+        # obj = SetInputs(ip_v4='10.179.20.9')
+        v = 1
         inps = {
             'MPP_PH1': v,
             'MPP_PH2': v,
@@ -78,10 +112,14 @@ async def main():
             'MPP_PH8': v,
 
         }
+        # r_r = asyncio.create_task(obj.set_vals(session=sess, inps=inps))
+        # r_r = await obj.set_vals(session=sess, inps=inps)
+        r_r = await obj.set_any_vals(session=sess, inps=inps)
 
-        r = await asyncio.create_task(obj.set_vals(session=sess, inps=inps))
-        print(r)
-    return r
+        print(r_r.response)
+
+
+    return r_r
 
 
 

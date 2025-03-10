@@ -20,3 +20,11 @@ class ConnectionTimeout(Exception):
         return f'Превышено время подключения'
 
 
+class ErrorSetValue(Exception):
+    message = 'Ошибка отправки команды'
+
+    def __init__(self, type_controller=None):
+        self.type_controller = type_controller
+    def __str__(self):
+        return self.message if self.type_controller is None else f'{self.message}: {self.type_controller}'
+

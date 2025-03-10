@@ -7,6 +7,7 @@ from asyncio import TaskGroup, Task
 import aiohttp
 
 from sdp_lib.management_controllers.exceptions import BadControllerType, ConnectionTimeout
+from sdp_lib.management_controllers.http.peek import routes
 from sdp_lib.management_controllers.http.peek.parsers_peek import Parser, MainPageParser, InputsPageParser
 from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
 
@@ -15,8 +16,6 @@ P = TypeVar('P', bound=Parser, covariant=True)
 
 
 class GetData(PeekWeb):
-
-    main_route: str
 
     def __repr__(self):
         return f'repr_{self.__class__}'
@@ -29,11 +28,10 @@ class GetData(PeekWeb):
         error, content_data = None, {}
         try:
             content = await self.fetch(
-                url=f'{self.base_url}{self.main_route}',
+                url=self.full_url,
                 session=session
             )
             self.parser = self.parser_class(content)
-            # content_data = parser.parse()
             self.parser.parse()
 
         except asyncio.TimeoutError:
@@ -42,7 +40,10 @@ class GetData(PeekWeb):
             error = BadControllerType()
         except aiohttp.client_exceptions.ClientConnectorError:
             error = ConnectionTimeout('from connector')
-        self.response = error, self.parser.parsed_content_as_dict or {}
+        if error is None:
+            self.response = error, self.parser.parsed_content_as_dict or {}
+        else:
+            self.response = error,  {}
         return self
 
     @property
@@ -53,7 +54,7 @@ class GetData(PeekWeb):
 
 class MainPage(GetData):
 
-    main_route = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
+    route = routes.main_page
 
     @property
     def parser_class(self) -> Type[MainPageParser]:
@@ -61,7 +62,8 @@ class MainPage(GetData):
 
 
 class InputsPage(GetData):
-    main_route = '/hvi?file=cell1020.hvi&pos1=0&pos2=-1'
+
+    route = routes.get_inputs
 
     @property
     def parser_class(self) -> Type[InputsPageParser]:
