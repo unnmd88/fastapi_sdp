@@ -9,6 +9,9 @@ class Host:
     Базовый класс хоста.
     """
 
+    ERROR      = 0
+    RESPONSE   = 1
+
     def __init__(self, ip_v4: str, host_id=None):
         self.ip_v4 = ip_v4
         self.host_id = host_id

@@ -72,46 +72,15 @@ class SetInputs(SetData):
 
     async def get_data_and_set_response(self):
         await self.web_page_obj.get_and_parse()
-        err, response = self.web_page_obj.response
-        if err is not None:
-            self.response = err, response
-
-    # async def set_any_vals(self, inps: dict[str, str | int]):
-    #
-    #     await self.web_page_obj.get_and_parse()
-    #     err, response = self.web_page_obj.response
-    #     if err is not None:
-    #         self.response = err, response
-    #         return self
-    #
-    #     result = await self.create_tasks_and_send_request_to_set_val(
-    #         session=self.session,
-    #         data_from_web=self.web_page_obj.parser.inputs_from_page,
-    #         data_for_set=inps,
-    #         prefix=self.prefix_inputs,
-    #         index=self.INDEX
-    #     )
-    #
-    #     if any(res_task.result().response[self.RESULT] != 200 for res_task in result):
-    #         self.response = ErrorSetValue(), {}
-    #         return self
-    #     await self.web_page_obj.get_and_parse()
-    #     self.response = self.web_page_obj.response
-    #     return self
-
-
+        if self.web_page_obj.response[self.ERROR] is not None:
+            self.response = self.web_page_obj.response
 
 
     async def set_any_vals(self, inps: dict[str, str | int]):
-
-        err, response = await self.web_page_obj.http_request_to_host()
-        print(self.web_page_obj)
-        if err is not None:
-            self.response = err, response
+        await self.web_page_obj.get_and_parse()
+        if self.web_page_obj.response[self.ERROR] is not None:
+            self.response = self.web_page_obj.response
             return self
-        self.web_page_obj.parser = self.web_page_obj.get_parser_obj(response)
-        self.web_page_obj.parser.parse()
-        print(self.web_page_obj)
 
         result = await self.create_tasks_and_send_request_to_set_val(
             data_from_web=self.web_page_obj.parser.inputs_from_page,
@@ -144,7 +113,7 @@ async def main():
         obj = SetInputs(ip_v4='10.179.107.129', session=sess)
         # obj = SetInputs(ip_v4='10.45.154.19')
         # obj = SetInputs(ip_v4='10.179.20.9')
-        v = 0
+        v = 1
         inps = {
             'MPP_PH1': v,
             'MPP_PH2': v,
