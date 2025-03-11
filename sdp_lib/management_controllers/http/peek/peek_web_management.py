@@ -25,28 +25,28 @@ class SetData(PeekWeb):
         self.web_page_obj: T = self.web_page_class(self.ip_v4, self.session)
         self.method = self.post
 
-    async def set_and_parse(
-            self,
-            url,
-            session,
-            payload
-    ) -> Self:
-
-        error, req_status = None, None
-        try:
-            req_status = await self.post(
-                url=url,
-                session=session,
-                payload=payload
-            )
-        except asyncio.TimeoutError:
-            error = ConnectionTimeout()
-        except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
-            error = BadControllerType()
-        except aiohttp.client_exceptions.ClientConnectorError:
-            error = ConnectionTimeout('from connector')
-        self.response = error, req_status
-        return self
+    # async def set_and_parse(
+    #         self,
+    #         url,
+    #         session,
+    #         payload
+    # ) -> Self:
+    #
+    #     error, req_status = None, None
+    #     try:
+    #         req_status = await self.post(
+    #             url=url,
+    #             session=session,
+    #             payload=payload
+    #         )
+    #     except asyncio.TimeoutError:
+    #         error = ConnectionTimeout()
+    #     except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
+    #         error = BadControllerType()
+    #     except aiohttp.client_exceptions.ClientConnectorError:
+    #         error = ConnectionTimeout('from connector')
+    #     self.response = error, req_status
+    #     return self
 
     async def create_tasks_and_send_request_to_set_val(
             self,
@@ -59,7 +59,7 @@ class SetData(PeekWeb):
         async with TaskGroup() as tg:
             res = [
                 tg.create_task(
-                    self.set_and_parse(
+                    self.http_request_to_host(
                         session=session,
                         url=self.full_url,
                         payload=self.get_payload(inp, val, data_from_web, prefix, index)
@@ -71,11 +71,11 @@ class SetData(PeekWeb):
 
     def get_payload(
             self,
-            inp_name,
-            val,
-            data,
-            prefix,
-            index
+            inp_name: str,
+            val: int,
+            data: str,
+            prefix: str,
+            index: int
     ):
         param_index = data.get(inp_name)[index]
         return {'par_name': f'{prefix}{param_index}', 'par_value': val}
@@ -102,10 +102,36 @@ class SetInputs(SetData):
         if err is not None:
             self.response = err, response
 
+    # async def set_any_vals(self, inps: dict[str, str | int]):
+    #
+    #     await self.web_page_obj.get_and_parse()
+    #     err, response = self.web_page_obj.response
+    #     if err is not None:
+    #         self.response = err, response
+    #         return self
+    #
+    #     result = await self.create_tasks_and_send_request_to_set_val(
+    #         session=self.session,
+    #         data_from_web=self.web_page_obj.parser.inputs_from_page,
+    #         data_for_set=inps,
+    #         prefix=self.prefix_inputs,
+    #         index=self.INDEX
+    #     )
+    #
+    #     if any(res_task.result().response[self.RESULT] != 200 for res_task in result):
+    #         self.response = ErrorSetValue(), {}
+    #         return self
+    #     await self.web_page_obj.get_and_parse()
+    #     self.response = self.web_page_obj.response
+    #     return self
+
+
+
+
+
     async def set_any_vals(self, inps: dict[str, str | int]):
 
-        await self.web_page_obj.get_and_parse()
-        err, response = self.web_page_obj.response
+        err, response = await self.web_page_obj.http_request_to_host()
         if err is not None:
             self.response = err, response
             return self
@@ -118,12 +144,13 @@ class SetInputs(SetData):
             index=self.INDEX
         )
 
-        if any(res_task.result().response[self.RESULT] != 200 for res_task in result):
+        if any(res_task.result()[self.RESULT] != 200 for res_task in result):
             self.response = ErrorSetValue(), {}
             return self
         await self.web_page_obj.get_and_parse()
         self.response = self.web_page_obj.response
         return self
+
 
     async def set_stage(self, value: int):
         await self.web_page_obj.get_and_parse()

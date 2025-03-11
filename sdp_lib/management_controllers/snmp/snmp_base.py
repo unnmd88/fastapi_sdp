@@ -43,7 +43,7 @@ class SnmpHost(Host):
             self,
             oids: list[str | Oids] | KeysView[str | Oids],
             engine: SnmpEngine,
-            timeout: float = 0.4,
+            timeout: float = 2,
             retries: int = 0
     ) -> tuple[errind.ErrorIndication | BadControllerType | None, tuple[ObjectType, ...]]:
         """
