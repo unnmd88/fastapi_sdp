@@ -128,7 +128,6 @@ class SetInputs(SetData):
 
 
 
-
     async def set_any_vals(self, inps: dict[str, str | int]):
 
         err, response = await self.web_page_obj.http_request_to_host()
