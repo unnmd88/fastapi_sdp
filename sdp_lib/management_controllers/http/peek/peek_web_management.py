@@ -25,32 +25,8 @@ class SetData(PeekWeb):
         self.web_page_obj: T = self.web_page_class(self.ip_v4, self.session)
         self.method = self.post
 
-    # async def set_and_parse(
-    #         self,
-    #         url,
-    #         session,
-    #         payload
-    # ) -> Self:
-    #
-    #     error, req_status = None, None
-    #     try:
-    #         req_status = await self.post(
-    #             url=url,
-    #             session=session,
-    #             payload=payload
-    #         )
-    #     except asyncio.TimeoutError:
-    #         error = ConnectionTimeout()
-    #     except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
-    #         error = BadControllerType()
-    #     except aiohttp.client_exceptions.ClientConnectorError:
-    #         error = ConnectionTimeout('from connector')
-    #     self.response = error, req_status
-    #     return self
-
     async def create_tasks_and_send_request_to_set_val(
             self,
-            session: aiohttp.ClientSession,
             data_from_web: dict[str, str],
             data_for_set: dict[str, str],
             prefix: str,
@@ -60,8 +36,6 @@ class SetData(PeekWeb):
             res = [
                 tg.create_task(
                     self.http_request_to_host(
-                        session=session,
-                        url=self.full_url,
                         payload=self.get_payload(inp, val, data_from_web, prefix, index)
                     )
                 )
@@ -73,7 +47,7 @@ class SetData(PeekWeb):
             self,
             inp_name: str,
             val: int,
-            data: str,
+            data: dict,
             prefix: str,
             index: int
     ):
@@ -131,12 +105,15 @@ class SetInputs(SetData):
     async def set_any_vals(self, inps: dict[str, str | int]):
 
         err, response = await self.web_page_obj.http_request_to_host()
+        print(self.web_page_obj)
         if err is not None:
             self.response = err, response
             return self
+        self.web_page_obj.parser = self.web_page_obj.get_parser_obj(response)
+        self.web_page_obj.parser.parse()
+        print(self.web_page_obj)
 
         result = await self.create_tasks_and_send_request_to_set_val(
-            session=self.session,
             data_from_web=self.web_page_obj.parser.inputs_from_page,
             data_for_set=inps,
             prefix=self.prefix_inputs,
@@ -164,9 +141,10 @@ async def main():
 
     async with aiohttp.ClientSession() as sess:
         obj = SetInputs(ip_v4='10.179.112.241', session=sess)
+        obj = SetInputs(ip_v4='10.179.107.129', session=sess)
         # obj = SetInputs(ip_v4='10.45.154.19')
         # obj = SetInputs(ip_v4='10.179.20.9')
-        v = 1
+        v = 0
         inps = {
             'MPP_PH1': v,
             'MPP_PH2': v,

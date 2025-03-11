@@ -34,9 +34,10 @@ class GetData(PeekWeb):
 
     def __repr__(self):
         return (
-            f'cls.parser_class: {self.parser_class}]\n'
+            f'cls.parser_class: {self.parser_class}\n'
             f'self.parser: {self.parser}\n'
-            f'self.response: {self.response}'
+            f'self.response: {self.response}\n'
+            f'self.method: {self.method.__name__}'
         )
 
     # async def http_request_to_host(self) -> tuple[Exception | None, str | None]:

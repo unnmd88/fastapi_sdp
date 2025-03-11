@@ -14,6 +14,7 @@ load_dotenv()
 class PeekWeb(HttpHost):
 
     cookies = {os.getenv('peek_web_k'): os.getenv('peek_web_v')}
+    print(cookies)
 
     async def fetch(
             self,
@@ -55,7 +56,7 @@ class PeekWeb(HttpHost):
                  при ошибке в получении контента, иначе None.
                  [1] -> контент веб страницы типа str, если запрос выполнен успешно, иначе None.
         """
-
+        print(f'++ self.method: {self.method.__name__}')
         error = content = None
         try:
             content = await self.method(
