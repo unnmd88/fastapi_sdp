@@ -28,7 +28,7 @@ class SetData(PeekWeb):
     async def create_tasks_and_send_request_to_set_val(
             self,
             data_from_web: dict[str, str],
-            data_for_set: dict[str, str],
+            data_for_set: dict[str, int],
             prefix: str,
             index: int
     ):
@@ -68,28 +68,27 @@ class SetInputs(SetData):
     matches_name_inp_to_num_stage = {num: f'{web_inputs.prefix_man_stage}{num}' for num in range(1, 9)}
 
     INDEX, NUM, NAME, STATE, TIME, VALUE = range(6)
-    RESULT = 1
 
-    async def get_data_and_set_response(self):
+    async def get_data_and_set_response_if_has_err(self) -> bool:
         await self.web_page_obj.get_and_parse()
         if self.web_page_obj.response[self.ERROR] is not None:
             self.response = self.web_page_obj.response
-
+            return False
+        return True
 
     async def set_any_vals(self, inps: dict[str, str | int]):
-        await self.web_page_obj.get_and_parse()
-        if self.web_page_obj.response[self.ERROR] is not None:
-            self.response = self.web_page_obj.response
+        result = await self.get_data_and_set_response_if_has_err()
+        if not result:
             return self
 
-        result = await self.create_tasks_and_send_request_to_set_val(
+        sending_result = await self.create_tasks_and_send_request_to_set_val(
             data_from_web=self.web_page_obj.parser.inputs_from_page,
             data_for_set=inps,
             prefix=self.prefix_inputs,
             index=self.INDEX
         )
 
-        if any(res_task.result()[self.RESULT] != 200 for res_task in result):
+        if any(res_task.result()[self.RESPONSE] != 200 for res_task in sending_result):
             self.response = ErrorSetValue(), {}
             return self
         await self.web_page_obj.get_and_parse()
@@ -113,7 +112,7 @@ async def main():
         obj = SetInputs(ip_v4='10.179.107.129', session=sess)
         # obj = SetInputs(ip_v4='10.45.154.19')
         # obj = SetInputs(ip_v4='10.179.20.9')
-        v = 1
+        v = 0
         inps = {
             'MPP_PH1': v,
             'MPP_PH2': v,
