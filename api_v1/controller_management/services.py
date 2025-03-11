@@ -67,11 +67,11 @@ class StatesMonitoring(Controllers):
                 scn = data_host.get(AllowedDataHostFields.scn)
                 return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
-                return peek_web_monitoring.MainPage(ip_v4=ip).get_and_parse(session=self._session)
+                return peek_web_monitoring.MainPage(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                return peek_web_monitoring.MultipleData(ip_v4=ip).get_and_parse(session=self._session)
+                return peek_web_monitoring.MultipleData(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_web_monitoring.MultipleData(ip_v4=ip).get_and_parse(session=self._session, main_page=False)
+                return peek_web_monitoring.MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
         raise TypeError('DEBUG')
 
 

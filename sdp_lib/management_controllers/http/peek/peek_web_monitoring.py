@@ -20,54 +20,80 @@ class GetData(PeekWeb):
     def __repr__(self):
         return f'repr_{self.__class__}'
 
-    async def get_and_parse(
-            self,
-            session: aiohttp.ClientSession,
-    ) -> Self:
+    parser_class: Type[P]
 
-        error, content_data = None, {}
+    async def get_content_from_web_page(self) -> tuple[Exception | None, str | None]:
+        """
+        Совершает http запрос получения контента веб страницы.
+        :return: Кортеж из 2 объектов:
+                 [0] -> экземпляр производного класса от Exception
+                 при ошибке в получении контента, иначе None.
+                 [1] -> контент веб страницы типа str, если запрос выполнен успешно, иначе None.
+        """
+
+        error = content = None
         try:
             content = await self.fetch(
                 url=self.full_url,
-                session=session
+                session=self.session
             )
-            self.parser = self.parser_class(content)
-            self.parser.parse()
-
         except asyncio.TimeoutError:
             error = ConnectionTimeout()
         except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
             error = BadControllerType()
         except aiohttp.client_exceptions.ClientConnectorError:
             error = ConnectionTimeout('from connector')
+        return error, content
+
+    async def get_and_parse(self) -> Self:
+        """
+        Получает контент, парсит его для вычленения данных.
+        :return: Self.
+        """
+        error, content_data = await self.get_content_from_web_page()
         if error is None:
-            self.response = error, self.parser.parsed_content_as_dict or {}
+            self.parser = self.get_parser_class(content_data)
+            self.parser.parse()
         else:
-            self.response = error,  {}
+            self.parser = None
+        self.set_response_attr(error, self.parser)
         return self
 
-    @property
-    @abc.abstractmethod
-    def parser_class(self) -> Type[P]:
-        ...
+    def set_response_attr(self, error: Exception | None, parser: P | None) -> None:
+        """
+        Присваивает атрибуту self.response данные, на основании
+        переданных аргументов.
+        :param error: None или экземпляр производного класса от Exception.
+        :param parser: instance экземпляра парсера, который хранит в своих атрибутах
+                       распарсенные данный веб контента.
+        :return: None.
+        """
+        if error is None and parser is not None:
+            self.response = error, parser.parsed_content_as_dict
+        else:
+            self.response = error,  {}
+
+    @classmethod
+    def get_parser_class(cls, content: str) -> P:
+        """
+        Возвращает объект класса парсера.
+        :param content: Контент веб страницы, который будет
+                        передан конструктору класса cls.parser_class.
+        :return: Экземпляр класса парсера.
+        """
+        return cls.parser_class(content)
 
 
 class MainPage(GetData):
 
     route = routes.main_page
-
-    @property
-    def parser_class(self) -> Type[MainPageParser]:
-        return MainPageParser
+    parser_class = MainPageParser
 
 
 class InputsPage(GetData):
 
     route = routes.get_inputs
-
-    @property
-    def parser_class(self) -> Type[InputsPageParser]:
-        return InputsPageParser
+    parser_class = InputsPageParser
 
 
 T = TypeVar('T', bound=GetData, covariant=True)
@@ -81,12 +107,11 @@ class MultipleData(PeekWeb):
 
     async def get_and_parse(
             self,
-            session,
             *,
             main_page=True,
             inputs_page=True
     ):
-            tasks = self._get_tasks(session, main_page, inputs_page)
+            tasks = self._get_tasks(main_page, inputs_page)
             async with asyncio.TaskGroup() as tg1:
                 result = [tg1.create_task(_coro) for _coro in tasks]
             self.response = self.merge_all_responses(result)
@@ -96,32 +121,40 @@ class MultipleData(PeekWeb):
 
     def _get_tasks(
             self,
-            session: aiohttp.ClientSession,
             main_page: bool,
             inputs_page: bool
-    ) -> tuple[Coroutine, ...]:
-
+    ) -> list[Coroutine]:
+        """
+        Собирает список задач(корутин).
+        :param main_page: Требуется ли задача с получением контента основной страницы.
+        :param inputs_page: Требуется ли задача с получением контента ВВОДОВ.
+        :return: Список с задачами(корутинами).
+        """
         match [main_page, inputs_page]:
             case [True, True]:
-                return (
-                    MainPage(ip_v4=self.ip_v4).get_and_parse(session),
-                    InputsPage(ip_v4=self.ip_v4).get_and_parse(session)
-                )
+                return [
+                    MainPage(self.ip_v4, self.session).get_and_parse(),
+                    InputsPage(self.ip_v4, self.session).get_and_parse()
+                ]
             case [True, False]:
-                return (MainPage(ip_v4=self.ip_v4).get_and_parse(session), )
+                return [MainPage(self.ip_v4, self.session).get_and_parse()]
             case [False, True]:
-                return (InputsPage(ip_v4=self.ip_v4).get_and_parse(session),)
+                return [InputsPage(self.ip_v4, self.session).get_and_parse()]
             case _:
                 raise ValueError('Не предоставлено данных')
 
     def merge_all_responses(self, results: list[Task]) -> tuple[None | str, dict]:
-
+        """
+        Объединяет словари с распарсенными данными контента веб страницы.
+        :param results: Список с завершёнными задачами.
+        :return:
+        """
         error,response = None, {}
         for r in results:
             curr_err, curr_res = r.result().response
             response |= curr_res
             error = curr_err or error
-        return error, response
+        return error, response # Fix me
 
 
 # u = f'http://10.179.16.121/hvi?file=m001a.hvi&pos1=0&pos2=-1'
