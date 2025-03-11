@@ -15,6 +15,7 @@ class HttpHost(Host):
         self.base_url = f'http://{self.ip_v4}'
         self.session = session
         # self.full_url = f'{self.base_url}{self.main_route}'
+        self.method = None
         self.parser = None
 
     @property

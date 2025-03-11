@@ -40,14 +40,34 @@ class PeekWeb(HttpHost):
         ) as response:
             assert response.status == 200
             print(f'response.status == {response.status}')
-
-            # raise TimeoutError
-            # raise TypeError
             return response.status
-
             print(f'response.status == {response.status}')
             print(f'response.host == {response.host}')
             print(f'response.ok == {response.ok}')
             print(f'response.ok == {response.history}')
             return await response.text()
 
+    async def http_request_to_host(self, *, timeout: float = 1, **kwargs) -> tuple[Exception | None, str | None]:
+        """
+        Совершает http запрос получения контента веб страницы.
+        :return: Кортеж из 2 объектов:
+                 [0] -> экземпляр производного класса от Exception
+                 при ошибке в получении контента, иначе None.
+                 [1] -> контент веб страницы типа str, если запрос выполнен успешно, иначе None.
+        """
+
+        error = content = None
+        try:
+            content = await self.method(
+                url=self.full_url,
+                session=self.session,
+                timeout=timeout,
+                **kwargs
+            )
+        except asyncio.TimeoutError:
+            error = ConnectionTimeout()
+        except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
+            error = BadControllerType()
+        except aiohttp.client_exceptions.ClientConnectorError:
+            error = ConnectionTimeout('from connector')
+        return error, content

@@ -1,4 +1,3 @@
-import abc
 import asyncio
 import time
 from typing import Self, TypeVar, Coroutine, Type
@@ -17,42 +16,60 @@ P = TypeVar('P', bound=Parser, covariant=True)
 
 class GetData(PeekWeb):
 
-    def __repr__(self):
-        return f'repr_{self.__class__}'
-
     parser_class: Type[P]
 
-    async def get_content_from_web_page(self) -> tuple[Exception | None, str | None]:
-        """
-        Совершает http запрос получения контента веб страницы.
-        :return: Кортеж из 2 объектов:
-                 [0] -> экземпляр производного класса от Exception
-                 при ошибке в получении контента, иначе None.
-                 [1] -> контент веб страницы типа str, если запрос выполнен успешно, иначе None.
-        """
+    def __init__(self, ip_v4: str, session: aiohttp.ClientSession):
+        super().__init__(ip_v4, session)
+        self.method = self.fetch
 
-        error = content = None
-        try:
-            content = await self.fetch(
-                url=self.full_url,
-                session=self.session
-            )
-        except asyncio.TimeoutError:
-            error = ConnectionTimeout()
-        except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
-            error = BadControllerType()
-        except aiohttp.client_exceptions.ClientConnectorError:
-            error = ConnectionTimeout('from connector')
-        return error, content
+    @classmethod
+    def get_parser_obj(cls, content: str) -> P:
+        """
+        Возвращает объект класса парсера.
+        :param content: Контент веб страницы, который будет
+                        передан конструктору класса cls.parser_class.
+        :return: Экземпляр класса парсера.
+        """
+        return cls.parser_class(content)
+
+    def __repr__(self):
+        return (
+            f'cls.parser_class: {self.parser_class}]\n'
+            f'self.parser: {self.parser}\n'
+            f'self.response: {self.response}'
+        )
+
+    # async def http_request_to_host(self) -> tuple[Exception | None, str | None]:
+    #     """
+    #     Совершает http запрос получения контента веб страницы.
+    #     :return: Кортеж из 2 объектов:
+    #              [0] -> экземпляр производного класса от Exception
+    #              при ошибке в получении контента, иначе None.
+    #              [1] -> контент веб страницы типа str, если запрос выполнен успешно, иначе None.
+    #     """
+    #
+    #     error = content = None
+    #     try:
+    #         content = await self.fetch(
+    #             url=self.full_url,
+    #             session=self.session
+    #         )
+    #     except asyncio.TimeoutError:
+    #         error = ConnectionTimeout()
+    #     except (AssertionError, aiohttp.client_exceptions.ClientConnectorCertificateError):
+    #         error = BadControllerType()
+    #     except aiohttp.client_exceptions.ClientConnectorError:
+    #         error = ConnectionTimeout('from connector')
+    #     return error, content
 
     async def get_and_parse(self) -> Self:
         """
         Получает контент, парсит его для вычленения данных.
         :return: Self.
         """
-        error, content_data = await self.get_content_from_web_page()
+        error, content_data = await self.http_request_to_host()
         if error is None:
-            self.parser = self.get_parser_class(content_data)
+            self.parser = self.get_parser_obj(content_data)
             self.parser.parse()
         else:
             self.parser = None
@@ -72,16 +89,6 @@ class GetData(PeekWeb):
             self.response = error, parser.parsed_content_as_dict
         else:
             self.response = error,  {}
-
-    @classmethod
-    def get_parser_class(cls, content: str) -> P:
-        """
-        Возвращает объект класса парсера.
-        :param content: Контент веб страницы, который будет
-                        передан конструктору класса cls.parser_class.
-        :return: Экземпляр класса парсера.
-        """
-        return cls.parser_class(content)
 
 
 class MainPage(GetData):
@@ -156,9 +163,6 @@ class MultipleData(PeekWeb):
             error = curr_err or error
         return error, response # Fix me
 
-
-# u = f'http://10.179.16.121/hvi?file=m001a.hvi&pos1=0&pos2=-1'
-# main_route = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
 
 async def main():
 

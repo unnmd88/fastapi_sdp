@@ -61,9 +61,9 @@ class BaseUG405(SnmpHost):
         if self.scn_as_dec is None:
             err, var_b = await self.get(oids=[Oids.utcReplySiteID], engine=engine)
             if self.set_scn_from_response(err, var_b) is None:
-                return err, var_b
-        error, parsed_response =  await super().get_and_parse(engine=engine)
-        return error, parsed_response
+                self.response = err, var_b
+                return self
+        return await super().get_and_parse(engine=engine)
 
     def set_scn_from_response(self, error_indication, var_binds: tuple):
         raise NotImplemented

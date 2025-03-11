@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 main_page =  os.getenv('ROUTE_GET_CURRENT_STATE')
