@@ -39,6 +39,7 @@ class FieldsNames(StrEnum):
     local_adaptive_status = 'local_adaptive_status'
     is_mode_man = 'is_mode_man'
     inputs = 'inputs'
+    sent_data = 'sent_data'
 
     bit_TO = 'TO_bit'
     operation_mode = 'operation_mode'

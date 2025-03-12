@@ -19,12 +19,26 @@ load_dotenv()
 
 
 class PropertiesNames(StrEnum):
-    index = 'index'
-    num = 'num'
-    name = 'name'
-    state = 'state'
-    time = 'time'
-    value = 'value'
+    index   = 'index'
+    num     = 'num'
+    name    = 'name'
+    state   = 'state'
+    time    = 'time'
+    value   = 'value'
+
+
+class ActuatorAsChar(StrEnum):
+    VF     = '-'
+    OFF    = 'ВЫКЛ'
+    ON     = 'ВКЛ'
+
+
+class ActuatorAsValue(StrEnum):
+    VF     = '0'
+    OFF    = '1'
+    ON     = '2'
+
+
 
 
 class SetData(PeekWeb):
@@ -39,6 +53,7 @@ class SetData(PeekWeb):
         super().__init__(ip_v4=ip_v4, session=session)
         self.web_page_obj: T = self.web_page_class(self.ip_v4, self.session)
         self.method = self.post
+        self.data_for_set_to_web = None
 
     async def set_any_vals(
             self,
@@ -62,6 +77,7 @@ class SetData(PeekWeb):
 
         await self.web_page_obj.get_and_parse()
         self.response = self.web_page_obj.response
+        print(f'self.response: {self.response}')
         return self
 
     async def get_data_from_web_page_and_set_response_if_has_err(self) -> bool:
@@ -115,17 +131,20 @@ class SetInputs(SetData):
     prefix_par_name = web_inputs.prefix_set_val
 
     all_mpp_inputs = set(os.getenv('ALL_MPP_INPUTS').split())
-    mpp_stages_inputs = set(os.getenv('MPP_STAGES_INPUTS').split())
+    # mpp_stages_inputs = set(os.getenv('MPP_STAGES_INPUTS').split())
+    mpp_stages_inputs = set(web_inputs.mpp_stages_inputs.split())
 
-    prefix_man_stage = web_inputs.prefix_man_stage
-    matches_name_inp_to_num_stage = {num: f'{web_inputs.prefix_man_stage}{num}' for num in range(1, 9)}
+
+
+    # prefix_man_stage = web_inputs.prefix_man_stage
+    # matches_name_inp_to_num_stage = {num: f'{web_inputs.prefix_man_stage}{num}' for num in range(1, 9)}
 
     # NUM, NAME, STATE, TIME, VALUE = range(1, 6)
-    NUM     = 1
-    NAME    = 2
-    STATE   = 3
-    TIME    = 4
-    VALUE   = 5
+    NUM        = 1
+    NAME       = 2
+    STATE      = 3
+    TIME       = 4
+    ACTUATOR   = 5
 
 
     async def set_stage(self, stage_value: int):
@@ -133,11 +152,10 @@ class SetInputs(SetData):
         if not result:
             return self
 
-        data_to_set = self.make_values_to_set_stage(stage_value)
-        print(data_to_set)
-        print(len(data_to_set))
-        return await self.set_any_vals(data_to_set)
-        print(f'result:: {result}')
+        self.data_for_set_to_web = self.make_values_to_set_stage(stage_value)
+        print(self.data_for_set_to_web)
+        print(len(self.data_for_set_to_web))
+        return await self.set_any_vals(self.data_for_set_to_web)
 
     def make_values_to_set_stage(self, stage_value: int) -> dict[str, int]:
         """
@@ -154,8 +172,20 @@ class SetInputs(SetData):
 
         data = {}
         for name, props in self.web_page_obj.parser.parsed_content_as_dict.items():
-            if int(name[-1]) == stage_value and props[self.STATE] == :
-            data[name]
+            if name in self.mpp_stages_inputs and int(name[-1]) != stage_value:
+                data[name] = int(ActuatorAsValue.OFF)
+
+        mpp_man: web_inputs.input_properties = self.web_page_obj.parser.parsed_content_as_dict[web_inputs.mpp_man]
+        mpp_stage: web_inputs.input_properties = (
+            self.web_page_obj.parser.parsed_content_as_dict[f'{web_inputs.prefix_mpp_stage}{str(stage_value)}']
+        )
+        if mpp_man[self.STATE] == '0' or mpp_man[self.ACTUATOR] != ActuatorAsChar.ON:
+            data[web_inputs.mpp_man] = int(ActuatorAsValue.ON)
+        if mpp_stage[self.STATE] == '0' or mpp_stage[self.ACTUATOR] != ActuatorAsChar.ON:
+            data[f'{web_inputs.prefix_mpp_stage}{str(stage_value)}'] = int(ActuatorAsValue.ON)
+
+        print(f'part2 data: {data}')
+        return data
 
     def make_values_to_reset_man(self) -> dict[str, int]:
         return {name: 0 for name in self.web_page_obj.parser.parsed_content_as_dict if name in self.all_mpp_inputs}

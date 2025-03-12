@@ -15,6 +15,7 @@ class Host:
     def __init__(self, ip_v4: str, host_id=None):
         self.ip_v4 = ip_v4
         self.host_id = host_id
+        # self.response: tuple[None | Exception, dict] | None = None
         self.response: tuple[None | Exception, dict] | None = None
 
     def __repr__(self):
