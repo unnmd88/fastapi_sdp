@@ -7,6 +7,7 @@ from typing import Self, Type
 
 import aiohttp
 from dotenv import load_dotenv
+from watchfiles import awatch
 
 from sdp_lib.management_controllers.exceptions import ConnectionTimeout, BadControllerType, ErrorSetValue
 from sdp_lib.management_controllers.http.peek import routes, web_inputs
@@ -30,12 +31,45 @@ class SetData(PeekWeb):
 
     web_page_class: Type[T]
 
+    prefix_par_name: str
+
     INDEX = 0
 
     def __init__(self, ip_v4: str, session: aiohttp.ClientSession):
         super().__init__(ip_v4=ip_v4, session=session)
         self.web_page_obj: T = self.web_page_class(self.ip_v4, self.session)
         self.method = self.post
+
+    async def set_any_vals(
+            self,
+            data_to_set: dict[str, str | int],
+            start_by_getting_data_from_web_page=False
+    ):
+        if start_by_getting_data_from_web_page:
+            result = await self.get_data_from_web_page_and_set_response_if_has_err()
+            if not result:
+                return self
+
+        sending_result = await self.create_tasks_and_send_request_to_set_val(
+            data_from_web=self.web_page_obj.parser.parsed_content_as_dict,
+            data_for_set=data_to_set,
+            prefix=self.prefix_par_name,
+            index=self.INDEX
+        )
+
+        if not self.check_sending_result_and_set_response_if_has_err(sending_result):
+            return self
+
+        await self.web_page_obj.get_and_parse()
+        self.response = self.web_page_obj.response
+        return self
+
+    async def get_data_from_web_page_and_set_response_if_has_err(self) -> bool:
+        await self.web_page_obj.get_and_parse()
+        if self.web_page_obj.response[self.ERROR] is not None:
+            self.response = self.web_page_obj.response
+            return False
+        return True
 
     async def create_tasks_and_send_request_to_set_val(
             self,
@@ -67,13 +101,6 @@ class SetData(PeekWeb):
         param_index = '' if index is None else data.get(inp_name)[index]
         return {'par_name': f'{prefix}{param_index}', 'par_value': val}
 
-    async def get_data_from_web_page_and_set_response_if_has_err(self) -> bool:
-        await self.web_page_obj.get_and_parse()
-        if self.web_page_obj.response[self.ERROR] is not None:
-            self.response = self.web_page_obj.response
-            return False
-        return True
-
     def check_sending_result_and_set_response_if_has_err(self,sending_result) -> bool:
         if any(res_task.result()[self.RESPONSE] != 200 for res_task in sending_result):
             self.response = ErrorSetValue(), {}
@@ -84,9 +111,8 @@ class SetData(PeekWeb):
 class SetInputs(SetData):
 
     web_page_class = InputsPage
-
     route = routes.set_inputs
-    prefix_inputs = web_inputs.prefix_set_val
+    prefix_par_name = web_inputs.prefix_set_val
 
     all_mpp_inputs = set(os.getenv('ALL_MPP_INPUTS').split())
     mpp_stages_inputs = set(os.getenv('MPP_STAGES_INPUTS').split())
@@ -94,34 +120,46 @@ class SetInputs(SetData):
     prefix_man_stage = web_inputs.prefix_man_stage
     matches_name_inp_to_num_stage = {num: f'{web_inputs.prefix_man_stage}{num}' for num in range(1, 9)}
 
-    NUM, NAME, STATE, TIME, VALUE = range(1, 6)
+    # NUM, NAME, STATE, TIME, VALUE = range(1, 6)
+    NUM     = 1
+    NAME    = 2
+    STATE   = 3
+    TIME    = 4
+    VALUE   = 5
 
-    async def set_any_vals(self, data_to_set: dict[str, str | int]):
+
+    async def set_stage(self, stage_value: int):
         result = await self.get_data_from_web_page_and_set_response_if_has_err()
         if not result:
             return self
 
-        sending_result = await self.create_tasks_and_send_request_to_set_val(
-            data_from_web=self.web_page_obj.parser.data_for_response,
-            data_for_set=data_to_set,
-            prefix=self.prefix_inputs,
-            index=self.INDEX
-        )
+        data_to_set = self.make_values_to_set_stage(stage_value)
+        print(data_to_set)
+        print(len(data_to_set))
+        return await self.set_any_vals(data_to_set)
+        print(f'result:: {result}')
 
-        if not self.check_sending_result_and_set_response_if_has_err(sending_result):
-            return self
+    def make_values_to_set_stage(self, stage_value: int) -> dict[str, int]:
+        """
 
-        await self.web_page_obj.get_and_parse()
-        self.response = self.web_page_obj.response
-        return self
+        Пример name и props:
+        name          -> 'MPP_PH2'
+        props         -> ('9', '10', 'MPP_PH2', '1', '1', '-')
+        {name: props} ->  {'MPP_PH2': ('9', '10', 'MPP_PH2', '1', '1', '-')}
+        :param stage_value:
+        :return:
+        """
+        if stage_value == 0:
+            return self.make_values_to_reset_man()
 
+        data = {}
+        for name, props in self.web_page_obj.parser.parsed_content_as_dict.items():
+            if int(name[-1]) == stage_value and props[self.STATE] == :
+            data[name]
 
-    async def set_stage(self, value: int):
-        await self.web_page_obj.get_and_parse()
-        err, response = self.web_page_obj.response
-        if err is not None:
-            self.response = err, response
-            return self
+    def make_values_to_reset_man(self) -> dict[str, int]:
+        return {name: 0 for name in self.web_page_obj.parser.parsed_content_as_dict if name in self.all_mpp_inputs}
+
 
 
 
@@ -146,7 +184,8 @@ async def main():
         }
         # r_r = asyncio.create_task(obj.set_vals(session=sess, inps=inps))
         # r_r = await obj.set_vals(session=sess, inps=inps)
-        r_r = await obj.set_any_vals(data_to_set=inps)
+        # r_r = await obj.set_any_vals(data_to_set=inps, start_by_getting_data_from_web_page=True)
+        r_r = await obj.set_stage(0)
 
         print(r_r.response)
 
