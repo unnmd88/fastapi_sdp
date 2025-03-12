@@ -14,7 +14,6 @@ load_dotenv()
 class PeekWeb(HttpHost):
 
     cookies = {os.getenv('peek_web_k'): os.getenv('peek_web_v')}
-    print(cookies)
 
     async def fetch(
             self,

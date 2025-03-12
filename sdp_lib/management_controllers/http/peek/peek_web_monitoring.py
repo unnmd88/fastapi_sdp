@@ -83,11 +83,11 @@ class GetData(PeekWeb):
         переданных аргументов.
         :param error: None или экземпляр производного класса от Exception.
         :param parser: instance экземпляра парсера, который хранит в своих атрибутах
-                       распарсенные данный веб контента.
+                       распарсенные данный веб контента. parsed_content_as_dict
         :return: None.
         """
         if error is None and parser is not None:
-            self.response = error, parser.parsed_content_as_dict
+            self.response = error, parser.data_for_response
         else:
             self.response = error,  {}
 

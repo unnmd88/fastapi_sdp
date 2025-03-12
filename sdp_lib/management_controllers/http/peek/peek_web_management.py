@@ -39,6 +39,7 @@ class SetData(PeekWeb):
 
     async def create_tasks_and_send_request_to_set_val(
             self,
+            *,
             data_from_web: dict[str, str],
             data_for_set: dict[str, int],
             prefix: str,
@@ -58,13 +59,20 @@ class SetData(PeekWeb):
     def get_payload(
             self,
             inp_name: str,
-            val: int,
+            val: float,
             data: dict,
             prefix: str,
-            index: int
+            index: int | None
     ):
-        param_index = data.get(inp_name)[index]
+        param_index = '' if index is None else data.get(inp_name)[index]
         return {'par_name': f'{prefix}{param_index}', 'par_value': val}
+
+    async def get_data_from_web_page_and_set_response_if_has_err(self) -> bool:
+        await self.web_page_obj.get_and_parse()
+        if self.web_page_obj.response[self.ERROR] is not None:
+            self.response = self.web_page_obj.response
+            return False
+        return True
 
     def check_sending_result_and_set_response_if_has_err(self,sending_result) -> bool:
         if any(res_task.result()[self.RESPONSE] != 200 for res_task in sending_result):
@@ -88,21 +96,14 @@ class SetInputs(SetData):
 
     NUM, NAME, STATE, TIME, VALUE = range(1, 6)
 
-    async def get_data_and_set_response_if_has_err(self) -> bool:
-        await self.web_page_obj.get_and_parse()
-        if self.web_page_obj.response[self.ERROR] is not None:
-            self.response = self.web_page_obj.response
-            return False
-        return True
-
-    async def set_any_vals(self, inps_to_set: dict[str, str | int]):
-        result = await self.get_data_and_set_response_if_has_err()
+    async def set_any_vals(self, data_to_set: dict[str, str | int]):
+        result = await self.get_data_from_web_page_and_set_response_if_has_err()
         if not result:
             return self
 
         sending_result = await self.create_tasks_and_send_request_to_set_val(
-            data_from_web=self.web_page_obj.parser.inputs_from_page,
-            data_for_set=inps_to_set,
+            data_from_web=self.web_page_obj.parser.data_for_response,
+            data_for_set=data_to_set,
             prefix=self.prefix_inputs,
             index=self.INDEX
         )
@@ -131,7 +132,7 @@ async def main():
         obj = SetInputs(ip_v4='10.179.107.129', session=sess)
         # obj = SetInputs(ip_v4='10.45.154.19')
         # obj = SetInputs(ip_v4='10.179.20.9')
-        v = 0
+        v = 1
         inps = {
             'MPP_PH1': v,
             'MPP_PH2': v,
@@ -145,7 +146,7 @@ async def main():
         }
         # r_r = asyncio.create_task(obj.set_vals(session=sess, inps=inps))
         # r_r = await obj.set_vals(session=sess, inps=inps)
-        r_r = await obj.set_any_vals(inps_to_set=inps)
+        r_r = await obj.set_any_vals(data_to_set=inps)
 
         print(r_r.response)
 

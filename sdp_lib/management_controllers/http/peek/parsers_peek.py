@@ -1,9 +1,13 @@
+import abc
 import json
 import pprint
 import time
-from typing import TypeVar
+from typing import TypeVar, Any
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
+
+
+properties = dict[str, tuple[str, ...]]
 
 
 class Parser:
@@ -11,7 +15,8 @@ class Parser:
     def __init__(self, content: str):
         self.content = content
         self.content_as_list = self.content.splitlines()
-        self.parsed_content_as_dict = None
+        self.parsed_content_as_dict = {}
+        self.data_for_response: dict[str, properties] | None = None
 
     def base_extract_data_from_line(self, line: str, pattern: str):
         """
@@ -27,6 +32,9 @@ class Parser:
             pass
         return None
 
+    def build_attr_data_for_response(self, props: list[tuple[str, Any]]) -> dict[str, properties]:
+        self.data_for_response = {k: v for k, v in props}
+        return self.data_for_response
 
 class MainPageParser(Parser):
     """
@@ -171,7 +179,7 @@ class MainPageParser(Parser):
         mode, stage = self.extract_current_xp_mode_and_stage(lines[5])
         return num_xp, state, mode, stage
 
-    def parse(self, get_parsed_data_as_dict=True):
+    def parse(self):
         """
         Парсит данные с основной web страницы ДК Peek, присваивая их соответствующим атрибутам.
         :param get_parsed_data_as_dict: Параметр является опцией.
@@ -197,12 +205,9 @@ class MainPageParser(Parser):
                 stream_data = self.content_as_list[i: i + 7]
                 self.all_xp_data.append(self.parse_xp_data(stream_data))
 
-        if get_parsed_data_as_dict:
-            self.parsed_content_as_dict = self.get_parsed_data_as_dict()
-            assert self.all_xp_data and self.parsed_content_as_dict
-            return self.parsed_content_as_dict
-        else:
-            assert self.all_xp_data
+        # assert self.all_xp_data and self.data_for_response #DEBUG
+        # print(f'main_page.build_data_for_response(): {self.build_attr_data_for_response(self._get_properties())}')
+        return self.build_attr_data_for_response(self._get_properties())
 
     def _get_xp_data_as_dict(self, xp_data: tuple[str, str, str, str]):
         """
@@ -224,44 +229,55 @@ class MainPageParser(Parser):
             str(FieldsNames.curr_stage): xp_data[3],
         }
 
-    def get_parsed_data_as_dict(self) -> dict[str, str | list]:
-        """
-        Формирует словарь с распарменными данными о состоянии ДК. Данные берёт из соответствующих атрибутов.
-        :return: Словарь с данными о текущем состоянии ДК.
-                 Пример:
-                 {
-                    "current_address": "Moscow: Панфиловс пр / Андреевка",
-                    "current_plan": "005",
-                    "current_plan_parameter": "005",
-                    "current_time": "2025-03-01 16:08:41",
-                    "current_alarms": "ISWC",
-                    "number_of_streams": 2,
-                    "streams_data": [
-                        {
-                            "xp": "1",
-                            "current_status": "УПРАВЛЕНИЕ",
-                            "current_mode": "FT",
-                            "current_stage": "3"
-                        },
-                        {
-                            "xp": "2",
-                            "current_status": "УПРАВЛЕНИЕ",
-                            "current_mode": "FT",
-                            "current_stage": "6"
-                        }
-                    ]
-                }
-        """
-        return {
-            str(FieldsNames.curr_address): self.address,
-            str(FieldsNames.curr_plan): self.current_plan,
-            str(FieldsNames.curr_plan_param): self.current_plan_param,
-            str(FieldsNames.curr_time): self.current_time,
-            str(FieldsNames.curr_alarms): self.current_alarms,
-            str(FieldsNames.num_streams): len(self.all_xp_data),
-            str(FieldsNames.streams_data): [self._get_xp_data_as_dict(xp_data) for xp_data in self.all_xp_data]
-        }
+    # def build_attr_data_for_response(self) -> dict[str, properties]:
+    #     """
+    #     Формирует словарь с распарменными данными о состоянии ДК. Данные берёт из соответствующих атрибутов.
+    #     :return: Словарь с данными о текущем состоянии ДК.
+    #              Пример:
+    #              {
+    #                 "current_address": "Moscow: Панфиловс пр / Андреевка",
+    #                 "current_plan": "005",
+    #                 "current_plan_parameter": "005",
+    #                 "current_time": "2025-03-01 16:08:41",
+    #                 "current_alarms": "ISWC",
+    #                 "number_of_streams": 2,
+    #                 "streams_data": [
+    #                     {
+    #                         "xp": "1",
+    #                         "current_status": "УПРАВЛЕНИЕ",
+    #                         "current_mode": "FT",
+    #                         "current_stage": "3"
+    #                     },
+    #                     {
+    #                         "xp": "2",
+    #                         "current_status": "УПРАВЛЕНИЕ",
+    #                         "current_mode": "FT",
+    #                         "current_stage": "6"
+    #                     }
+    #                 ]
+    #             }
+    #     """
+    #     self.data_for_response = {
+    #         str(FieldsNames.curr_address): self.address,
+    #         str(FieldsNames.curr_plan): self.current_plan,
+    #         str(FieldsNames.curr_plan_param): self.current_plan_param,
+    #         str(FieldsNames.curr_time): self.current_time,
+    #         str(FieldsNames.curr_alarms): self.current_alarms,
+    #         str(FieldsNames.num_streams): len(self.all_xp_data),
+    #         str(FieldsNames.streams_data): [self._get_xp_data_as_dict(xp_data) for xp_data in self.all_xp_data]
+    #     }
+    #     return self.data_for_response
 
+    def _get_properties(self) -> list[tuple[str, Any]]:
+        return [
+            (str(FieldsNames.curr_address), self.address),
+            (str(FieldsNames.curr_plan), self.current_plan),
+            (str(FieldsNames.curr_plan_param), self.current_plan_param),
+            (str(FieldsNames.curr_time), self.current_time),
+            (str(FieldsNames.curr_alarms), self.current_alarms),
+            (str(FieldsNames.num_streams), len(self.all_xp_data)),
+            (str(FieldsNames.streams_data), [self._get_xp_data_as_dict(xp_data) for xp_data in self.all_xp_data])
+        ]
 
 INPUT_DATA = tuple[str, str, str, str, str, str]
 
@@ -277,10 +293,10 @@ class InputsPageParser(Parser):
 
     pattern_input_data = ':D;'
 
-    def __init__(self, content: str):
-        super().__init__(content)
-        self.inputs_from_page = {}
-        self.parsed_content_as_dict: dict[str, INPUT_DATA] = {}
+    # def __init__(self, content: str):
+    #     super().__init__(content)
+        # self.inputs_from_page = {}
+        # self.parsed_content_as_dict: dict[str, INPUT_DATA] = {}
 
     def parse(self):
         """
@@ -293,24 +309,14 @@ class InputsPageParser(Parser):
         for line in self.content_as_list:
             if self.pattern_input_data in line:
                 index, num, name, state, _time, actuator = self.extract_data_from_line(line)
-                self.inputs_from_page[name] = (index, num, name, state, _time, actuator)
-        print(f'inputs_data: {self.parsed_content_as_dict}')
-        self.parsed_content_as_dict = self.get_parsed_data_as_dict()
-        return self.parsed_content_as_dict
+                self.parsed_content_as_dict[name] = (index, num, name, state, _time, actuator)
+        # print(f'inputs_self.build_data_for_response(): {self.build_attr_data_for_response()}')
+        return self.build_attr_data_for_response(
+            [(str(FieldsNames.inputs), self.parsed_content_as_dict)]
+        )
 
     def extract_data_from_line(self, line: str):
         return line.split(';')[1:]
-
-    def get_parsed_data_as_dict(self) -> dict[str, str | list]:
-        """
-        Формирует словарь с распарменными данными о состоянии ДК. Данные берёт из соответствующих атрибутов.
-        :return: Словарь с данными о текущем состоянии ДК.
-                 Пример:
-
-        """
-        return {str(FieldsNames.inputs): self.inputs_from_page,}
-
-
 
 
 if __name__ == '__main__':
