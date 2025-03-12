@@ -2,6 +2,7 @@ import abc
 import asyncio
 import os
 from asyncio import TaskGroup
+from enum import StrEnum
 from typing import Self, Type
 
 import aiohttp
@@ -16,9 +17,20 @@ from sdp_lib.management_controllers.http.peek.peek_web_monitoring import Multipl
 load_dotenv()
 
 
+class PropertiesNames(StrEnum):
+    index = 'index'
+    num = 'num'
+    name = 'name'
+    state = 'state'
+    time = 'time'
+    value = 'value'
+
+
 class SetData(PeekWeb):
 
     web_page_class: Type[T]
+
+    INDEX = 0
 
     def __init__(self, ip_v4: str, session: aiohttp.ClientSession):
         super().__init__(ip_v4=ip_v4, session=session)
@@ -54,6 +66,13 @@ class SetData(PeekWeb):
         param_index = data.get(inp_name)[index]
         return {'par_name': f'{prefix}{param_index}', 'par_value': val}
 
+    def check_sending_result_and_set_response_if_has_err(self,sending_result) -> bool:
+        if any(res_task.result()[self.RESPONSE] != 200 for res_task in sending_result):
+            self.response = ErrorSetValue(), {}
+            return False
+        return True
+
+
 class SetInputs(SetData):
 
     web_page_class = InputsPage
@@ -67,7 +86,7 @@ class SetInputs(SetData):
     prefix_man_stage = web_inputs.prefix_man_stage
     matches_name_inp_to_num_stage = {num: f'{web_inputs.prefix_man_stage}{num}' for num in range(1, 9)}
 
-    INDEX, NUM, NAME, STATE, TIME, VALUE = range(6)
+    NUM, NAME, STATE, TIME, VALUE = range(1, 6)
 
     async def get_data_and_set_response_if_has_err(self) -> bool:
         await self.web_page_obj.get_and_parse()
@@ -76,21 +95,21 @@ class SetInputs(SetData):
             return False
         return True
 
-    async def set_any_vals(self, inps: dict[str, str | int]):
+    async def set_any_vals(self, inps_to_set: dict[str, str | int]):
         result = await self.get_data_and_set_response_if_has_err()
         if not result:
             return self
 
         sending_result = await self.create_tasks_and_send_request_to_set_val(
             data_from_web=self.web_page_obj.parser.inputs_from_page,
-            data_for_set=inps,
+            data_for_set=inps_to_set,
             prefix=self.prefix_inputs,
             index=self.INDEX
         )
 
-        if any(res_task.result()[self.RESPONSE] != 200 for res_task in sending_result):
-            self.response = ErrorSetValue(), {}
+        if not self.check_sending_result_and_set_response_if_has_err(sending_result):
             return self
+
         await self.web_page_obj.get_and_parse()
         self.response = self.web_page_obj.response
         return self
@@ -126,7 +145,7 @@ async def main():
         }
         # r_r = asyncio.create_task(obj.set_vals(session=sess, inps=inps))
         # r_r = await obj.set_vals(session=sess, inps=inps)
-        r_r = await obj.set_any_vals(inps=inps)
+        r_r = await obj.set_any_vals(inps_to_set=inps)
 
         print(r_r.response)
 
