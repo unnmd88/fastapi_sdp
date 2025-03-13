@@ -12,12 +12,12 @@ from api_v1.controller_management.schemas import (
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
-from sdp_lib.management_controllers.http.peek.monitoring import peek_web_monitoring
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.inputs import InputsPage as peek_InputsPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
 
-T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_web_monitoring.MainPage)
+
+T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
 
 
 class Controllers(metaclass=abc.ABCMeta):
@@ -77,19 +77,4 @@ class StatesMonitoring(Controllers):
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
                 return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
         raise TypeError('DEBUG')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

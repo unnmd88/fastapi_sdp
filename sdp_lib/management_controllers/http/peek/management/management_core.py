@@ -1,3 +1,4 @@
+import abc
 import asyncio
 from enum import StrEnum
 from typing import Type
@@ -108,3 +109,17 @@ class SetData(PeekWeb):
             self.response = ErrorSetValue(), {}
             return False
         return True
+
+    async def set_entity(self, value: int):
+        result = await self.get_data_from_web_page_and_set_response_if_has_err()
+        if not result:
+            return self
+
+        self.data_for_set_to_web = self.make_values_to_set(value)
+        print(self.data_for_set_to_web)
+        print(len(self.data_for_set_to_web))
+        return await self.set_any_vals(self.data_for_set_to_web)
+
+    @abc.abstractmethod
+    def make_values_to_set(self, value: int) -> dict[str, int]:
+        ...
