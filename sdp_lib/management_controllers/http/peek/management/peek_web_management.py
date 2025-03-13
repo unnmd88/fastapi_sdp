@@ -40,8 +40,6 @@ class ActuatorAsValue(StrEnum):
     ON     = '2'
 
 
-
-
 class SetData(PeekWeb):
 
     web_page_class: Type[T]
