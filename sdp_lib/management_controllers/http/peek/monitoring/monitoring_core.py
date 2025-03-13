@@ -1,0 +1,57 @@
+import asyncio
+import time
+from typing import Self, TypeVar, Coroutine, Type
+from asyncio import TaskGroup, Task
+
+import aiohttp
+
+from sdp_lib.management_controllers.exceptions import BadControllerType, ConnectionTimeout
+from sdp_lib.management_controllers.http.peek import routes
+from sdp_lib.management_controllers.http.peek.parsers_peek import Parser, MainPageParser, InputsPageParser
+from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
+
+
+P = TypeVar('P', bound=Parser, covariant=True)
+
+
+class GetData(PeekWeb):
+
+    parser_class: Type[P]
+
+    def __init__(self, ip_v4: str, session: aiohttp.ClientSession):
+        super().__init__(ip_v4, session)
+        self.method = self.fetch
+
+    @classmethod
+    def get_parser_obj(cls, content: str) -> P:
+        """
+        Возвращает объект класса парсера.
+        :param content: Контент веб страницы, который будет
+                        передан конструктору класса cls.parser_class.
+        :return: Экземпляр класса парсера.
+        """
+        return cls.parser_class(content)
+
+    def __repr__(self):
+        return (
+            f'cls.parser_class: {self.parser_class}\n'
+            f'self.parser: {self.parser}\n'
+            f'self.response: {self.response}\n'
+            f'self.method: {self.method.__name__}'
+        )
+
+    async def get_and_parse(self) -> Self:
+        """
+        Получает контент, парсит его для вычленения данных.
+        :return: Self.
+        """
+        error, content_data = await self.http_request_to_host()
+        if error is None:
+            self.parser = self.get_parser_obj(content_data)
+            self.parser.parse()
+        else:
+            self.parser = None
+
+        self.add_data_to_data_response_attrs(error, self.parser.data_for_response)
+        return self
+

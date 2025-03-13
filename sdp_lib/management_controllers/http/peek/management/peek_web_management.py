@@ -1,19 +1,19 @@
-import abc
 import asyncio
 import os
 from asyncio import TaskGroup
 from enum import StrEnum
-from typing import Self, Type
+from typing import Type
 
 import aiohttp
 from dotenv import load_dotenv
-from watchfiles import awatch
 
-from sdp_lib.management_controllers.exceptions import ConnectionTimeout, BadControllerType, ErrorSetValue
+from sdp_lib.management_controllers.exceptions import ErrorSetValue
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.http.peek import routes, web_inputs
 from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
-from sdp_lib.management_controllers.http.peek.peek_web_monitoring import MultipleData, InputsPage, T
+# from sdp_lib.management_controllers.http.peek.monitoring.peek_web_monitoring import InputsPage, T
+from sdp_lib.management_controllers.http.peek.monitoring.multiple import T
+from sdp_lib.management_controllers.http.peek.monitoring.inputs import InputsPage
 
 
 load_dotenv()
@@ -214,7 +214,7 @@ async def main():
         # r_r = asyncio.create_task(obj.set_vals(session=sess, inps=inps))
         # r_r = await obj.set_vals(session=sess, inps=inps)
         # r_r = await obj.set_any_vals(data_to_set=inps, start_by_getting_data_from_web_page=True)
-        r_r = await obj.set_stage(1)
+        r_r = await obj.set_stage(0)
 
         print(r_r.response)
 

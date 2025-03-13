@@ -7,11 +7,15 @@ from pysnmp.entity.engine import SnmpEngine
 
 from api_v1.controller_management.schemas import (
     AllowedControllers,
-    AllowedDataHostFields, AllowedMonitoringEntity,
+    AllowedDataHostFields,
+    AllowedMonitoringEntity
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
-from sdp_lib.management_controllers.http.peek import peek_web_monitoring
+from sdp_lib.management_controllers.http.peek.monitoring import peek_web_monitoring
+from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
+from sdp_lib.management_controllers.http.peek.monitoring.inputs import InputsPage as peek_InputsPage
+from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
 
 T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_web_monitoring.MainPage)
 
@@ -67,11 +71,11 @@ class StatesMonitoring(Controllers):
                 scn = data_host.get(AllowedDataHostFields.scn)
                 return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
-                return peek_web_monitoring.MainPage(ip_v4=ip, session=self._session).get_and_parse()
+                return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                return peek_web_monitoring.MultipleData(ip_v4=ip, session=self._session).get_and_parse()
+                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_web_monitoring.MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
+                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
         raise TypeError('DEBUG')
 
 
