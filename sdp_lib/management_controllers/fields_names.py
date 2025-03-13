@@ -4,7 +4,7 @@ from enum import StrEnum
 class FieldsNames(StrEnum):
 
     ipv4_address = "ip_address"
-    error = 'error'
+    errors = 'errors'
     entity = 'entity'
     data = 'data'
     response = 'response'

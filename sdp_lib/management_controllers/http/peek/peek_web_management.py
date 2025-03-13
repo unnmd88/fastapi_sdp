@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from watchfiles import awatch
 
 from sdp_lib.management_controllers.exceptions import ConnectionTimeout, BadControllerType, ErrorSetValue
+from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.http.peek import routes, web_inputs
 from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
 from sdp_lib.management_controllers.http.peek.peek_web_monitoring import MultipleData, InputsPage, T
@@ -76,14 +77,19 @@ class SetData(PeekWeb):
             return self
 
         await self.web_page_obj.get_and_parse()
-        self.response = self.web_page_obj.response
+        # self.response = self.web_page_obj.response
+        self.add_data_to_data_response_attrs(*self.web_page_obj.response)
+        self.add_data_to_data_response_attrs(data={str(FieldsNames.sent_data): self.data_for_set_to_web})
+        print(f'self.data_for_set_to_web: {self.data_for_set_to_web}')
+
         print(f'self.response: {self.response}')
         return self
 
     async def get_data_from_web_page_and_set_response_if_has_err(self) -> bool:
         await self.web_page_obj.get_and_parse()
-        if self.web_page_obj.response[self.ERROR] is not None:
-            self.response = self.web_page_obj.response
+        print(f'self.web_page_obj.ERRORS: {self.web_page_obj.ERRORS}')
+        if self.web_page_obj.ERRORS:
+            self.add_data_to_data_response_attrs(*self.web_page_obj.response)
             return False
         return True
 
@@ -131,15 +137,8 @@ class SetInputs(SetData):
     prefix_par_name = web_inputs.prefix_set_val
 
     all_mpp_inputs = set(os.getenv('ALL_MPP_INPUTS').split())
-    # mpp_stages_inputs = set(os.getenv('MPP_STAGES_INPUTS').split())
     mpp_stages_inputs = set(web_inputs.mpp_stages_inputs.split())
 
-
-
-    # prefix_man_stage = web_inputs.prefix_man_stage
-    # matches_name_inp_to_num_stage = {num: f'{web_inputs.prefix_man_stage}{num}' for num in range(1, 9)}
-
-    # NUM, NAME, STATE, TIME, VALUE = range(1, 6)
     NUM        = 1
     NAME       = 2
     STATE      = 3
@@ -215,7 +214,7 @@ async def main():
         # r_r = asyncio.create_task(obj.set_vals(session=sess, inps=inps))
         # r_r = await obj.set_vals(session=sess, inps=inps)
         # r_r = await obj.set_any_vals(data_to_set=inps, start_by_getting_data_from_web_page=True)
-        r_r = await obj.set_stage(0)
+        r_r = await obj.set_stage(1)
 
         print(r_r.response)
 

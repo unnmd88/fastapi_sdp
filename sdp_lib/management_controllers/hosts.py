@@ -1,4 +1,5 @@
 import abc
+from typing import Any
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.utils_common import check_is_ipv4
@@ -16,7 +17,10 @@ class Host:
         self.ip_v4 = ip_v4
         self.host_id = host_id
         # self.response: tuple[None | Exception, dict] | None = None
-        self.response: tuple[None | Exception, dict] | None = None
+        self.ERRORS = []
+        self.DATA_RESPONSE = {}
+        # self.response: tuple[None | Exception, dict] | None = None
+        self.response: list = [self.ERRORS, self.DATA_RESPONSE]
 
     def __repr__(self):
         return self.__dict__
@@ -74,8 +78,22 @@ class Host:
         return {
             str(FieldsNames.protocol): self.protocol,
             str(FieldsNames.ipv4_address): self.ip_v4,
-            str(FieldsNames.error): self.response[0],
-            str(FieldsNames.data): (self.response[1] if isinstance(self.response[1], dict) else {})
+            # str(FieldsNames.error): self.response[0],
+            # str(FieldsNames.data): (self.response[1] if isinstance(self.response[1], dict) else {})
+            str(FieldsNames.errors): self.ERRORS,
+            str(FieldsNames.data): self.DATA_RESPONSE
         }
+
+    def add_data_to_data_response_attrs(
+            self,
+            error: Exception | str = None,
+            data: dict[str, Any] = None
+    ):
+        if isinstance(data, dict):
+            self.DATA_RESPONSE |= data
+        if isinstance(error, (Exception, str)):
+            self.ERRORS.append(error)
+
+
 
 

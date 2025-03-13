@@ -74,22 +74,23 @@ class GetData(PeekWeb):
             self.parser.parse()
         else:
             self.parser = None
-        self.set_response_attr(error, self.parser)
+
+        self.add_data_to_data_response_attrs(error, self.parser.data_for_response)
         return self
 
-    def set_response_attr(self, error: Exception | None, parser: P | None) -> None:
-        """
-        Присваивает атрибуту self.response данные, на основании
-        переданных аргументов.
-        :param error: None или экземпляр производного класса от Exception.
-        :param parser: instance экземпляра парсера, который хранит в своих атрибутах
-                       распарсенные данный веб контента. parsed_content_as_dict
-        :return: None.
-        """
-        if error is None and parser is not None:
-            self.response = error, parser.data_for_response
-        else:
-            self.response = error,  {}
+    # def set_response_attrs(self, error: Exception | None, parser: P | None) -> None:
+    #     """
+    #     Присваивает атрибуту self.response данные, на основании
+    #     переданных аргументов.
+    #     :param error: None или экземпляр производного класса от Exception.
+    #     :param parser: instance экземпляра парсера, который хранит в своих атрибутах
+    #                    распарсенные данный веб контента. parsed_content_as_dict
+    #     :return: None.
+    #     """
+    #     if error is None and parser is not None:
+    #         self.ERROR, self.DATA_RESPONSE = error, self.add
+    #     else:
+    #         self.ERROR, self.DATA_RESPONSE = error,  {}
 
 
 class MainPage(GetData):
@@ -122,9 +123,7 @@ class MultipleData(PeekWeb):
             tasks = self._get_tasks(main_page, inputs_page)
             async with asyncio.TaskGroup() as tg1:
                 result = [tg1.create_task(_coro) for _coro in tasks]
-            self.response = self.merge_all_responses(result)
-
-            print(f'self.response: {self.response}')
+            self.add_data_to_data_response_attrs(*self.merge_all_errors_and_responses(result))
             return self
 
     def _get_tasks(
@@ -151,7 +150,7 @@ class MultipleData(PeekWeb):
             case _:
                 raise ValueError('Не предоставлено данных')
 
-    def merge_all_responses(self, results: list[Task]) -> tuple[None | str, dict]:
+    def merge_all_errors_and_responses(self, results: list[Task]) -> tuple[None | str, dict]:
         """
         Объединяет словари с распарсенными данными контента веб страницы.
         :param results: Список с завершёнными задачами.
@@ -163,7 +162,6 @@ class MultipleData(PeekWeb):
             response |= curr_res
             error = curr_err or error
         return error, response # Fix me
-
 
 async def main():
 
