@@ -105,8 +105,8 @@ class SetData(PeekWeb):
         return {'par_name': f'{prefix}{param_index}', 'par_value': val}
 
     def check_sending_result_and_set_response_if_has_err(self,sending_result) -> bool:
+        print(f'!!: {[res_task.result() for res_task in sending_result]}')
         if any(res_task.result()[self.RESPONSE] != 200 for res_task in sending_result):
-            # self.response = ErrorSetValue(), {}
             self.add_data_to_data_response_attrs(ErrorSetValue())
             return False
         return True
