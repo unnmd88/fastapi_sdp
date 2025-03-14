@@ -5,7 +5,7 @@ from typing import Type
 
 import aiohttp
 
-from sdp_lib.management_controllers.exceptions import ErrorSetValue
+from sdp_lib.management_controllers.exceptions import ErrorSetValue, BadValueToSet
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import T
 from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
@@ -111,11 +111,17 @@ class SetData(PeekWeb):
         return True
 
     async def set_entity(self, value: int):
+
+        try:
+            self.data_for_set_to_web = self.make_values_to_set(value)
+        except BadValueToSet as e:
+            self.add_data_to_data_response_attrs(e)
+            return self
+
         result = await self.get_data_from_web_page_and_set_response_if_has_err()
         if not result:
             return self
 
-        self.data_for_set_to_web = self.make_values_to_set(value)
         print(self.data_for_set_to_web)
         print(len(self.data_for_set_to_web))
         return await self.set_any_vals(self.data_for_set_to_web)
