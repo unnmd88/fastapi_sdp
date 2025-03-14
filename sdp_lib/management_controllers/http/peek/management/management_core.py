@@ -106,20 +106,21 @@ class SetData(PeekWeb):
 
     def check_sending_result_and_set_response_if_has_err(self,sending_result) -> bool:
         if any(res_task.result()[self.RESPONSE] != 200 for res_task in sending_result):
-            self.response = ErrorSetValue(), {}
+            # self.response = ErrorSetValue(), {}
+            self.add_data_to_data_response_attrs(ErrorSetValue())
             return False
         return True
 
     async def set_entity(self, value: int):
 
+        result = await self.get_data_from_web_page_and_set_response_if_has_err()
+        if not result:
+            return self
+
         try:
             self.data_for_set_to_web = self.make_values_to_set(value)
         except BadValueToSet as e:
             self.add_data_to_data_response_attrs(e)
-            return self
-
-        result = await self.get_data_from_web_page_and_set_response_if_has_err()
-        if not result:
             return self
 
         print(self.data_for_set_to_web)

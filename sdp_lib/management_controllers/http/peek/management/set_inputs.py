@@ -51,13 +51,13 @@ class SetStage(SetInputsDataClass):
         :param stage_value:
         :return:
         """
+        if stage_value == 0:
+            return self.make_values_to_reset_man()
+
         if not isinstance(stage_value,  int):
             raise TypeError('Значение должно быть целым числом')
         elif stage_value not in range(1, 9):
             raise BadValueToSet(value=stage_value, expected=(1, 9))
-
-        if stage_value == 0:
-            return self.make_values_to_reset_man()
 
         data = {}
         for name, props in self.web_page_obj.parser.parsed_content_as_dict.items():
@@ -78,7 +78,7 @@ class SetStage(SetInputsDataClass):
 
     def make_values_to_reset_man(self) -> dict[str, int]:
         data = {web_inputs.mpp_man: 1}
-        return data | {name: 0 for name in self.web_page_obj.parser.parsed_content_as_dict if name in self.mpp_stages_inputs}
+        return data | {name: 0 for name in self.mpp_stages_inputs}
 
 
 class SetFlash(SetInputsDataClass):
@@ -108,7 +108,7 @@ async def main():
         # obj = SetInputs(ip_v4='10.45.154.19')
         # obj = SetInputs(ip_v4='10.179.20.9')
 
-        return await obj.set_entity(10)
+        return await obj.set_entity(0)
 
 
 if __name__ == '__main__':
