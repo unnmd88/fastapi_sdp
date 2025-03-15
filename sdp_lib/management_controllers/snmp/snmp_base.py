@@ -257,17 +257,19 @@ class SnmpHost(Host):
             self,
             oids: list[tuple[str | Oids, Any]],
             engine: SnmpEngine,
-            timeout: float = 0.2,
+            timeout: float = 1,
             retries: int = 0
     ):
         error_indication, error_status, error_index, var_binds = await set_cmd(
-            engine,
+            SnmpEngine() or engine,
             CommunityData(self.community_w),
             await UdpTransportTarget.create((self.ip_v4, 161), timeout=timeout, retries=retries),
             ContextData(),
-            *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
+            # *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
+            *[ObjectType(ObjectIdentity('1.3.6.1.4.1.1618.3.7.2.11.1.0'), Unsigned32('2')) for oid, val in oids]
         )
-        return error_indication, var_binds
+        print(error_indication, error_status, error_index, var_binds)
+        return error_indication, error_status, error_index, var_binds
 
     def check_response_and_add_error_if_has(
             self,
@@ -289,11 +291,7 @@ class SnmpHost(Host):
         )
         if self.check_response_and_add_error_if_has(error_indication, error_status, error_index):
             return self
-        #DEBUG
-        # for oid, val in var_binds:
-        #     print(f'oid, val: {str(oid)} val: {val.prettyPrint()}')
-        #     print(f'type val: {type(val)}')
-        #     print(f'type val pretty : {type(val.prettyPrint())}')
+
         self.parser = self.get_parser(self, var_binds)
         self.parser.parse()
 

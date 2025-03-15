@@ -7,21 +7,27 @@ class MainParser(Parsers):
 
     def __init__(
             self,
-            instance,
+            host_instance,
             content: tuple[ObjectType, ...]
     ):
         super().__init__(content)
-        self.instance = instance
+        self.host_instance = host_instance
 
     def parse(self) :
 
+        #DEBUG
+        # for oid, val in var_binds:
+        #     print(f'oid, val: {str(oid)} val: {val.prettyPrint()}')
+        #     print(f'type val: {type(val)}')
+        #     print(f'type val pretty : {type(val.prettyPrint())}')
+
         try:
             for oid, val in self.content:
-                oid, val = self.instance.processing_oid_from_response(str(oid)), val.prettyPrint()
-                field_name, fn = self.instance.matches.get(oid)
+                oid, val = self.host_instance.processing_oid_from_response(str(oid)), val.prettyPrint()
+                field_name, fn = self.host_instance.matches.get(oid)
                 self.parsed_content_as_dict[str(field_name)] = fn(val)
         except TypeError:
             return self.parsed_content_as_dict
-        print(f'ip: {self.instance.ip_v4} | resp: {self.parsed_content_as_dict}')
+        print(f'ip: {self.host_instance.ip_v4} | resp: {self.parsed_content_as_dict}')
         self.data_for_response = self.parsed_content_as_dict
         return self.data_for_response

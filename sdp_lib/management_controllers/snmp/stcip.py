@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from pysnmp.entity.engine import SnmpEngine
@@ -5,6 +6,7 @@ from pysnmp.proto.rfc1902 import Unsigned32
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
+from sdp_lib.management_controllers.snmp.request import snmp_engine
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
 from sdp_lib.management_controllers.snmp.oids import Oids
 
@@ -58,7 +60,6 @@ class SwarcoSTCIP(BaseSTCIP):
         '12': 'manualControlPlan',
     }
     stage_values_get = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
-    stage_values_set = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
 
     @property
     def matches(self):
@@ -100,13 +101,7 @@ class SwarcoSTCIP(BaseSTCIP):
             mode = str(NamesMode.SYNC)
         return mode
 
-    async def set_stage(self, val: str):
-        oids = [
-            (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(self.stage_values_set.get(val)))
-        ]
-        res = await self.set(oids=oids)
 
-        print(f'res::>> {res}')
 
 
 class PotokS(BaseSTCIP):
@@ -133,3 +128,38 @@ class PotokS(BaseSTCIP):
     def get_current_mode(self, response_data: dict[str, str], mode=None) -> str | None:
         return self.modes.get(response_data.get(FieldsNames.curr_status_mode))
 
+
+class SwarcoSTCIPManagement(SnmpHost):
+
+    stage_values_set = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
+
+    def get_community(self) -> tuple[str, str]:
+        return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
+
+    async def set_stage(self, val: str):
+        oids = [
+            (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(self.stage_values_set.get(val)))
+        ]
+        res = await self.set(oids=oids, engine=SnmpEngine())
+
+        print(f'res::>> {res}')
+
+
+async def main():
+    oids = [
+        (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32('3'))
+    ]
+    o = SwarcoSTCIPManagement('10.45.154.16')
+    co = await asyncio.create_task(o.set(
+        oids=oids,
+        engine='dsd'
+    ))
+    return co
+
+
+
+if __name__ == '__main__':
+
+    # o = SwarcoSTCIPManagement('10.45.154.11')
+    r = asyncio.run(main())
+    print(r.response)
