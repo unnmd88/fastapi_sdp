@@ -16,10 +16,8 @@ class Host:
     def __init__(self, ip_v4: str, host_id=None):
         self.ip_v4 = ip_v4
         self.host_id = host_id
-        # self.response: tuple[None | Exception, dict] | None = None
         self.ERRORS = []
         self.DATA_RESPONSE = {}
-        # self.response: tuple[None | Exception, dict] | None = None
         self.response: list = [self.ERRORS, self.DATA_RESPONSE]
 
     def __repr__(self):
@@ -80,7 +78,7 @@ class Host:
             str(FieldsNames.ipv4_address): self.ip_v4,
             # str(FieldsNames.error): self.response[0],
             # str(FieldsNames.data): (self.response[1] if isinstance(self.response[1], dict) else {})
-            str(FieldsNames.errors): self.ERRORS,
+            str(FieldsNames.errors): [str(e) for e in self.ERRORS],
             str(FieldsNames.data): self.DATA_RESPONSE
         }
 

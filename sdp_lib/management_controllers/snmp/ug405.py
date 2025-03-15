@@ -5,6 +5,7 @@ from pysnmp.entity.engine import SnmpEngine
 from pysnmp.proto.rfc1902 import Unsigned32, OctetString, Gauge32, Integer
 from pysnmp.smi.rfc1902 import ObjectIdentity
 
+from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
@@ -58,15 +59,29 @@ class BaseUG405(SnmpHost):
         return self.add_scn_to_oids(self.matches.keys())
 
     async def get_and_parse(self, engine: SnmpEngine = None):
+
         if self.scn_as_dec is None:
-            err, var_b = await self.get(oids=[Oids.utcReplySiteID], engine=engine)
-            if self.set_scn_from_response(err, var_b) is None:
-                self.response = err, var_b
-                return self
+            error_indication, error_status, error_index, var_binds = await self.get(
+                oids=[Oids.utcReplySiteID],
+                engine=engine
+            )
+            try:
+                self.set_scn_from_response(error_indication, error_status, error_index, var_binds)
+            except BadControllerType as e:
+                self.add_data_to_data_response_attrs(e)
+        if self.ERRORS:
+            return self
+
         return await super().get_and_parse(engine=engine)
 
-    def set_scn_from_response(self, error_indication, var_binds: tuple):
-        raise NotImplemented
+    def set_scn_from_response(
+            self,
+            error_indication,
+            error_status,
+            error_index,
+            var_binds
+    ):
+        raise NotImplementedError
 
     def convert_val_to_num_stage_get_req(self, val: str) -> int:
         """
@@ -102,16 +117,22 @@ class PotokP(BaseUG405):
         Oids.utcReplyMC: (FieldsNames.is_mode_man, self.get_val_as_str),
     }
 
-    def set_scn_from_response(self, error, var_binds: tuple) -> bool | None:
+    def set_scn_from_response(
+            self,
+            error_indication,
+            error_status,
+            error_index,
+            var_binds
+    )-> None:
 
-        if error is not None or not var_binds:
-            return None
+        if any(err for err in (error_indication, error_status, error_index)) or not var_binds:
+            raise BadControllerType()
+
         try:
             self.scn_as_chars = str(var_binds[0][1])
             self.scn_as_dec = self.get_scn_as_ascii()
-            return True
         except IndexError:
-            return None
+            raise BadControllerType()
 
     def get_current_mode(self, response_data: dict[str, str], mode=None) -> str | None:
         operation_mode, local_adaptive_status, num_detectors, has_det_faults, is_mode_man = (

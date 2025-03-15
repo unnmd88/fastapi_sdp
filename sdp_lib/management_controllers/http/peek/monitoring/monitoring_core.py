@@ -1,17 +1,12 @@
-import asyncio
-import time
-from typing import Self, TypeVar, Coroutine, Type
-from asyncio import TaskGroup, Task
+from typing import Self, TypeVar, Type
 
 import aiohttp
 
-from sdp_lib.management_controllers.exceptions import BadControllerType, ConnectionTimeout
-from sdp_lib.management_controllers.http.peek import routes
-from sdp_lib.management_controllers.http.peek.parsers_peek import Parser, MainPageParser, InputsPageParser
+from sdp_lib.management_controllers.parsers.parsers_peek_http import ParserBase
 from sdp_lib.management_controllers.http.peek.peek_core import PeekWeb
 
 
-P = TypeVar('P', bound=Parser, covariant=True)
+P = TypeVar('P', bound=ParserBase, covariant=True)
 
 
 class GetData(PeekWeb):
@@ -40,6 +35,21 @@ class GetData(PeekWeb):
             f'self.method: {self.method.__name__}'
         )
 
+    # async def get_and_parse(self) -> Self:
+    #     """
+    #     Получает контент, парсит его для вычленения данных.
+    #     :return: Self.
+    #     """
+    #     error, content_data = await self.http_request_to_host()
+    #     if error is None:
+    #         self.parser = self.get_parser_obj(content_data)
+    #         self.parser.parse()
+    #     else:
+    #         self.parser = None
+    #
+    #     self.add_data_to_data_response_attrs(error, self.parser.data_for_response)
+    #     return self
+
     async def get_and_parse(self) -> Self:
         """
         Получает контент, парсит его для вычленения данных.
@@ -52,6 +62,9 @@ class GetData(PeekWeb):
         else:
             self.parser = None
 
-        self.add_data_to_data_response_attrs(error, self.parser.data_for_response)
+        self.add_data_to_data_response_attrs(
+            error=error,
+            data=None if self.parser is None else self.parser.data_for_response
+        )
         return self
 
