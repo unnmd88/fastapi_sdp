@@ -8,8 +8,7 @@ class MainParser(Parsers):
     def __init__(
             self,
             instance,
-            content: tuple[ObjectType, ...],
-
+            content: tuple[ObjectType, ...]
     ):
         super().__init__(content)
         self.instance = instance

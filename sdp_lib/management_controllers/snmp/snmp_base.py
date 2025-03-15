@@ -296,33 +296,14 @@ class SnmpHost(Host):
         #     print(f'type val pretty : {type(val.prettyPrint())}')
         self.parser = self.get_parser(self, var_binds)
         self.parser.parse()
-        print(f'self.parser.data_for_response: {self.parser.data_for_response}')
 
-        # parsed_response = self.parse_var_binds_from_response(var_binds)
         if not self.parser.data_for_response:
             self.add_data_to_data_response_attrs(BadControllerType())
             return self
 
         self.parser.data_for_response = self.add_extras_for_response(self.parser.data_for_response)
-        print(f'ip: {self.ip_v4} | self.parser.data_for_response : {self.parser.data_for_response}')
-        # print(f'ip: {self.ip_v4} | resp: {self.parser.data_for_response}')
         self.add_data_to_data_response_attrs(data=self.parser.data_for_response)
         return self
-
-    def parse_var_binds_from_response(
-            self,
-            response: [tuple[ObjectIdentity, OctetString | Gauge32 | Integer | Unsigned32]],
-    ) -> dict[str, str]:
-        resp = {}
-        try:
-            for oid, val in response:
-                oid, val = self.processing_oid_from_response(str(oid)), val.prettyPrint()
-                field_name, fn = self.matches.get(oid)
-                resp[str(field_name)] = fn(val)
-        except TypeError:
-            return {}
-        # print(f'ip: {self.ip_v4} | resp: {resp}')
-        return resp
 
     def convert_val_to_num_stage_get_req(self, val: str) -> int | None:
         """
