@@ -9,7 +9,7 @@ from api_v1.controller_management.crud import search_hosts_from_db
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedDataHostFields,
-    AllowedMonitoringEntity, GetHostsStaticDataFromDb
+    AllowedMonitoringEntity, NumbersOrIpv4, FastRequestMonitoringAndManagement
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
@@ -21,6 +21,7 @@ from api_v1.controller_management.sorters import sorters
 
 T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
 S = TypeVar('S', sorters.HostSorterMonitoring, sorters.SearchHostsInDb)
+P = TypeVar('P', NumbersOrIpv4, FastRequestMonitoringAndManagement)
 
 
 class Controllers(metaclass=abc.ABCMeta):
@@ -30,13 +31,12 @@ class Controllers(metaclass=abc.ABCMeta):
 
     def __init__(
             self, *,
-            income_data: GetHostsStaticDataFromDb,
+            income_data: P,
             search_in_db: bool
     ):
 
         self.income_data = income_data
         self.search_in_db = search_in_db
-
         self.allowed_to_request_hosts = {}
         self.bad_hosts = []
         self.result_tasks = None

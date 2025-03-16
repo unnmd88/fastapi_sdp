@@ -4,7 +4,7 @@ from api_v1.controller_management import sorters, schemas
 
 
 def test_instance_HostSorterSearchInDB():
-    model = schemas.GetHostsStaticDataFromDb(hosts=['3230', '11', '10.45.154.16'])
+    model = schemas.NumbersOrIpv4(hosts=['3230', '11', '10.45.154.16'])
     obj = services.HostSorterSearchInDB(model)
     expected = {
         '3230': {
@@ -23,7 +23,7 @@ def test_get_hosts_data_for_search_db_HostSorterSearchInDB():
 
     hosts = ['3230', '11', '10.45.154.16', 'abra', 'cadabra']
 
-    m = schemas.GetHostsStaticDataFromDb(hosts=hosts)
+    m = schemas.NumbersOrIpv4(hosts=hosts)
     obj = services.HostSorterSearchInDB(m)
 
     hosts_as_model = [
@@ -32,13 +32,13 @@ def test_get_hosts_data_for_search_db_HostSorterSearchInDB():
     assert obj.get_hosts_data_for_search_in_db() == hosts_as_model
 
 def test_get_model_HostSorterSearchInDB():
-    model = schemas.GetHostsStaticDataFromDb(hosts=['3230', '11', '10.45.154.16'])
+    model = schemas.NumbersOrIpv4(hosts=['3230', '11', '10.45.154.16'])
     obj = services.HostSorterSearchInDB(model)
     assert obj.model_for_search_in_db == obj._get_model_for_search_in_db()
 
 def test_get_hosts_and_bad_hosts_as_dict_HostSorterSearchInDB():
 
-    fake_model = schemas.GetHostsStaticDataFromDb(hosts=['3230', '11', '10.45.154.16'])
+    fake_model = schemas.NumbersOrIpv4(hosts=['3230', '11', '10.45.154.16'])
     obj = services.HostSorterSearchInDB(fake_model)
 
     bad_hosts = [

@@ -5,7 +5,7 @@ from api_v1.controller_management.sorters.sorters_core import (
     _HostSorterMonitoringAndManagement
 )
 from api_v1.controller_management.schemas import (
-    GetHostsStaticDataFromDb,
+    NumbersOrIpv4,
     SearchHostsInDb,
     AllowedDataHostFields,
     TrafficLightsObjectsTableFields
@@ -20,7 +20,7 @@ class HostSorterSearchInDB(_BaseHostsSorters):
     поиска в БД.
     """
 
-    def __init__(self, income_data: GetHostsStaticDataFromDb):
+    def __init__(self, income_data: NumbersOrIpv4):
         super().__init__(income_data)
         self._stack_hosts: set | None = None
         self.hosts_after_search: list | None = None

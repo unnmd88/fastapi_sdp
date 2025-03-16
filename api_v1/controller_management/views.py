@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .crud import search_hosts_from_db
 from . import services
 from api_v1.controller_management.sorters import sorters
-from .schemas import T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
+from .schemas import T1, NumbersOrIpv4, FastRequestMonitoringAndManagement
 import logging_config
 
 
@@ -48,7 +48,7 @@ router = APIRouter(tags=['traffic-lights'])
 
 
 @router.post('/properties')
-async def get_hosts(data: GetHostsStaticDataFromDb):
+async def get_hosts(data: NumbersOrIpv4):
 
     # start_time = time.time()
     hosts_from_db = await search_hosts_from_db(data)
@@ -57,7 +57,7 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
 
 
 @router.post('/search-and-get-state')
-async def get_state(data: GetHostsStaticDataFromDb):
+async def get_state(data: NumbersOrIpv4):
 
     states = services.StatesMonitoring(income_data=data, search_in_db=True)
     return await states.compose_request()
@@ -66,7 +66,7 @@ async def get_state(data: GetHostsStaticDataFromDb):
 @router.post('/get-state')
 async def get_state(data: FastRequestMonitoringAndManagement):
 
-    states = services.StatesMonitoring(data, search_in_db=False)
+    states = services.StatesMonitoring(income_data=data, search_in_db=False)
     return await states.compose_request()
 
 

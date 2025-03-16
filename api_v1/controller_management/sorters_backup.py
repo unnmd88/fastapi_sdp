@@ -10,7 +10,7 @@ from core.user_exceptions.validate_exceptions import NotFoundInDB
 from .schemas import (
     TrafficLightsObjectsTableFields,
     SearchHostsInDb,
-    GetHostsStaticDataFromDb, AllowedDataHostFields
+    NumbersOrIpv4, AllowedDataHostFields
 )
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class HostSorterSearchInDB(_BaseHostsSorters):
     поиска в БД.
     """
 
-    def __init__(self, income_data: GetHostsStaticDataFromDb):
+    def __init__(self, income_data: NumbersOrIpv4):
         super().__init__(income_data)
         self._stack_hosts: set | None = None
         self.hosts_after_search: list | None = None

@@ -1,4 +1,4 @@
-from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, GetHostsStaticDataFromDb
+from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, NumbersOrIpv4
 from api_v1.controller_management.sorters.sorters import HostSorterSearchInDB
 # from api_v1.controller_management.sorters import logger
 from core.models import db_helper, TrafficLightsObjects
@@ -6,7 +6,7 @@ from sqlalchemy import select, or_, Select
 from sqlalchemy.engine.row import RowMapping
 
 
-async def search_hosts_from_db(income_data: GetHostsStaticDataFromDb) -> HostSorterSearchInDB:
+async def search_hosts_from_db(income_data: NumbersOrIpv4) -> HostSorterSearchInDB:
     """
     Производит поиск и сортировку хостов после поиска в БД.
     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
