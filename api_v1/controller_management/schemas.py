@@ -127,6 +127,13 @@ class NumbersOrIpv4(BaseModel):
 
     hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
 
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [
+            {
+                "hosts": ["11", "192.168.0.1", "2390"]
+            },
+        ],
+    })
 
 
 
@@ -137,16 +144,46 @@ class NumbersOrIpv4(BaseModel):
 """ Входные данные запроса """
 
 
-class T(BaseModel):
 
-    model_config = ConfigDict(use_enum_values=True)
-    type_controller: AllowedControllers
-    host_id: str
+
+
+# class HostEntity(BaseModel):
+#     type_controller: Annotated[AllowedControllers, MinLen(1)]
+#
+#
+# class MonitoringHostEntity(HostEntity):
+#
+#     host_id: Annotated[str, Field(default=None)]
 
 
 class FastRequestMonitoringAndManagement(BaseModel):
 
-    hosts: Annotated[dict[IPvAnyAddress, T], Field(repr=True), SkipValidation]
+    hosts: Annotated[dict[IPvAnyAddress, dict[str, str]], MinLen(1), SkipValidation]
+
+    model_config = ConfigDict(
+        use_enum_values=True,
+        extra='allow',
+        json_schema_extra= {
+            "examples": [
+                {
+                    "192.168.0.2": {
+                        AllowedDataHostFields.type_controller: "Swarco(required field)",
+                }
+                },
+
+                {
+                    "192.168.0.1": {
+                        AllowedDataHostFields.host_id: "1111(optional field)",
+                        AllowedDataHostFields.scn: "CO1111(optional field)",
+                        AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
+                        AllowedDataHostFields.type_controller: "Swarco(required field)",
+                    }
+                },
+            ],
+        }
+    )
+
+
 
 
 """ Модели БД """
