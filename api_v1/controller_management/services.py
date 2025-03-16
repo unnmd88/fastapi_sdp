@@ -114,25 +114,6 @@ class Controllers(metaclass=abc.ABCMeta):
                     ))
         return self.result_tasks
 
-    # async def compose_request(self):
-    #
-    #     start_time = time.time()
-    #     if self.search_in_db:
-    #         hosts_from_db = await search_hosts_from_db(self.income_data)
-    #         data_hosts = sorters.HostSorterMonitoring(
-    #             income_data=hosts_from_db.good_hosts, bad_hosts=hosts_from_db.bad_hosts
-    #         )
-    #     else:
-    #         data_hosts = sorters.HostSorterMonitoring(self.income_data)
-    #
-    #     data_hosts.sort()
-    #     self.allowed_to_request_hosts = data_hosts.good_hosts
-    #     self.bad_hosts += data_hosts.bad_hosts
-    #
-    #     await self._make_request()
-    #     self.add_response_to_data_hosts()
-    #     return {'Время составило': time.time() - start_time} | self.get_all_hosts_as_dict()
-
     async def compose_request(self):
 
         start_time = time.time()
