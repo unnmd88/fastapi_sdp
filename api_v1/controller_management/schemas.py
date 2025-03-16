@@ -125,17 +125,6 @@ class SearchHostsInDb(BaseModel):
 
 """ Проверка данных(свойств) определённого хоста """
 
-# class DataHostIfSearchInDbFalseBase(BaseModel):
-#
-#     ip_or_name_from_user: Annotated[IPvAnyAddress, AfterValidator(get_value_as_string)]
-#     search_in_db: bool
-#     entity: AllowedMonitoringEntity
-#     type_controller: Annotated[AllowedControllers, AfterValidator(get_value_as_string)]
-#     number: Annotated[str, Field(default=None, max_length=20, alias='host_id')]
-#     scn: Annotated[str, Field(default=None, max_length=10)]
-
-
-
 
 """ Входные данные запроса """
 
