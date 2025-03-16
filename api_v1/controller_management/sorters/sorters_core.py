@@ -22,11 +22,15 @@ class _BaseHostsSorters:
     """
     Базовый класс сортировок хостов, переданных пользователем.
     """
-    def __init__(self, income_data: T_PydanticModel):
+    def __init__(
+            self,
+            income_data: T_PydanticModel | dict[str, Any],
+            bad_hosts: list[dict] | None= None,
+    ):
         self.income_data = income_data
-        self.income_hosts = income_data.hosts
+        self.income_hosts = income_data if isinstance(income_data, dict)  else income_data.hosts
         self.good_hosts: dict | None = None
-        self.bad_hosts = []
+        self.bad_hosts = bad_hosts or []
 
     def __repr__(self):
         return (

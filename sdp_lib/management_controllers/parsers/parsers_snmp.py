@@ -31,3 +31,9 @@ class MainParser(Parsers):
         print(f'ip: {self.host_instance.ip_v4} | resp: {self.parsed_content_as_dict}')
         self.data_for_response = self.parsed_content_as_dict
         return self.data_for_response
+
+    @classmethod
+    def parse_varbinds_base(cls, varbinds: tuple[ObjectType, ...]):
+        for oid, val in varbinds:
+            oid, val = str(oid), val.prettyPrint()
+            print(f'oid: {oid}  >>>> val: {val}')

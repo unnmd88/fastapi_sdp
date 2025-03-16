@@ -265,8 +265,8 @@ class SnmpHost(Host):
             CommunityData(self.community_w),
             await UdpTransportTarget.create((self.ip_v4, 161), timeout=timeout, retries=retries),
             ContextData(),
-            # *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
-            *[ObjectType(ObjectIdentity('1.3.6.1.4.1.1618.3.7.2.11.1.0'), Unsigned32('2')) for oid, val in oids]
+            *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
+            # *[ObjectType(ObjectIdentity('1.3.6.1.4.1.1618.3.7.2.11.1.0'), Unsigned32('2')) for oid, val in oids]
         )
         print(error_indication, error_status, error_index, var_binds)
         return error_indication, error_status, error_index, var_binds

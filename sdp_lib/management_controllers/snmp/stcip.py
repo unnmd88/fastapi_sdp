@@ -6,6 +6,7 @@ from pysnmp.proto.rfc1902 import Unsigned32
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
+from sdp_lib.management_controllers.parsers.parsers_snmp import MainParser
 from sdp_lib.management_controllers.snmp.request import snmp_engine
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
 from sdp_lib.management_controllers.snmp.oids import Oids
@@ -137,24 +138,24 @@ class SwarcoSTCIPManagement(SnmpHost):
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
 
     async def set_stage(self, val: str):
+        v = Unsigned32(self.stage_values_set.get(val))
         oids = [
-            (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(self.stage_values_set.get(val)))
+            (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(v))
         ]
         res = await self.set(oids=oids, engine=SnmpEngine())
 
         print(f'res::>> {res}')
+        return res
 
 
 async def main():
-    oids = [
-        (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32('3'))
-    ]
-    o = SwarcoSTCIPManagement('10.45.154.16')
-    co = await asyncio.create_task(o.set(
-        oids=oids,
-        engine='dsd'
-    ))
-    return co
+
+
+    o = SwarcoSTCIPManagement('10.179.116.113', host_id='2095')
+    r_ = await o.set_stage('0')
+    MainParser.parse_varbinds_base(r_[3])
+    # print(o)
+    return r_
 
 
 
@@ -162,4 +163,4 @@ if __name__ == '__main__':
 
     # o = SwarcoSTCIPManagement('10.45.154.11')
     r = asyncio.run(main())
-    print(r.response)
+    # print(r)
