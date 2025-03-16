@@ -131,7 +131,6 @@ class HostSorterSearchInDB(_BaseHostsSorters):
         :return: None.
         """
 
-        print(f'found_host: {found_host}')
         if found_host[str(TrafficLightsObjectsTableFields.NUMBER)] in self._stack_hosts:
             self._stack_hosts.remove(found_host[str(TrafficLightsObjectsTableFields.NUMBER)])
         elif found_host[str(TrafficLightsObjectsTableFields.IP_ADDRESS)] in self._stack_hosts:

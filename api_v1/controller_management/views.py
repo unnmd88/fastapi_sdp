@@ -59,6 +59,9 @@ async def get_hosts(data: NumbersOrIpv4):
 
 @router.post('/search-and-get-state')
 async def get_state(data: NumbersOrIpv4):
+    # FIX ME
+    # Если в списке hosts будет "192.168.0.1", то возникает ошибка!
+    # Проверить и найти в чем проблема
 
     states = services.StatesMonitoring(income_data=data, search_in_db=True)
     return await states.compose_request()
