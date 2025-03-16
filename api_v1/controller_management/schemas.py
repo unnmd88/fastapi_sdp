@@ -11,7 +11,6 @@ from pydantic import (
     AfterValidator, SkipValidation
 )
 from pydantic_core import ValidationError
-from typing_extensions import Literal
 
 from sdp_lib.utils_common import check_is_ipv4, remove_duplicates
 
@@ -28,7 +27,6 @@ class AllowedMonitoringEntity(StrEnum):
     INPUTS = 'inputs'
     ADVANCED = 'advanced'
     BASE_AND_INPUTS = 'base_and_inputs'
-
 
 
 class AllowedManagementEntity(StrEnum):
@@ -59,19 +57,6 @@ class TrafficLightsObjectsTableFields(StrEnum):
     IP_ADDRESS = 'ip_adress'
     NUMBER = 'number'
     ALL = '*'
-
-
-# class TrafficLightsObjectsResponce(BaseModel):
-#     model_config = ConfigDict()
-#     id: int
-#     number: Any
-#     description: Any
-#     type_controller: Any
-#     group: Any
-#     ip_adress: Any
-#     address: Any
-#     time_create: datetime.datetime
-#     time_update: datetime.datetime
 
 
 class GetStateResponse(BaseModel):
@@ -122,15 +107,6 @@ class GetStateResponse(BaseModel):
     }
 
 
-def get_value_as_string(value: Any) -> str:
-    """
-    Конвертирует экземпляр в строковый тип.
-    :param value: Значение, которое будет сконвертировано в строковый тип.
-    :return: Строковое представление value.
-    """
-    return str(value)
-
-
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
@@ -145,22 +121,6 @@ class SearchHostsInDb(BaseModel):
             return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
         else:
             return str(TrafficLightsObjectsTableFields.NUMBER)
-
-
-class BaseMonitoringHostBody(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
-
-    ipv4: Annotated[IPvAnyAddress, Field(alias=str(AllowedDataHostFields.ipv4)), AfterValidator(get_value_as_string)]
-    type_controller: Annotated[AllowedControllers, AfterValidator(get_value_as_string)]
-    number: Annotated[str | None, Field(default=None, max_length=20, validation_alias='host_id')]
-    scn: Annotated[str | None, Field(default=None, max_length=10)]
-    errors: Annotated[list, Field(default=[])]
-
-
-# class GetState(BaseMonitoringHostBody):
-#
-#     entity: Annotated[Literal[str(AllowedMonitoringEntity.GET_STATE_BASE), str(AllowedMonitoringEntity.GET_STATE_FULL)],
-#                       AfterValidator(get_value_as_string)]
 
 
 """ Проверка данных(свойств) определённого хоста """

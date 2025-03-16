@@ -9,7 +9,7 @@ from api_v1.controller_management.crud import search_hosts_from_db
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedDataHostFields,
-    AllowedMonitoringEntity
+    AllowedMonitoringEntity, GetHostsStaticDataFromDb
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
@@ -30,7 +30,7 @@ class Controllers(metaclass=abc.ABCMeta):
 
     def __init__(
             self, *,
-            income_data: dict[str, str] | list[str],
+            income_data: GetHostsStaticDataFromDb,
             search_in_db: bool
     ):
 

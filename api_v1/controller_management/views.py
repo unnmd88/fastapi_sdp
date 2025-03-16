@@ -59,7 +59,7 @@ async def get_hosts(data: GetHostsStaticDataFromDb):
 @router.post('/search-and-get-state')
 async def get_state(data: GetHostsStaticDataFromDb):
 
-    states = services.StatesMonitoring(data, search_in_db=True)
+    states = services.StatesMonitoring(income_data=data, search_in_db=True)
     return await states.compose_request()
 
 

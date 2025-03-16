@@ -5,8 +5,7 @@ import time
 from collections.abc import Sequence
 from datetime import datetime as dt
 from string import ascii_letters
-from typing import Callable, TypeVar
-
+from typing import Callable, TypeVar, Any
 
 T = TypeVar('T')
 
@@ -20,7 +19,6 @@ def timed(func: Callable):
         return func
     return wrapper
 
-
 def set_curr_datetime(sep: str = ':') -> str:
     """
     Возвращает текущую дату и время
@@ -30,7 +28,6 @@ def set_curr_datetime(sep: str = ':') -> str:
 
     return dt.today().strftime(f"%Y-%m-%d %H{sep}%M{sep}%S")
 
-
 def reverse_slashes(path: str) -> str:
     """
     Разворачивает слеши c "\" или "\\" на "/" пути path
@@ -39,7 +36,6 @@ def reverse_slashes(path: str) -> str:
     """
 
     return path.replace('\\', '/')
-
 
 def write_data_to_file(data_for_write: list[str] | str, filename: str, mode: str = 'w') -> None:
     """
@@ -59,7 +55,6 @@ def write_data_to_file(data_for_write: list[str] | str, filename: str, mode: str
         else:
             raise TypeError('Данные для записи в файл должны быть строкой или списком')
 
-
 def check_is_ipv4(ip_v4: str) -> bool:
     """
     Проверят валидность ip_v4.
@@ -73,10 +68,21 @@ def check_is_ipv4(ip_v4: str) -> bool:
     except ipaddress.AddressValueError:
         return False
 
-
 def get_random_word(chars: int = 6):
     return "".join([random.choice(ascii_letters) for _ in range(chars)])
 
-
 def remove_duplicates(elements: Sequence[T]) -> list[T]:
+    """
+    Удаляёт дубликаты элементов последовательности с сохранением порядка.
+    :param elements: Последовательность элементов, в которой необходимо удалить дубли.
+    :return: Список уникальных элементов из elements.
+    """
     return list({e: None for e in elements})
+
+def convert_value_to_string(value: Any) -> str:
+    """
+    Конвертирует экземпляр в строковый тип.
+    :param value: Значение, которое будет сконвертировано в строковый тип.
+    :return: Строковое представление value.
+    """
+    return str(value)
