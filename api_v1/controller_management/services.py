@@ -1,9 +1,8 @@
 import abc
 import time
 from asyncio import TaskGroup
-from typing import Coroutine, Any, Type
+from typing import Coroutine, Any, Type, TypeVar
 import aiohttp
-from typing import TypeVar
 from pysnmp.entity.engine import SnmpEngine
 
 from api_v1.controller_management.crud import search_hosts_from_db

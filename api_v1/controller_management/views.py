@@ -9,7 +9,7 @@ from pysnmp.entity.engine import SnmpEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .crud import search_hosts_from_db
-from . import services, sorters
+from . import services
 from api_v1.controller_management.sorters import sorters
 from .schemas import T1, GetHostsStaticDataFromDb, FastRequestMonitoringAndManagement
 import logging_config
@@ -51,9 +51,7 @@ router = APIRouter(tags=['traffic-lights'])
 async def get_hosts(data: GetHostsStaticDataFromDb):
 
     # start_time = time.time()
-    # logger.debug(data.hosts)
     hosts_from_db = await search_hosts_from_db(data)
-
     # print(f'Время запроса составило: {time.time() - start_time}')
     return hosts_from_db.get_good_hosts_and_bad_hosts_as_dict()
 
@@ -63,82 +61,6 @@ async def get_state(data: GetHostsStaticDataFromDb):
 
     states = services.StatesMonitoring(data, search_in_db=True)
     return await states.compose_request()
-
-    start_time = time.time()
-
-    logger.debug(data)
-    logger.debug(data.hosts)
-    hosts_from_db = await search_hosts_from_db(data)
-
-    data_hosts = sorters.HostSorterMonitoring(
-        income_data=hosts_from_db.good_hosts,
-        bad_hosts=hosts_from_db.bad_hosts
-    )
-    print(f'>> {data_hosts}')
-    data_hosts.sort()
-
-    states = services.StatesMonitoring(
-        allowed_hosts=data_hosts.good_hosts,
-        bad_hosts=data_hosts.bad_hosts
-    )
-    await states._make_request()
-    states.add_response_to_data_hosts()
-
-    print(f'Время составило: {time.time() - start_time}')
-    return {'Время составило': time.time() - start_time} | states.get_all_hosts_as_dict()
-
-
-# @router.post('/get-state')
-# async def get_state(data: FastRequestMonitoringAndManagement):
-#     start_time = time.time()
-#
-#     data_hosts = sorters.HostSorterMonitoring(data)
-#     print(data_hosts)
-#     print(data_hosts.sort())
-#     print(data_hosts)
-#
-#
-#     states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
-#                                        bad_hosts=data_hosts.bad_hosts)
-#     res = await states.main()
-#     #
-#     print(f'res:: {res}')
-#     # pprint.pprint(data_hosts.good_hosts)
-#     # print('Bad hosts: ')
-#     # pprint.pprint(data_hosts.bad_hosts)
-#
-#
-#
-#     print(f'Время составило: {time.time() - start_time}')
-#     return {'Время составило': time.time() - start_time} | data_hosts.get_bad_hosts_as_dict()
-#
-#     return data_hosts.get_good_hosts_and_bad_hosts_as_dict()
-
-
-# @router.post('/get-state-test')
-# async def get_state(data: FastRequestMonitoringAndManagement):
-#     start_time = time.time()
-#
-#     data_hosts = sorters.HostSorterMonitoring(data)
-#     # print(data_hosts)
-#     # print(data_hosts.sort())
-#     data_hosts.sort()
-#     print(data_hosts)
-#
-#     for host in data_hosts.bad_hosts:
-#         pprint.pprint(f'{host}')
-#
-#     states = services.StatesMonitoring(allowed_hosts=data_hosts.good_hosts,
-#                                        bad_hosts=data_hosts.bad_hosts)
-#     await states.main()
-#     states.add_response_to_data_hosts()
-#     #
-#     # print(f'res:: {res}')
-#
-#     print(f'Время составило: {time.time() - start_time}')
-#     return {'Время составило': time.time() - start_time} | states.get_all_hosts_as_dict()
-#
-#     return {'Время составило': time.time() - start_time}
 
 
 @router.post('/get-state')
