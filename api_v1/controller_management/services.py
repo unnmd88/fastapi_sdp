@@ -21,60 +21,6 @@ from api_v1.controller_management.sorters import sorters
 
 
 T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
-
-
-# class Controllers(metaclass=abc.ABCMeta):
-#     snmp_engine = SnmpEngine()
-#
-#     def __init__(self, allowed_hosts: dict, bad_hosts: list):
-#         self.allowed_to_request_hosts = allowed_hosts
-#         self.bad_hosts = bad_hosts
-#         self.result_tasks = None
-#         self._session = None
-#
-#     @abc.abstractmethod
-#     def get_coro(self, ip_v4: str, data_host: dict) -> Coroutine:
-#         ...
-#
-#     # async def main(self):
-#     #     self.result_tasks = []
-#     #     print(f'self.allowed_hosts: {self.allowed_to_request_hosts}')
-#     #     async with aiohttp.ClientSession() as self._session:
-#     #         async with TaskGroup() as tg:
-#     #             for ip_v4, data_host in self.allowed_to_request_hosts.items():
-#     #                 self.result_tasks.append(tg.create_task(
-#     #                     self.get_coro(ip_v4, data_host),
-#     #                     name=ip_v4
-#     #                 ))
-#     #
-#     #     return self.result_tasks
-#
-#     async def main(self):
-#
-#         self.result_tasks = []
-#         print(f'self.allowed_hosts: {self.allowed_to_request_hosts}')
-#         async with aiohttp.ClientSession() as self._session:
-#             async with TaskGroup() as tg:
-#                 for ip_v4, data_host in self.allowed_to_request_hosts.items():
-#                     self.result_tasks.append(tg.create_task(
-#                         self.get_coro(ip_v4, data_host),
-#                         name=ip_v4
-#                     ))
-#
-#         return self.result_tasks
-#
-#     def get_all_hosts_as_dict(self):
-#         return self.allowed_to_request_hosts | {'bad_hosts': self.bad_hosts}
-#
-#     def add_response_to_data_hosts(self):
-#         for t in self.result_tasks:
-#             instance = t.result()
-#             self.allowed_to_request_hosts[t.get_name()][str(FieldsNames.response)] = instance.response_as_dict
-#             print(f'res: {instance.response}')
-#
-#     async def search_hostst_in_db_and_create_responce(self):
-#         hosts_from_db = await search_hosts_from_db(data)
-
 S = TypeVar('S', sorters.HostSorterMonitoring, sorters.SearchHostsInDb)
 
 
