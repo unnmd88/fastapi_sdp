@@ -2,10 +2,13 @@ import functools
 import ipaddress
 import random
 import time
+from collections.abc import Sequence
 from datetime import datetime as dt
 from string import ascii_letters
-from typing import Callable
+from typing import Callable, TypeVar
 
+
+T = TypeVar('T')
 
 def timed(func: Callable):
     @functools.wraps(func)
@@ -73,3 +76,7 @@ def check_is_ipv4(ip_v4: str) -> bool:
 
 def get_random_word(chars: int = 6):
     return "".join([random.choice(ascii_letters) for _ in range(chars)])
+
+
+def remove_duplicates(elements: Sequence[T]) -> list[T]:
+    return list({e: None for e in elements})

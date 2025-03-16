@@ -13,7 +13,7 @@ from pydantic import (
 from pydantic_core import ValidationError
 from typing_extensions import Literal
 
-from sdp_lib.utils_common import check_is_ipv4
+from sdp_lib.utils_common import check_is_ipv4, remove_duplicates
 
 
 class AllowedControllers(StrEnum):
@@ -175,11 +175,13 @@ class BaseMonitoringHostBody(BaseModel):
 #     scn: Annotated[str, Field(default=None, max_length=10)]
 
 
+
+
 """ Входные данные запроса """
 
 class GetHostsStaticDataFromDb(BaseModel):
 
-    hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30)]
+    hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
 
 
 class T(BaseModel):

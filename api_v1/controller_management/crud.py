@@ -1,4 +1,4 @@
-from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields
+from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, GetHostsStaticDataFromDb
 from api_v1.controller_management.sorters.sorters import HostSorterSearchInDB
 # from api_v1.controller_management.sorters import logger
 from core.models import db_helper, TrafficLightsObjects
@@ -6,7 +6,7 @@ from sqlalchemy import select, or_, Select
 from sqlalchemy.engine.row import RowMapping
 
 
-async def search_hosts_from_db(income_data) -> HostSorterSearchInDB:
+async def search_hosts_from_db(income_data: GetHostsStaticDataFromDb) -> HostSorterSearchInDB:
     """
     Производит поиск и сортировку хостов после поиска в БД.
     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
@@ -14,6 +14,7 @@ async def search_hosts_from_db(income_data) -> HostSorterSearchInDB:
     :param income_data: Экземпляр модели pydantic с хостами из views.py.
     :return: Экземпляр модели HostSorterSearchInDB.
     """
+    print(f'income_data!!! ++ {income_data}')
     data_hosts = HostSorterSearchInDB(income_data)
     search_entity = data_hosts.get_hosts_data_for_search_in_db()
     db = SearchHosts()

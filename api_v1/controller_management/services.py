@@ -28,7 +28,11 @@ class Controllers(metaclass=abc.ABCMeta):
     snmp_engine = SnmpEngine()
     sorter: Type[S]
 
-    def __init__(self, income_data, search_in_db: bool):
+    def __init__(
+            self, *,
+            income_data: dict[str, str] | list[str],
+            search_in_db: bool
+    ):
 
         self.income_data = income_data
         self.search_in_db = search_in_db

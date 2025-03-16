@@ -65,20 +65,10 @@ async def get_state(data: GetHostsStaticDataFromDb):
 
 @router.post('/get-state')
 async def get_state(data: FastRequestMonitoringAndManagement):
-    start_time = time.time()
 
-    data_hosts = sorters.HostSorterMonitoring(data)
-    data_hosts.sort()
+    states = services.StatesMonitoring(data, search_in_db=False)
+    return await states.compose_request()
 
-    states = services.StatesMonitoring(
-        allowed_hosts=data_hosts.good_hosts,
-        bad_hosts=data_hosts.bad_hosts
-    )
-    await states._make_request()
-    states.add_response_to_data_hosts()
-
-    print(f'Время составило: {time.time() - start_time}')
-    return {'Время составило': time.time() - start_time} | states.get_all_hosts_as_dict()
 
 
 
