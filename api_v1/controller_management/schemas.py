@@ -8,7 +8,7 @@ from pydantic import (
     Field,
     ConfigDict,
     computed_field,
-    AfterValidator, SkipValidation
+    AfterValidator, SkipValidation, field_validator
 )
 from pydantic_core import ValidationError
 
@@ -45,18 +45,25 @@ class AllowedDataHostFields(StrEnum):
     host_id = 'host_id'
     type_controller = 'type_controller'
     scn = 'scn'
-    search_in_db = 'search_in_db'
+
     ip_or_name_from_user = 'ip_or_name_from_user'
     entity = 'entity'
     ipv4 = 'ip_address'
     ip_or_name = 'ip/name'
     options = 'options'
+    #Database entity
+    search_in_db = 'search_in_db'
+    search_in_db_field = 'search_in_db_field'
+    found = 'found'
+    count = 'count'
+    db_records = 'db_records'
 
 
 class TrafficLightsObjectsTableFields(StrEnum):
     IP_ADDRESS = 'ip_adress'
     NUMBER = 'number'
     ALL = '*'
+
 
 
 class GetStateResponse(BaseModel):
@@ -110,6 +117,23 @@ class GetStateResponse(BaseModel):
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
+def build_fileds_for_search_in_db(val) -> dict[str, dict[str, None | str]]:
+
+    return {
+        str(AllowedDataHostFields.found): False,
+        str(AllowedDataHostFields.count): 0,
+        str(AllowedDataHostFields.db_records): [],
+        str(AllowedDataHostFields.search_in_db_field): get_search_in_db_field(val)
+        }
+
+
+def get_search_in_db_field(field: str) -> str:
+    if check_is_ipv4(field):
+        return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
+    else:
+        return str(TrafficLightsObjectsTableFields.NUMBER)
+
+
 class SearchHostsInDb(BaseModel):
 
     ip_or_name_from_user: ip_or_name
@@ -125,7 +149,8 @@ class SearchHostsInDb(BaseModel):
 
 class NumbersOrIpv4(BaseModel):
 
-    hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
+    # hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
+    hosts: Annotated[list[ip_or_name] | dict, MinLen(1), MaxLen(30)]
 
     model_config = ConfigDict(json_schema_extra={
         "examples": [
@@ -135,6 +160,10 @@ class NumbersOrIpv4(BaseModel):
         ],
     })
 
+    @field_validator('hosts', mode='after')
+    @classmethod
+    def to_dict_with_data(cls, hosts: list) -> dict[str,  Any]:
+        return {host: build_fileds_for_search_in_db(host) for host in hosts}
 
 
 
@@ -206,16 +235,23 @@ class Nested(BaseModel):
     t1: str
     num: int
 
+
 class T1(BaseModel):
     id: int
     hosts: list[Nested]
 
 if __name__ == '__main__':
     data = {'type_controller': 'Swarc', 'entity': 'get_state_base', 'host_id': '1557'}
+    data = ['1', "11", "192.168.45.16"]
 
     try:
-        o = BaseMonitoringHostBody(**data)
+        o = NumbersOrIpv4(hosts=data)
         print(f'o: {o}')
+        print(f'o: {o.hosts.keys()}')
+        d = o.model_dump()
+        d1 = o.model_dump()
+        print(f'o: {d1 is d}')
+
     except ValidationError as err:
         print(f'err: {err}')
         print(f'err.errors(): {err.errors()}')

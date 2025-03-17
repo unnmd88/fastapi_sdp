@@ -15,7 +15,7 @@ import logging_config
 logger = logging.getLogger(__name__)
 
 
-T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel)
+T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
 
 
 class _BaseHostsSorters:
@@ -25,7 +25,7 @@ class _BaseHostsSorters:
     def __init__(
             self,
             income_data: T_PydanticModel | dict[str, Any],
-            bad_hosts: list[dict] | None= None,
+            bad_hosts: list[dict] | None = None,
     ):
         self.income_data = income_data
         self.income_hosts = income_data if isinstance(income_data, dict)  else income_data.hosts

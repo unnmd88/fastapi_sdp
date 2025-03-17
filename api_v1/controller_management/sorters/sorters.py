@@ -1,4 +1,7 @@
+import pprint
 from typing import Any
+
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurveSignatureAlgorithm
 
 from api_v1.controller_management.sorters.sorters_core import (
     _BaseHostsSorters,
@@ -48,6 +51,7 @@ class HostSorterSearchInDB(_BaseHostsSorters):
             return set(income_hosts.keys())
         raise ValueError('Переданный тип должен быть list или dict')
 
+    #Deprecated
     def get_hosts_data_for_search_in_db(self) -> list[SearchHostsInDb]:
         """
         Возвращает список с экземплярами модели, полученной в self._get_model_for_search_in_db(),
@@ -101,6 +105,66 @@ class HostSorterSearchInDB(_BaseHostsSorters):
             self.good_hosts |= self._build_properties_for_good_host(found_record)
         self._process_hosts_not_found_in_db()
         return self.good_hosts
+
+    def refactor_sorting_hosts_after_search_from_db(self) -> dict[str, dict[str, Any]]:
+        """
+        Сортирует хосты: если хост был найден в БД, отправляет в self.good_hosts, иначе в self.bad_hosts.
+        Также приводит свойства хостов(dict) к общему виду, см. описание founded_in_db_hosts и self.bad_hosts.
+        founded_in_db_hosts: dict, в который будут добавляться хосты, найденные в БД.
+                             Пример:
+                             {
+                             "10.179.56.1": {
+                             "number": "12",
+                             "type_controller": "Поток (P)",
+                             "address": "Щербаковская ул. - Вельяминовская ул. д.6к1,32   ВАО (ВАО-4)",
+                             "description": "Приоритет ОТ"
+                             },
+                             "10.179.40.9": {
+                             "number": "13",
+                             "type_controller": "Swarco",
+                             "address": "Шереметьевская ул. д.60,62,29,27к1 - Марьиной Рощи 11-й пр-д (СВАО-2)",
+                             "description": null
+                             }
+                             }
+        self.bad_hosts: В контексте данного метода это list с хостами, которые не были найдены в БД.
+                        Пример:
+                        [
+                        {'string': {'errors': ['not found in database']}},
+                        {'abra': {'errors': ['not found in database']}},
+                        {'cadabra': {'errors': ['not found in database']}}
+                        ]
+        :return: Атрибут self.good_hosts с хостами, найденными в БД.
+        """
+
+        self.good_hosts = {}
+        self._stack_hosts = self.income_data.model_dump()
+        print(f'self.hosts_after_search:: {self.hosts_after_search}')
+        for found_record in self.hosts_after_search:
+            found_record = dict(found_record)
+            self.add_record(found_record)
+            # self._remove_found_host_from_stack_hosts(found_record)
+            # self.good_hosts |= self._build_properties_for_good_host(found_record)
+        print(f'self.income_data: {self.income_data}')
+        print(f'self.income_hosts: {self.income_hosts}')
+        for k, v in self.income_hosts.items():
+            print(f'k: {k}\v: {v}')
+        self._process_hosts_not_found_in_db()
+        return self.good_hosts
+
+    def add_record(self, found_record: dict[str, Any]):
+
+        number, ip = found_record[TrafficLightsObjectsTableFields.NUMBER], found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
+        if number and number in self.income_hosts:
+            key = number
+        elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self.income_hosts:
+            key = ip
+        else:
+            return
+        self.income_hosts[key][AllowedDataHostFields.db_records].append(found_record)
+        self.income_hosts[key][AllowedDataHostFields.count] += 1
+        self.income_hosts[key][AllowedDataHostFields.found] = True
+
+
 
     def _process_hosts_not_found_in_db(self) -> None:
         """

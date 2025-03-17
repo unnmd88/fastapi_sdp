@@ -1,9 +1,9 @@
-from datetime import datetime
 
 from sqlalchemy import DateTime, func, Column
 from sqlalchemy.orm import Mapped
 
-from .base import Base
+# from .base import Base
+from core.models.base import Base
 
 
 class TrafficLightsObjects(Base):
@@ -20,3 +20,7 @@ class TrafficLightsObjects(Base):
 
     def __str__(self):
         return f'{self.number} {self.address} {self.type_controller}'
+
+
+if __name__ == '__main__':
+    print(f'T: {type(TrafficLightsObjects.type_controller)}')

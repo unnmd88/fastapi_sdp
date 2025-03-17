@@ -50,10 +50,15 @@ router = APIRouter(tags=['traffic-lights'])
 @router.post('/properties')
 async def get_hosts(data: NumbersOrIpv4):
 
-    # start_time = time.time()
+    start_time = time.time()
     print(f'da: {data}')
+    print(f'da!! : {data.hosts}')
     hosts_from_db = await search_hosts_from_db(data)
-    # print(f'Время запроса составило: {time.time() - start_time}')
+    print(f'Время запроса составило: {time.time() - start_time}')
+
+    return hosts_from_db.income_hosts
+    print(f'Время запроса составило: {time.time() - start_time}')
+    # return hosts_from_db
     return hosts_from_db.get_good_hosts_and_bad_hosts_as_dict()
 
 
