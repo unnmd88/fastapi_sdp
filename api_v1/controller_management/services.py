@@ -5,7 +5,7 @@ from typing import Coroutine, Any, Type, TypeVar
 import aiohttp
 from pysnmp.entity.engine import SnmpEngine
 
-from api_v1.controller_management.crud import search_hosts_from_db
+from api_v1.controller_management.crud.crud import search_hosts_from_db
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedDataHostFields,
@@ -89,7 +89,7 @@ class Controllers(metaclass=abc.ABCMeta):
         for t in self.result_tasks:
             instance = t.result()
             self.allowed_to_request_hosts[t.get_name()][str(FieldsNames.response)] = instance.response_as_dict
-            print(f'res: {instance.response}')
+            print(f'res: {instance.response_as_model}')
 
 
 class StatesMonitoring(Controllers):

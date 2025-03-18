@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from pysnmp.entity.engine import SnmpEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .crud import search_hosts_from_db
+from api_v1.controller_management.crud.crud import search_hosts_from_db
 from . import services
 from api_v1.controller_management.sorters import sorters
 from .schemas import T1, NumbersOrIpv4, FastRequestMonitoringAndManagement
@@ -55,8 +55,13 @@ async def get_hosts(data: NumbersOrIpv4):
     print(f'da!! : {data.hosts}')
     hosts_from_db = await search_hosts_from_db(data)
     print(f'Время запроса составило: {time.time() - start_time}')
+    m = hosts_from_db.response_as_model
+    m.time_execution = time.time() - start_time
+    pprint.pprint(f'M: {hosts_from_db.build_data_hosts_as_dict_and_merge_data_from_record_to_body()}')
 
-    return hosts_from_db.income_hosts
+    return hosts_from_db.build_data_hosts_as_dict_and_merge_data_from_record_to_body()
+
+    return {f'Время запроса составило: ': time.time() - start_time} | hosts_from_db.response_dict
     print(f'Время запроса составило: {time.time() - start_time}')
     # return hosts_from_db
     return hosts_from_db.get_good_hosts_and_bad_hosts_as_dict()

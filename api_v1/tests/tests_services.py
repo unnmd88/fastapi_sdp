@@ -5,7 +5,7 @@ from api_v1.controller_management import sorters, schemas
 
 def test_instance_HostSorterSearchInDB():
     model = schemas.NumbersOrIpv4(hosts=['3230', '11', '10.45.154.16'])
-    obj = services.HostSorterSearchInDB(model)
+    obj = services.HostProcessorAfterSearchInDB(model)
     expected = {
         '3230': {
             schemas.AllowedDataHostFields.entity: schemas.AllowedMonitoringEntity.GET_FROM_DB
@@ -24,7 +24,7 @@ def test_get_hosts_data_for_search_db_HostSorterSearchInDB():
     hosts = ['3230', '11', '10.45.154.16', 'abra', 'cadabra']
 
     m = schemas.NumbersOrIpv4(hosts=hosts)
-    obj = services.HostSorterSearchInDB(m)
+    obj = services.HostProcessorAfterSearchInDB(m)
 
     hosts_as_model = [
         schemas.SearchHostsInDb(ip_or_name_from_user=ip_or_name_from_user) for ip_or_name_from_user in hosts
@@ -33,13 +33,13 @@ def test_get_hosts_data_for_search_db_HostSorterSearchInDB():
 
 def test_get_model_HostSorterSearchInDB():
     model = schemas.NumbersOrIpv4(hosts=['3230', '11', '10.45.154.16'])
-    obj = services.HostSorterSearchInDB(model)
+    obj = services.HostProcessorAfterSearchInDB(model)
     assert obj.model_for_search_in_db == obj._get_model_for_search_in_db()
 
 def test_get_hosts_and_bad_hosts_as_dict_HostSorterSearchInDB():
 
     fake_model = schemas.NumbersOrIpv4(hosts=['3230', '11', '10.45.154.16'])
-    obj = services.HostSorterSearchInDB(fake_model)
+    obj = services.HostProcessorAfterSearchInDB(fake_model)
 
     bad_hosts = [
         {'string': {'entity': 'get_host_property', 'errors': ['not found in database']}},

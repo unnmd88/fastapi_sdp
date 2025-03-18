@@ -1,5 +1,6 @@
-from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, NumbersOrIpv4, AllowedDataHostFields
-from api_v1.controller_management.sorters.sorters import HostSorterSearchInDB
+from api_v1.controller_management.crud.processing import AfterRead
+from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, NumbersOrIpv4, AllowedDataHostFields, \
+    SearchinDbHostBody
 # from api_v1.controller_management.sorters import logger
 from core.models import db_helper, TrafficLightsObjects
 from sqlalchemy import select, or_, Select
@@ -26,28 +27,25 @@ from sqlalchemy.engine.row import RowMapping
 #     return data_hosts
 
 
-async def search_hosts_from_db(income_data: NumbersOrIpv4) -> HostSorterSearchInDB:
+async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
     """
     Производит поиск и сортировку хостов после поиска в БД.
     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
     атрибуты с данными о результатах поиска.
-    :param income_data: Экземпляр модели pydantic с хостами из views.py.
+    :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
     :return: Экземпляр модели HostSorterSearchInDB.
     """
-    print(f'income_data!!! ++ {income_data}')
-    data_hosts = HostSorterSearchInDB(income_data)
-    db = SearchHosts()
+    print(f'income_data!!! ++ {source_hosts_data}')
+    data_hosts = AfterRead(source_hosts_data)
+    db = ReadHosts()
 
-    data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.income_data))
+    data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
     print(f'daT: {data_hosts.hosts_after_search}')
-    # return data_hosts.hosts_after_search
-
-    # data_hosts.sorting_hosts_after_search_from_db()
-    data_hosts.refactor_sorting_hosts_after_search_from_db()
+    data_hosts.process_data_hosts_after_request()
     return data_hosts
 
 
-class BaseSearch:
+class BaseRead:
     """
     Базовый класс поиска в БД.
     """
@@ -62,7 +60,7 @@ class BaseSearch:
             return result.mappings().all()
 
 
-class SearchHosts(BaseSearch):
+class ReadHosts(BaseRead):
     """
     Поиск хостов в БД по определённым полям.
     """
@@ -70,7 +68,7 @@ class SearchHosts(BaseSearch):
     def __init__(self, all_columns: bool = False):
         self.all_columns = all_columns
 
-    def get_stmt_where(self, hosts_models: NumbersOrIpv4) -> Select[tuple[TrafficLightsObjects]]:
+    def get_stmt_where(self, hosts_models: dict[str, SearchinDbHostBody]) -> Select[tuple[TrafficLightsObjects]]:
         """
         Формирует сущность запроса поиска записей в БД для каждого хоста из hosts.
         :param hosts_models: Список вида с объектами моделей, в которых содержаться
@@ -87,8 +85,8 @@ class SearchHosts(BaseSearch):
         #     matches.get(model.search_in_db_field) == model.ip_or_name_from_user for model in hosts_models
         # ]
         stmt: list = [
-            matches.get(data_hots[AllowedDataHostFields.search_in_db_field]) == ip_or_name_from_user
-            for ip_or_name_from_user, data_hots in hosts_models.hosts.items()
+            matches.get(data_hots.search_in_db_field) == ip_or_name_from_user
+            for ip_or_name_from_user, data_hots in hosts_models.items()
         ]
 
         if self.all_columns:
@@ -106,3 +104,6 @@ class SearchHosts(BaseSearch):
             TrafficLightsObjects.number, TrafficLightsObjects.ip_adress, TrafficLightsObjects.type_controller,
             TrafficLightsObjects.address, TrafficLightsObjects.description
         )
+
+
+

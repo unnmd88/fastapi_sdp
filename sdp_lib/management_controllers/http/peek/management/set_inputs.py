@@ -114,7 +114,7 @@ async def main():
 if __name__ == '__main__':
 
     r = asyncio.run(main())
-    print(r.response)
-    print(*r.response[0])
+    print(r.response_as_model)
+    print(*r.response_as_model[0])
 
 

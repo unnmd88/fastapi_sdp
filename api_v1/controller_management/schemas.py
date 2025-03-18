@@ -1,6 +1,7 @@
 from enum import StrEnum
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from annotated_types import MinLen, MaxLen
+from mypy.fastparse import TryStar
 
 from pydantic import (
     BaseModel,
@@ -8,8 +9,9 @@ from pydantic import (
     Field,
     ConfigDict,
     computed_field,
-    AfterValidator, SkipValidation, field_validator
+    AfterValidator, SkipValidation, field_validator, model_serializer
 )
+from pydantic.main import IncEx
 from pydantic_core import ValidationError
 
 from sdp_lib.utils_common import check_is_ipv4, remove_duplicates
@@ -46,6 +48,9 @@ class AllowedDataHostFields(StrEnum):
     type_controller = 'type_controller'
     scn = 'scn'
 
+    source_data = 'source_data'
+    results = 'results'
+    execution_time = 'execution_time'
     ip_or_name_from_user = 'ip_or_name_from_user'
     entity = 'entity'
     ipv4 = 'ip_address'
@@ -120,6 +125,7 @@ ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 def build_fileds_for_search_in_db(val) -> dict[str, dict[str, None | str]]:
 
     return {
+        str(AllowedDataHostFields.ip_or_name_from_user): None,
         str(AllowedDataHostFields.found): False,
         str(AllowedDataHostFields.count): 0,
         str(AllowedDataHostFields.db_records): [],
@@ -132,6 +138,10 @@ def get_search_in_db_field(field: str) -> str:
         return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
     else:
         return str(TrafficLightsObjectsTableFields.NUMBER)
+
+
+class HostBodySearchInDb(BaseModel):
+    pass
 
 
 class SearchHostsInDb(BaseModel):
@@ -149,8 +159,8 @@ class SearchHostsInDb(BaseModel):
 
 class NumbersOrIpv4(BaseModel):
 
-    # hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
-    hosts: Annotated[list[ip_or_name] | dict, MinLen(1), MaxLen(30)]
+    hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
+    # hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30)]
 
     model_config = ConfigDict(json_schema_extra={
         "examples": [
@@ -160,11 +170,43 @@ class NumbersOrIpv4(BaseModel):
         ],
     })
 
-    @field_validator('hosts', mode='after')
-    @classmethod
-    def to_dict_with_data(cls, hosts: list) -> dict[str,  Any]:
-        return {host: build_fileds_for_search_in_db(host) for host in hosts}
+    # @field_validator('hosts', mode='after')
+    # @classmethod
+    # def to_dict_with_data(cls, hosts: list) -> dict[str,  Any]:
+    #     return {host: build_fileds_for_search_in_db(host) for host in hosts}
 
+
+
+class SearchinDbHostBody(BaseModel):
+
+    ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
+    search_in_db_field: Annotated[str, AfterValidator(get_search_in_db_field)]
+    db_records: Annotated[list, Field(default=[])]
+
+    # @computed_field
+    @property
+    def found(self)-> bool:
+        if len(self.db_records):
+            return True
+        return False
+
+    @computed_field
+    @property
+    def count_records(self) -> int:
+        return len(self.db_records)
+
+    # # @computed_field
+    # @property
+    # def allowed_to_request(self) -> bool:
+    #     return True if len(self.db_records) == 1 else False
+
+
+class ResponseSearchinDb(BaseModel):
+    # model_config = ConfigDict(extra='allow')
+
+    source_data: Annotated[NumbersOrIpv4, Field(description='TEst11')]
+    results: list[dict[str, SearchinDbHostBody]]
+    time_execution: Annotated[float, Field(default=0)]
 
 
 """ Проверка данных(свойств) определённого хоста """

@@ -61,7 +61,7 @@ class MultipleData(PeekWeb):
         """
         error,response = None, {}
         for r in results:
-            curr_err, curr_res = r.result().response
+            curr_err, curr_res = r.result().response_as_model
             response |= curr_res
             error = curr_err or error
         return error, response # Fix me

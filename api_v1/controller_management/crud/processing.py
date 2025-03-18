@@ -1,23 +1,11 @@
-import pprint
 from typing import Any
 
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurveSignatureAlgorithm
-
-from api_v1.controller_management.sorters.sorters_core import (
-    _BaseHostsSorters,
-    _HostSorterMonitoringAndManagement
-)
-from api_v1.controller_management.schemas import (
-    NumbersOrIpv4,
-    SearchHostsInDb,
-    AllowedDataHostFields,
-    TrafficLightsObjectsTableFields, SearchinDbHostBody, ResponseSearchinDb
-)
-from api_v1.controller_management.checkers.checkers import HostData, MonitoringHostDataChecker
-from core.user_exceptions.validate_exceptions import NotFoundInDB
+from api_v1.controller_management.host_entity import BaseHost
+from api_v1.controller_management.schemas import NumbersOrIpv4, SearchinDbHostBody, ResponseSearchinDb, \
+    AllowedDataHostFields, TrafficLightsObjectsTableFields
 
 
-class HostProcessorAfterSearchInDB(_BaseHostsSorters):
+class AfterRead(BaseHost):
     """
     Класс сортировок хостов, преданных пользователем для последующего
     поиска в БД.
@@ -26,18 +14,13 @@ class HostProcessorAfterSearchInDB(_BaseHostsSorters):
     def __init__(self, source_data: NumbersOrIpv4):
         super().__init__(source_data)
         self.hosts_data = self.create_hosts_data(self.source_data.hosts)
-        self._stack_hosts: set | None = None
         self.hosts_after_search: list | None = None
 
     def __repr__(self):
         return (
             f'self.income_data: {self.source_data}\n'
             f'self.hosts_after_search: {self.hosts_after_search}\n'
-            f'self._stack_hosts: {self._stack_hosts}\n'
-            f'self.good_hosts: {self.good_hosts}\n'
             f'self.hosts: {self.hosts_data}\n'
-            f'self.bad_hosts: {self.bad_hosts}\n'
-            # f'self.hosts_after_search_in_db: {self.hosts_after_search}\n'
         )
 
     def create_hosts_data(self, hosts: list | dict) -> dict[str, SearchinDbHostBody]:
@@ -83,12 +66,26 @@ class HostProcessorAfterSearchInDB(_BaseHostsSorters):
             AllowedDataHostFields.results: [self.hosts_data],
         }
 
+    @property
+    def data_hosts_as_dict(self):
+        return {
+            ip_or_name: body.model_dump() for ip_or_name, body in self.hosts_data.items()
+        }
 
-class HostSorterMonitoring(_HostSorterMonitoringAndManagement):
+    def build_data_hosts_as_dict_and_merge_data_from_record_to_body(self):
+        return {
+            ip_or_name: body.model_dump() | body.db_records[0] if body.count_records == 1 else body.model_dump()
+            for ip_or_name, body in self.hosts_data.items()
+        }
 
-    def _get_checker_class(self):
-        """
-        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
-        :return:
-        """
-        return MonitoringHostDataChecker
+class ForMonitoringAndManagement(AfterRead):
+
+    def __init__(self, source_data: NumbersOrIpv4):
+        super().__init__(source_data)
+        self.hosts_data_for_monitoring_and_management = None
+
+    def build_data_hosts_as_dict_and_merge_data_from_record_to_body(self):
+        return {
+            ip_or_name: body.model_dump() | body.db_records[0] if body.count_records == 1 else body.model_dump()
+            for ip_or_name, body in self.hosts_data.items()
+        }
