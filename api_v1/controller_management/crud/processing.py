@@ -1,8 +1,10 @@
 from typing import Any
 
+from api_v1.controller_management.checkers.checkers import AfterSearchInDbChecker
+from api_v1.controller_management.checkers.checkers_core import HostData
 from api_v1.controller_management.host_entity import BaseHost
 from api_v1.controller_management.schemas import NumbersOrIpv4, SearchinDbHostBody, ResponseSearchinDb, \
-    AllowedDataHostFields, TrafficLightsObjectsTableFields
+    AllowedDataHostFields, TrafficLightsObjectsTableFields, SearchinDbHostBodyMonitoringAndManagement
 
 
 class AfterRead(BaseHost):
@@ -10,6 +12,7 @@ class AfterRead(BaseHost):
     Класс сортировок хостов, преданных пользователем для последующего
     поиска в БД.
     """
+    pydantic_class = SearchinDbHostBody
 
     def __init__(self, source_data: NumbersOrIpv4):
         super().__init__(source_data)
@@ -25,7 +28,7 @@ class AfterRead(BaseHost):
 
     def create_hosts_data(self, hosts: list | dict) -> dict[str, SearchinDbHostBody]:
         return {
-            host: SearchinDbHostBody(
+            host: self.pydantic_class(
                 ip_or_name_source=host,
                 search_in_db_field=host,
                 db_records=[]
@@ -79,13 +82,22 @@ class AfterRead(BaseHost):
         }
 
 class ForMonitoringAndManagement(AfterRead):
+    pydantic_class = SearchinDbHostBodyMonitoringAndManagement
+
 
     def __init__(self, source_data: NumbersOrIpv4):
         super().__init__(source_data)
         self.hosts_data_for_monitoring_and_management = None
+        self.good_hosts = {}
+        self.bad_hosts = []
 
-    def build_data_hosts_as_dict_and_merge_data_from_record_to_body(self):
-        return {
-            ip_or_name: body.model_dump() | body.db_records[0] if body.count_records == 1 else body.model_dump()
-            for ip_or_name, body in self.hosts_data.items()
-        }
+    def sort(self):
+
+        for curr_host_ipv4, current_data_host in self.hosts_data.items():
+
+            current_host = AfterSearchInDbChecker(ip_or_name=curr_host_ipv4, properties=current_data_host)
+            print(f'current_host.validate_all(): {current_host.validate_all()}')
+            print(f'current_host.properties: {current_host}')
+            # self._sort_current_host(current_host)
+        return self.good_hosts
+

@@ -201,6 +201,11 @@ class SearchinDbHostBody(BaseModel):
     #     return True if len(self.db_records) == 1 else False
 
 
+class SearchinDbHostBodyMonitoringAndManagement(SearchinDbHostBody):
+
+    errors: Annotated[list, Field(default=[])]
+
+
 class ResponseSearchinDb(BaseModel):
     # model_config = ConfigDict(extra='allow')
 

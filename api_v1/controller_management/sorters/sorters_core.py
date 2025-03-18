@@ -86,6 +86,10 @@ class _BaseHostsSorters(BaseHost):
     """
     Базовый класс сортировок хостов, переданных пользователем.
     """
+    def __init__(self, source_data: T_PydanticModel | dict[str, Any]):
+        super().__init__(source_data)
+        self.good_hosts = {}
+        self.bad_hosts = []
 
     @abc.abstractmethod
     def create_hosts_data(self, hosts) -> dict:
@@ -134,8 +138,35 @@ class _BaseHostsSorters(BaseHost):
             return copy.deepcopy(self.source_data.hosts)
         raise ValueError('self.income_data должен быть типом dict или экземпляром Pydantic Model с атрибутом hosts')
 
+    @abc.abstractmethod
+    def _get_checker_class(self) -> Type[MonitoringHostDataChecker]:
+        """
+        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+        Необходимо использовать класс из модуля custom_checkers.py.
+        :return:
+        """
+        pass
 
-class _HostSorterMonitoringAndManagement(_BaseHostsSorters):
+    def sort(self):
+        """
+        Основной метод сортировки данных из json.
+        :return: None.
+        """
+        self.good_hosts = {}
+        checker_class = self._get_checker_class()
+        for curr_host_ipv4, current_data_host in self.hosts_data.items():
+            current_host = checker_class(ip_or_name=curr_host_ipv4, properties=current_data_host)
+            self._sort_current_host(current_host)
+        return self.good_hosts
+
+    def _sort_current_host(self, current_host: MonitoringHostDataChecker) -> None:
+        if all(validate_method() for validate_method in current_host.get_validate_methods()):
+            self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
+        else:
+            self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+
+
+class _HostSorterMonitoringAndManagement:
 
     @abc.abstractmethod
     def _get_checker_class(self) -> Type[MonitoringHostDataChecker]:

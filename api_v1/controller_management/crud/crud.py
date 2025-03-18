@@ -1,4 +1,4 @@
-from api_v1.controller_management.crud.processing import AfterRead
+from api_v1.controller_management.crud.processing import AfterRead, ForMonitoringAndManagement
 from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, NumbersOrIpv4, AllowedDataHostFields, \
     SearchinDbHostBody
 # from api_v1.controller_management.sorters import logger
@@ -42,6 +42,25 @@ async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
     print(f'daT: {data_hosts.hosts_after_search}')
     data_hosts.process_data_hosts_after_request()
+    return data_hosts
+
+
+async def search_hosts_from_db_for_monitoring_and_management(source_hosts_data: NumbersOrIpv4) -> ForMonitoringAndManagement:
+    """
+    Производит поиск и сортировку хостов после поиска в БД.
+    Возвращает экземпляр класса HostSorterSearchInDB, который содержит
+    атрибуты с данными о результатах поиска.
+    :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
+    :return: Экземпляр модели HostSorterSearchInDB.
+    """
+    print(f'income_data!!! ++ {source_hosts_data}')
+    data_hosts = ForMonitoringAndManagement(source_hosts_data)
+    db = ReadHosts()
+
+    data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
+    print(f'daT: {data_hosts.hosts_after_search}')
+    data_hosts.process_data_hosts_after_request()
+    data_hosts.sort()
     return data_hosts
 
 
