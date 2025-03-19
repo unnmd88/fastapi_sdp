@@ -147,22 +147,19 @@ def get_search_in_db_field(field: str) -> str:
         return str(TrafficLightsObjectsTableFields.NUMBER)
 
 
-class HostBodySearchInDb(BaseModel):
-    pass
+# class SearchHostsInDb(BaseModel):
+#
+#     ip_or_name_from_user: ip_or_name
+#
+#     @computed_field
+#     @property
+#     def search_in_db_field(self) -> str:
+#         if check_is_ipv4(self.ip_or_name_from_user):
+#             return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
+#         else:
+#             return str(TrafficLightsObjectsTableFields.NUMBER)
 
-
-class SearchHostsInDb(BaseModel):
-
-    ip_or_name_from_user: ip_or_name
-
-    @computed_field
-    @property
-    def search_in_db_field(self) -> str:
-        if check_is_ipv4(self.ip_or_name_from_user):
-            return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
-        else:
-            return str(TrafficLightsObjectsTableFields.NUMBER)
-
+""" Взаимосвязаны с запросом в БД. """
 
 class NumbersOrIpv4(BaseModel):
 
@@ -183,9 +180,6 @@ class NumbersOrIpv4(BaseModel):
     #     return {host: build_fileds_for_search_in_db(host) for host in hosts}
 
 
-
-
-
 class SearchinDbHostBody(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
@@ -204,37 +198,56 @@ class SearchinDbHostBody(BaseModel):
     def count_records(self) -> int:
         return len(self.db_records)
 
-    # # @computed_field
-    # @property
-    # def allowed_to_request(self) -> bool:
-    #     return True if len(self.db_records) == 1 else False
 
-
-class SearchinDbHostBodyMonitoringAndManagementProxy(SearchinDbHostBody):
+class SearchinDbHostBodyForMonitoringAndManagementProxy(SearchinDbHostBody):
 
     errors: Annotated[list, Field(default=[])]
 
 
 class DataHostMixin(BaseModel):
-    number: str | None
-    ip_adress: str | None
-    type_controller: str | None
-    address: str | None
-    description: str | None
-
-
-class SearchinDbHostBodyMonitoring(SearchinDbHostBodyMonitoringAndManagementProxy, DataHostMixin):
     model_config = ConfigDict(extra='allow')
+
+    number: Annotated[str | None, Field(default=None)]
+    ip_adress: Annotated[str | None, Field(default=None)]
+    type_controller: Annotated[str | None, Field(default=None)]
+    address: Annotated[str | None, Field(default=None)]
+    description: Annotated[str | None, Field(default=None)]
     option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
 
 
 
+class SearchinDbHostBodyForMonitoring(SearchinDbHostBodyForMonitoringAndManagementProxy, DataHostMixin):
+    model_config = ConfigDict(extra='allow')
+
+    db_records: Annotated[list, Field(default=[], exclude=True)]
+
+
+""" Без запроса в БД. """
+
+
+class FastMonitoring(BaseModel):
+
+    # hosts: Annotated[dict[IPvAnyAddress, dict[str, str]], MinLen(1), SkipValidation]
+
+    hosts: Annotated[
+        dict[str, DataHostMixin], MinLen(1), MaxLen(30), SkipValidation
+    ]
+
+    @field_validator('hosts', mode='before')
+    @classmethod
+    def add_m(cls, hosts: dict[str, Any]) -> dict[str, DataHostMixin]:
+        return {k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k})) for k, v in hosts.items()}
+        # d = {}
+        # for k, val in v.items():
+        #     print(f'k: {k}')
+        #     print(f'val: {val}')
+        #     d[k] = DataHostMixin(**val)
+        # return d
 
 
 
 
-
-
+""" Response """
 
 
 class ResponseSearchinDb(BaseModel):

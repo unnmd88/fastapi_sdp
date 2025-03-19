@@ -12,7 +12,7 @@ from api_v1.controller_management.crud.crud import search_hosts_from_db, \
     search_hosts_from_db_for_monitoring_and_management
 from . import services
 from api_v1.controller_management.sorters import sorters
-from .schemas import T1, NumbersOrIpv4, FastRequestMonitoringAndManagement
+from .schemas import T1, NumbersOrIpv4, FastRequestMonitoringAndManagement, FastMonitoring
 import logging_config
 
 
@@ -94,15 +94,21 @@ async def get_state(data: NumbersOrIpv4):
     return await states.compose_request()
 
 
-@router.post('/get-state')
-async def get_state(data: FastRequestMonitoringAndManagement):
+# @router.post('/get-state')
+# async def get_state(data: FastRequestMonitoringAndManagement):
+#
+#     states = services.StatesMonitoring(income_data=data, search_in_db=False)
 
+@router.post('/get-state')
+async def get_state(data: FastMonitoring):
+
+    print(f'data: \n {data}')
     states = services.StatesMonitoring(income_data=data, search_in_db=False)
 
-
-
-
     return await states.compose_request()
+
+
+
 
 
 

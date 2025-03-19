@@ -12,7 +12,7 @@ from ..checkers.checkers import MonitoringHostDataChecker
 
 import logging_config
 from ..host_entity import BaseDataHosts
-from ..schemas import SearchinDbHostBodyMonitoringAndManagementProxy, SearchinDbHostBodyMonitoring
+from ..schemas import SearchinDbHostBodyForMonitoringAndManagementProxy, SearchinDbHostBodyForMonitoring
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 # T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
 
 T_PydanticModel = TypeVar("T_PydanticModel",
-                          SearchinDbHostBodyMonitoringAndManagementProxy,
-                          SearchinDbHostBodyMonitoring
+                          SearchinDbHostBodyForMonitoringAndManagementProxy,
+                          SearchinDbHostBodyForMonitoring
                           )
 
 # class _BaseHostsSorters(BaseHost):

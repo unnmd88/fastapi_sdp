@@ -11,7 +11,7 @@ from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedDataHostFields,
     AllowedMonitoringEntity, NumbersOrIpv4, FastRequestMonitoringAndManagement,
-    SearchinDbHostBodyMonitoring
+    SearchinDbHostBodyForMonitoring
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
@@ -22,7 +22,8 @@ from api_v1.controller_management.sorters import sorters
 
 
 T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
-S = TypeVar('S', sorters.HostSorterMonitoring, sorters.SearchHostsInDb)
+# S = TypeVar('S', sorters.HostSorterMonitoring, sorters.SearchHostsInDb)
+S = TypeVar('S')
 P = TypeVar('P', NumbersOrIpv4, FastRequestMonitoringAndManagement)
 
 
@@ -94,7 +95,7 @@ class Controllers(metaclass=abc.ABCMeta):
                 hosts_from_db.hosts_data
             )
         else:
-            data_hosts = self.get_sorter_class()(self.income_data)
+            data_hosts = self.get_sorter_class()(self.income_data.hosts)
 
         data_hosts.sort()
         # print(f'data_hosts!--> {data_hosts}')
@@ -145,7 +146,7 @@ class StatesMonitoring(Controllers):
 
     def get_coro(
             self, ip: str,
-            data_host: dict | SearchinDbHostBodyMonitoring
+            data_host: dict | SearchinDbHostBodyForMonitoring
     ) -> Coroutine:
         type_controller = data_host.type_controller
         option = data_host.option
@@ -155,7 +156,7 @@ class StatesMonitoring(Controllers):
             case (AllowedControllers.POTOK_S, None):
                 return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
-                scn = data_host.get(AllowedDataHostFields.scn)
+                scn = data_host.number
                 return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
                 return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()

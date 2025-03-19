@@ -3,15 +3,15 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from api_v1.controller_management.schemas import AllowedDataHostFields, SearchinDbHostBodyMonitoringAndManagementProxy, \
-    SearchinDbHostBodyMonitoring
+from api_v1.controller_management.schemas import AllowedDataHostFields, SearchinDbHostBodyForMonitoringAndManagementProxy, \
+    SearchinDbHostBodyForMonitoring
 from core.user_exceptions import validate_exceptions
 
 
 E = TypeVar('E', bound=validate_exceptions.BaseClientException)
 T_PydanticModel = TypeVar("T_PydanticModel",
-                          SearchinDbHostBodyMonitoringAndManagementProxy,
-                          SearchinDbHostBodyMonitoring
+                          SearchinDbHostBodyForMonitoringAndManagementProxy,
+                          SearchinDbHostBodyForMonitoring
                           )
 
 

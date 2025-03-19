@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, IPvAnyAddress, field_validator
 from pydantic_core import ValidationError, PydanticCustomError
 from sqlalchemy.sql.annotation import Annotated
 
-from api_v1.controller_management.schemas import AllowedControllers, SearchinDbHostBodyMonitoringAndManagementProxy, \
+from api_v1.controller_management.schemas import AllowedControllers, SearchinDbHostBodyForMonitoringAndManagementProxy, \
     TrafficLightsObjectsTableFields
 from api_v1.controller_management.checkers.archive.custom_checkers import HostData
 from core.user_exceptions.validate_exceptions import NotFoundInDB
@@ -96,9 +96,9 @@ class MonitoringHostDataChecker(HostData):
 
 class AfterSearchInDbChecker(HostData):
 
-    def __init__(self, ip_or_name: str, properties: SearchinDbHostBodyMonitoringAndManagementProxy):
+    def __init__(self, ip_or_name: str, properties: SearchinDbHostBodyForMonitoringAndManagementProxy):
         super().__init__(ip_or_name, properties)
-        self.properties: SearchinDbHostBodyMonitoringAndManagementProxy = properties
+        self.properties: SearchinDbHostBodyForMonitoringAndManagementProxy = properties
 
     def validate_all(self):
         """

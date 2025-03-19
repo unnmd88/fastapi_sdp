@@ -6,8 +6,8 @@ from api_v1.controller_management.schemas import (
     NumbersOrIpv4,
     SearchinDbHostBody,
     ResponseSearchinDb,
-    SearchinDbHostBodyMonitoringAndManagementProxy,
-    SearchinDbHostBodyMonitoring,
+    SearchinDbHostBodyForMonitoringAndManagementProxy,
+    SearchinDbHostBodyForMonitoring,
     AllowedDataHostFields,
     TrafficLightsObjectsTableFields
 )
@@ -32,7 +32,7 @@ class AfterRead(BaseDataHosts):
             f'self.hosts: {self.hosts_data}\n'
         )
 
-    def create_hosts_data(self) -> dict[str, SearchinDbHostBody | SearchinDbHostBodyMonitoringAndManagementProxy]:
+    def create_hosts_data(self) -> dict[str, SearchinDbHostBody | SearchinDbHostBodyForMonitoringAndManagementProxy]:
         return {
             host: self.pydantic_class(
                 ip_or_name_source=host,
@@ -83,7 +83,7 @@ class AfterRead(BaseDataHosts):
 
 class ForMonitoringAndManagement(AfterRead):
 
-    pydantic_class = SearchinDbHostBodyMonitoringAndManagementProxy
+    pydantic_class = SearchinDbHostBodyForMonitoringAndManagementProxy
 
     def process_data_hosts_after_request(self):
         super().process_data_hosts_after_request()
@@ -93,7 +93,7 @@ class ForMonitoringAndManagement(AfterRead):
             if current_host.validate_all():
                 record = current_host.properties.db_records[0]
                 key_ip = record[TrafficLightsObjectsTableFields.IP_ADDRESS]
-                model = SearchinDbHostBodyMonitoring(
+                model = SearchinDbHostBodyForMonitoring(
                     **(current_data_host.model_dump() | record)
                 )
                 print(f'[key_ip] = {key_ip}')
