@@ -1,22 +1,28 @@
 from typing import Any
 
 from api_v1.controller_management.checkers.checkers import AfterSearchInDbChecker
-from api_v1.controller_management.checkers.checkers_core import HostData
-from api_v1.controller_management.host_entity import BaseHost
-from api_v1.controller_management.schemas import NumbersOrIpv4, SearchinDbHostBody, ResponseSearchinDb, \
-    AllowedDataHostFields, TrafficLightsObjectsTableFields, SearchinDbHostBodyMonitoringAndManagement
+from api_v1.controller_management.host_entity import BaseDataHosts
+from api_v1.controller_management.schemas import (
+    NumbersOrIpv4,
+    SearchinDbHostBody,
+    ResponseSearchinDb,
+    SearchinDbHostBodyMonitoringAndManagementProxy,
+    SearchinDbHostBodyMonitoring,
+    AllowedDataHostFields,
+    TrafficLightsObjectsTableFields
+)
 
 
-class AfterRead(BaseHost):
+class AfterRead(BaseDataHosts):
     """
     Класс сортировок хостов, преданных пользователем для последующего
     поиска в БД.
     """
+
     pydantic_class = SearchinDbHostBody
 
     def __init__(self, source_data: NumbersOrIpv4):
         super().__init__(source_data)
-        self.hosts_data = self.create_hosts_data(self.source_data.hosts)
         self.hosts_after_search: list | None = None
 
     def __repr__(self):
@@ -26,41 +32,46 @@ class AfterRead(BaseHost):
             f'self.hosts: {self.hosts_data}\n'
         )
 
-    def create_hosts_data(self, hosts: list | dict) -> dict[str, SearchinDbHostBody]:
+    def create_hosts_data(self) -> dict[str, SearchinDbHostBody | SearchinDbHostBodyMonitoringAndManagementProxy]:
         return {
             host: self.pydantic_class(
                 ip_or_name_source=host,
                 search_in_db_field=host,
                 db_records=[]
             )
-            for host in hosts
+            for host in self.source_data.hosts
         }
 
     def process_data_hosts_after_request(self):
 
         for found_record in self.hosts_after_search:
             self._add_record_to_hosts_data(dict(found_record))
-        print(f'self.hosts_data: {self.hosts_data}')
-        print(f'self.source_data: {self.source_data}')
 
     def _add_record_to_hosts_data(
             self,
-            found_record: dict[str, Any],
-    ):
+            found_record: dict[str, Any]
+    ) -> str | None:
 
         number, ip = found_record[TrafficLightsObjectsTableFields.NUMBER], found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
-        if number and number in self.hosts_data:
+        if number is None and ip is None:
+            return None
+
+        if number in self.hosts_data:
             key = number
-        elif ip and found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self.hosts_data:
+        elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self.hosts_data:
             key = ip
         else:
-            return
+            raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
         # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
         self.hosts_data[key].db_records.append(found_record)
+        return key
 
     @property
     def response_as_model(self):
-        return ResponseSearchinDb(source_data=self.source_data, results=[self.hosts_data])
+        try:
+            return ResponseSearchinDb(source_data=self.source_data, results=[self.hosts_data])
+        except ValueError:
+            return self.response_dict
 
     @property
     def response_dict(self):
@@ -69,35 +80,25 @@ class AfterRead(BaseHost):
             AllowedDataHostFields.results: [self.hosts_data],
         }
 
-    @property
-    def data_hosts_as_dict(self):
-        return {
-            ip_or_name: body.model_dump() for ip_or_name, body in self.hosts_data.items()
-        }
-
-    def build_data_hosts_as_dict_and_merge_data_from_record_to_body(self):
-        return {
-            ip_or_name: body.model_dump() | body.db_records[0] if body.count_records == 1 else body.model_dump()
-            for ip_or_name, body in self.hosts_data.items()
-        }
 
 class ForMonitoringAndManagement(AfterRead):
-    pydantic_class = SearchinDbHostBodyMonitoringAndManagement
 
+    pydantic_class = SearchinDbHostBodyMonitoringAndManagementProxy
 
-    def __init__(self, source_data: NumbersOrIpv4):
-        super().__init__(source_data)
-        self.hosts_data_for_monitoring_and_management = None
-        self.good_hosts = {}
-        self.bad_hosts = []
-
-    def sort(self):
-
+    def process_data_hosts_after_request(self):
+        super().process_data_hosts_after_request()
+        processed_data_hosts = {}
         for curr_host_ipv4, current_data_host in self.hosts_data.items():
-
             current_host = AfterSearchInDbChecker(ip_or_name=curr_host_ipv4, properties=current_data_host)
-            print(f'current_host.validate_all(): {current_host.validate_all()}')
-            print(f'current_host.properties: {current_host}')
-            # self._sort_current_host(current_host)
-        return self.good_hosts
-
+            if current_host.validate_all():
+                record = current_host.properties.db_records[0]
+                key_ip = record[TrafficLightsObjectsTableFields.IP_ADDRESS]
+                model = SearchinDbHostBodyMonitoring(
+                    **(current_data_host.model_dump() | record)
+                )
+                print(f'[key_ip] = {key_ip}')
+                print(f'[model] = {model}')
+                processed_data_hosts[key_ip] = model
+            else:
+                processed_data_hosts[curr_host_ipv4] = current_data_host
+        self.hosts_data = processed_data_hosts

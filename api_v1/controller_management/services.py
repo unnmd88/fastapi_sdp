@@ -5,11 +5,13 @@ from typing import Coroutine, Any, Type, TypeVar
 import aiohttp
 from pysnmp.entity.engine import SnmpEngine
 
-from api_v1.controller_management.crud.crud import search_hosts_from_db
+from api_v1.controller_management.crud.crud import search_hosts_from_db, \
+    search_hosts_from_db_for_monitoring_and_management
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedDataHostFields,
-    AllowedMonitoringEntity, NumbersOrIpv4, FastRequestMonitoringAndManagement
+    AllowedMonitoringEntity, NumbersOrIpv4, FastRequestMonitoringAndManagement,
+    SearchinDbHostBodyMonitoring
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import stcip, ug405
@@ -37,8 +39,8 @@ class Controllers(metaclass=abc.ABCMeta):
 
         self.income_data = income_data
         self.search_in_db = search_in_db
-        self.allowed_to_request_hosts = {}
-        self.bad_hosts = []
+        self.allowed_to_request_hosts: dict | None = None
+        self.bad_hosts: list | None = None
         self.result_tasks = None
         self._session = None
 
@@ -63,20 +65,45 @@ class Controllers(metaclass=abc.ABCMeta):
                     ))
         return self.result_tasks
 
+    # async def compose_request(self):
+    #
+    #     start_time = time.time()
+    #     if self.search_in_db:
+    #         hosts_from_db = await search_hosts_from_db(self.income_data)
+    #         data_hosts = self.get_sorter_class()(
+    #             income_data=hosts_from_db.good_hosts, bad_hosts=hosts_from_db.bad_hosts
+    #         )
+    #     else:
+    #         data_hosts = self.get_sorter_class()(self.income_data)
+    #
+    #     data_hosts.sort()
+    #     print(f'data_hosts!--> {data_hosts}')
+    #     self.allowed_to_request_hosts = data_hosts.good_hosts
+    #     self.bad_hosts += data_hosts.bad_hosts
+    #
+    #     await self._make_request()
+    #     self.add_response_to_data_hosts()
+    #     return {'Время составило': time.time() - start_time} | self.get_all_hosts_as_dict()
+
     async def compose_request(self):
 
         start_time = time.time()
         if self.search_in_db:
-            hosts_from_db = await search_hosts_from_db(self.income_data)
+            hosts_from_db = await search_hosts_from_db_for_monitoring_and_management(self.income_data)
             data_hosts = self.get_sorter_class()(
-                income_data=hosts_from_db.good_hosts, bad_hosts=hosts_from_db.bad_hosts
+                hosts_from_db.hosts_data
             )
         else:
             data_hosts = self.get_sorter_class()(self.income_data)
 
         data_hosts.sort()
-        self.allowed_to_request_hosts = data_hosts.good_hosts
-        self.bad_hosts += data_hosts.bad_hosts
+        # print(f'data_hosts!--> {data_hosts}')
+        self.allowed_to_request_hosts = data_hosts.hosts_without_errors
+        self.bad_hosts = data_hosts.hosts_with_errors
+        print(f'self.allowed_to_request_hosts!--> {self.allowed_to_request_hosts}')
+        print(f'self.bad_hosts!--> {self.bad_hosts}')
+
+
 
         await self._make_request()
         self.add_response_to_data_hosts()
@@ -88,17 +115,40 @@ class Controllers(metaclass=abc.ABCMeta):
     def add_response_to_data_hosts(self):
         for t in self.result_tasks:
             instance = t.result()
-            self.allowed_to_request_hosts[t.get_name()][str(FieldsNames.response)] = instance.response_as_dict
-            print(f'res: {instance.response_as_model}')
+            # self.allowed_to_request_hosts[t.get_name()][str(FieldsNames.response)] = instance.response_as_dict
+            self.allowed_to_request_hosts[t.get_name()].response = instance.response_as_dict
+            print(f'res: {instance.response_as_dict}')
 
 
 class StatesMonitoring(Controllers):
 
     sorter = sorters.HostSorterMonitoring
 
-    def get_coro(self, ip: str, data_host: dict) -> Coroutine:
-        type_controller = data_host[AllowedDataHostFields.type_controller]
-        option = data_host.get(AllowedDataHostFields.options)
+    # def get_coro(self, ip: str, data_host: dict) -> Coroutine:
+    #     type_controller = data_host[AllowedDataHostFields.type_controller]
+    #     option = data_host.get(AllowedDataHostFields.options)
+    #     match (type_controller, option):
+    #         case (AllowedControllers.SWARCO, None):
+    #             return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+    #         case (AllowedControllers.POTOK_S, None):
+    #             return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+    #         case (AllowedControllers.POTOK_P, None):
+    #             scn = data_host.get(AllowedDataHostFields.scn)
+    #             return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
+    #         case(AllowedControllers.PEEK, None):
+    #             return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
+    #         case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
+    #             return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse()
+    #         case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
+    #             return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
+    #     raise TypeError('DEBUG')
+
+    def get_coro(
+            self, ip: str,
+            data_host: dict | SearchinDbHostBodyMonitoring
+    ) -> Coroutine:
+        type_controller = data_host.type_controller
+        option = data_host.option
         match (type_controller, option):
             case (AllowedControllers.SWARCO, None):
                 return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
@@ -114,4 +164,3 @@ class StatesMonitoring(Controllers):
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
                 return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
         raise TypeError('DEBUG')
-

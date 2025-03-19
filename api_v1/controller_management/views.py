@@ -58,9 +58,9 @@ async def get_hosts(data: NumbersOrIpv4):
     print(f'Время запроса составило: {time.time() - start_time}')
     m = hosts_from_db.response_as_model
     m.time_execution = time.time() - start_time
-    pprint.pprint(f'M: {hosts_from_db.build_data_hosts_as_dict_and_merge_data_from_record_to_body()}')
+    # pprint.pprint(f'M: {hosts_from_db.build_data_hosts_as_dict_and_merge_data_from_record_to_body()}')
 
-    return hosts_from_db.build_data_hosts_as_dict_and_merge_data_from_record_to_body()
+    return hosts_from_db.response_as_model
 
     return {f'Время запроса составило: ': time.time() - start_time} | hosts_from_db.response_dict
     print(f'Время запроса составило: {time.time() - start_time}')
@@ -70,16 +70,18 @@ async def get_hosts(data: NumbersOrIpv4):
 
 @router.post('/search-and-get-state-test')
 async def get_state_t(data: NumbersOrIpv4):
+
+    states = services.StatesMonitoring(income_data=data, search_in_db=True)
+    return await states.compose_request()
+
+
+
     start_time = time.time()
     print(f'da: {data}')
     print(f'da!! : {data.hosts}')
     hosts_from_db = await search_hosts_from_db_for_monitoring_and_management(data)
     print(f'Время запроса составило: {time.time() - start_time}')
-    m = hosts_from_db.response_as_model
-    m.time_execution = time.time() - start_time
-    pprint.pprint(f'M: {hosts_from_db.build_data_hosts_as_dict_and_merge_data_from_record_to_body()}')
-
-    return hosts_from_db.data_hosts_as_dict
+    return hosts_from_db.hosts_data_for_monitoring_and_management
 
 
 @router.post('/search-and-get-state')
@@ -96,6 +98,10 @@ async def get_state(data: NumbersOrIpv4):
 async def get_state(data: FastRequestMonitoringAndManagement):
 
     states = services.StatesMonitoring(income_data=data, search_in_db=False)
+
+
+
+
     return await states.compose_request()
 
 

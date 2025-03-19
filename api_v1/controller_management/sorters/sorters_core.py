@@ -11,13 +11,18 @@ from pydantic import BaseModel
 from ..checkers.checkers import MonitoringHostDataChecker
 
 import logging_config
-from ..host_entity import BaseHost
+from ..host_entity import BaseDataHosts
+from ..schemas import SearchinDbHostBodyMonitoringAndManagementProxy, SearchinDbHostBodyMonitoring
 
 logger = logging.getLogger(__name__)
 
 
-T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
+# T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
 
+T_PydanticModel = TypeVar("T_PydanticModel",
+                          SearchinDbHostBodyMonitoringAndManagementProxy,
+                          SearchinDbHostBodyMonitoring
+                          )
 
 # class _BaseHostsSorters(BaseHost):
 #     """
@@ -82,25 +87,24 @@ T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
 #         raise ValueError('self.income_data должен быть типом dict или экземпляром Pydantic Model с атрибутом hosts')
 
 
-class _BaseHostsSorters(BaseHost):
+class _BaseHostsSorters(BaseDataHosts):
     """
     Базовый класс сортировок хостов, переданных пользователем.
     """
-    def __init__(self, source_data: T_PydanticModel | dict[str, Any]):
+    def __init__(self, source_data: dict[str, T_PydanticModel]):
         super().__init__(source_data)
-        self.good_hosts = {}
-        self.bad_hosts = []
+        self.hosts_without_errors = {}
+        self.hosts_with_errors = []
 
-    @abc.abstractmethod
-    def create_hosts_data(self, hosts) -> dict:
-        ...
+    def create_hosts_data(self) -> dict:
+        return copy.deepcopy(self.source_data)
 
     def __repr__(self):
         return (
             f'self.income_data: {self.source_data}\n'
             f'self.income_hosts: {self.hosts_data}\n'
-            f'self.good_hosts: {self.good_hosts}\n'
-            f'self.bad_hosts: {self.bad_hosts}\n'
+            f'self.good_hosts: {self.hosts_without_errors}\n'
+            f'self.bad_hosts: {self.hosts_with_errors}\n'
         )
 
     def add_host_to_container_with_bad_hosts(self, host: dict[str, Any]):
@@ -109,10 +113,10 @@ class _BaseHostsSorters(BaseHost):
         :param host: Хост, который будет добавлен в контейнер self.bad_hosts.
         :return: None
         """
-        if isinstance(self.bad_hosts, list):
-            self.bad_hosts.append(host)
-        elif isinstance(self.bad_hosts, dict):
-            self.bad_hosts |= host
+        if isinstance(self.hosts_with_errors, list):
+            self.hosts_with_errors.append(host)
+        elif isinstance(self.hosts_with_errors, dict):
+            self.hosts_with_errors |= host
         else:
             raise TypeError(f'DEBUG: Тип контейнера < self.bad_hosts > должен быть dict или list')
 
@@ -121,14 +125,14 @@ class _BaseHostsSorters(BaseHost):
         Возвращает словарь всех хостов(прошедших валидацию и хостов с ошибками)
         :return: Словарь со всеми хостами запроса.
         """
-        return self.good_hosts | self.get_bad_hosts_as_dict()
+        return self.hosts_without_errors | self.get_bad_hosts_as_dict()
 
     def get_bad_hosts_as_dict(self) -> dict:
         """
         Возвращает self.bad_hosts в виде списка.
         :return: self.bad_hosts в виде списка.
         """
-        return functools.reduce(lambda x, y: x | y, self.bad_hosts, {})
+        return functools.reduce(lambda x, y: x | y, self.hosts_with_errors, {})
 
     def _get_income_hosts(self):
 
@@ -152,18 +156,35 @@ class _BaseHostsSorters(BaseHost):
         Основной метод сортировки данных из json.
         :return: None.
         """
-        self.good_hosts = {}
+        self.hosts_without_errors = {}
         checker_class = self._get_checker_class()
         for curr_host_ipv4, current_data_host in self.hosts_data.items():
+
             current_host = checker_class(ip_or_name=curr_host_ipv4, properties=current_data_host)
+            if current_host.properties.errors:
+                print(f'current_host.full_host_data_as_dict: {current_host.full_host_data_as_dict}')
+                self.hosts_with_errors.append(current_host.full_host_data_as_dict)
+                continue
             self._sort_current_host(current_host)
-        return self.good_hosts
+        print(f'self.hosts_with_eER: {self.hosts_with_errors}')
+        return self.hosts_without_errors
 
     def _sort_current_host(self, current_host: MonitoringHostDataChecker) -> None:
         if all(validate_method() for validate_method in current_host.get_validate_methods()):
-            self.good_hosts |= current_host.ip_or_name_and_properties_as_dict
+            self.hosts_without_errors |= current_host.full_host_data_as_dict
         else:
-            self.add_host_to_container_with_bad_hosts(current_host.ip_or_name_and_properties_as_dict)
+            self.add_host_to_container_with_bad_hosts(current_host.full_host_data_as_dict)
+
+
+
+
+
+
+
+
+
+
+
 
 
 class _HostSorterMonitoringAndManagement:

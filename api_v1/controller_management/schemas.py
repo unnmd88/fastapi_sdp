@@ -31,6 +31,13 @@ class AllowedMonitoringEntity(StrEnum):
     BASE_AND_INPUTS = 'base_and_inputs'
 
 
+class AllowedMonitoringOptions(StrEnum):
+    base = 'base'
+    advanced = 'advanced'
+    inputs = 'inputs'
+    base_and_inputs = 'base_and_inputs'
+
+
 class AllowedManagementEntity(StrEnum):
     SET_STAGE = 'set_stage'
     SET_DARK = 'set_dark'
@@ -177,6 +184,8 @@ class NumbersOrIpv4(BaseModel):
 
 
 
+
+
 class SearchinDbHostBody(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
@@ -201,9 +210,31 @@ class SearchinDbHostBody(BaseModel):
     #     return True if len(self.db_records) == 1 else False
 
 
-class SearchinDbHostBodyMonitoringAndManagement(SearchinDbHostBody):
+class SearchinDbHostBodyMonitoringAndManagementProxy(SearchinDbHostBody):
 
     errors: Annotated[list, Field(default=[])]
+
+
+class DataHostMixin(BaseModel):
+    number: str | None
+    ip_adress: str | None
+    type_controller: str | None
+    address: str | None
+    description: str | None
+
+
+class SearchinDbHostBodyMonitoring(SearchinDbHostBodyMonitoringAndManagementProxy, DataHostMixin):
+    model_config = ConfigDict(extra='allow')
+    option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
+
+
+
+
+
+
+
+
+
 
 
 class ResponseSearchinDb(BaseModel):

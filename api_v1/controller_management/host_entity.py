@@ -6,14 +6,10 @@ from pydantic import BaseModel
 T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
 
 
-class BaseHost:
-    def __init__(
-            self,
-            source_data: T_PydanticModel | dict[str, Any],
-    ):
+class BaseDataHosts(abc.ABC):
+    def __init__(self, source_data: T_PydanticModel |  dict[str, T_PydanticModel]):
         self.source_data = source_data
-        self.hosts_data = self.create_hosts_data(self.source_data.hosts)
+        self.hosts_data = self.create_hosts_data()
 
-    @abc.abstractmethod
-    def create_hosts_data(self, hosts) -> dict:
-        ...
+    def create_hosts_data(self) -> Any:
+        raise NotImplementedError()

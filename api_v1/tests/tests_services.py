@@ -63,7 +63,7 @@ def test_get_hosts_and_bad_hosts_as_dict_HostSorterSearchInDB():
                          'description': None}
     }
 
-    obj.bad_hosts, obj.hosts = bad_hosts, hosts
+    obj.hosts_with_errors, obj.hosts = bad_hosts, hosts
     assert obj.get_bad_hosts_as_dict() == bad_hosts_dict
     assert obj.get_good_hosts_and_bad_hosts_as_dict() == (hosts | bad_hosts_dict)
 

@@ -2,68 +2,89 @@ from pydantic import BaseModel, ConfigDict, IPvAnyAddress, field_validator
 from pydantic_core import ValidationError, PydanticCustomError
 from sqlalchemy.sql.annotation import Annotated
 
-from api_v1.controller_management.schemas import AllowedControllers, SearchinDbHostBodyMonitoringAndManagement
+from api_v1.controller_management.schemas import AllowedControllers, SearchinDbHostBodyMonitoringAndManagementProxy, \
+    TrafficLightsObjectsTableFields
 from api_v1.controller_management.checkers.archive.custom_checkers import HostData
 from core.user_exceptions.validate_exceptions import NotFoundInDB
 from pydantic import Field
 
 
-
-
-class Base(BaseModel):
-    model_config = ConfigDict()
-
-
-
-
-class TypeController(Base):
+class TypeController(BaseModel):
     type_controller: AllowedControllers
-    ip_address: IPvAnyAddress
+    ip_adress: IPvAnyAddress
+
 
 class FoundInDatabase(BaseModel):
 
     db_records: list
 
-    @field_validator('db_records')
-    def must_be_unique(cls, v):
-        if not v:
+    @field_validator('db_records', mode='after')
+    def complex_validator(cls, records):
+        if not records:
             raise PydanticCustomError(
                 'Не найден в базе данных',
                 'Хост не найден в базе данных',
                 # dict(wrong_value=v)
             )
-        if len(v) > 1:
+        if len(records) > 1:
             raise PydanticCustomError(
                 'not unique',
                 f'Найдено более одного хоста в базе данных, должен быть в единственном экземпляре',
                 {
-                    'Количество найденных хостов': len(v)
+                    'Количество найденных хостов': len(records)
                 }
             # dict(wrong_value=v)
 
             )
+        if not (records[0][TrafficLightsObjectsTableFields.IP_ADDRESS]):
+            raise PydanticCustomError(
+                'not if field',
+                f'Нет данных об ip адресе у хоста в базе',
+                {
+                    'Нет ip': f'У найденного хоста нет информации об ip: {records[0][TrafficLightsObjectsTableFields.IP_ADDRESS]}'
+                }
+            )
 
-
-
-
+# Исходный
+# class MonitoringHostDataChecker(HostData):
+#
+#     def validate_all(self):
+#         res = True
+#         for validate_class in self.get_validate_classes():
+#             try:
+#                 validate_class(**self._get_full_host_data_as_dict())
+#             except ValidationError as e:
+#                 self.add_error_entity_for_current_host(e.errors())
+#                 res = False
+#         return res
+#
+#     def get_validate_classes(self):
+#         return (TypeController, )
+#
+#
+#     def get_validate_methods(self):
+#         """
+#         Возвращает список с методами валидаций.
+#         :return:
+#         """
+#         return [self.validate_all]
 
 
 class MonitoringHostDataChecker(HostData):
-
 
     def validate_all(self):
         res = True
         for validate_class in self.get_validate_classes():
             try:
-                validate_class(**self._get_full_host_data_as_dict())
+                print(f'self.properties.model_dump(): {self.properties.model_dump()}')
+                validate_class(**self.properties.model_dump())
             except ValidationError as e:
-                self.add_error_entity_for_current_host(e.errors())
+                self.properties.errors.append(e.errors(include_input=False))
                 res = False
         return res
 
     def get_validate_classes(self):
         return (TypeController, )
-
 
     def get_validate_methods(self):
         """
@@ -75,36 +96,32 @@ class MonitoringHostDataChecker(HostData):
 
 class AfterSearchInDbChecker(HostData):
 
-    def __init__(self, ip_or_name: str, properties: SearchinDbHostBodyMonitoringAndManagement):
+    def __init__(self, ip_or_name: str, properties: SearchinDbHostBodyMonitoringAndManagementProxy):
         super().__init__(ip_or_name, properties)
-        self.properties: SearchinDbHostBodyMonitoringAndManagement = properties
+        self.properties: SearchinDbHostBodyMonitoringAndManagementProxy = properties
 
     def validate_all(self):
+        """
+        Проверяет валидность найденной записи хоста из бд.
+        Осуществляет проверку валидности хоста для запроса
+        мониторинга или управления.
+        :return: True, если проверка
+                 использовать для мониторинга или управления.
+        """
         if not self.validate_record():
             return False
-        self.properties = self.properties.model_dump() | self.properties.db_records[0]
-        print(f'self.properties::: {self.properties}')
-
-        res = True
-        for validate_class in self.get_validate_classes():
-            try:
-                validate_class(**self._get_full_host_data_as_dict())
-            except ValidationError as e:
-                self.add_error_entity_for_current_host(e.errors())
-                res = False
-        return res
+        return True
 
     def validate_record(self):
         try:
             FoundInDatabase(db_records=self.properties.db_records)
             return True
         except ValidationError as e:
-            self.add_error_entity_for_current_host(e.errors())
+            self.properties.errors += e.errors(include_url=False, include_input=False)
             return False
 
-
     def get_validate_classes(self):
-        return (TypeController, )
+        return (FoundInDatabase, )
 
     def get_validate_methods(self):
         """
