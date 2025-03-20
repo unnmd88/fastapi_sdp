@@ -5,10 +5,7 @@ from asyncio import TaskGroup
 import aiohttp
 from pysnmp.entity.engine import SnmpEngine
 
-from api_v1.controller_management.crud.crud import (
-    search_hosts_from_db,
-    search_hosts_from_db_for_monitoring_and_management
-)
+from api_v1.controller_management.crud.crud import search_hosts_from_db_for_monitoring_and_management
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedMonitoringEntity,

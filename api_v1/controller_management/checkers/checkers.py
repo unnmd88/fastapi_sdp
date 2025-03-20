@@ -1,8 +1,11 @@
 from pydantic import BaseModel, IPvAnyAddress, field_validator
 from pydantic_core import ValidationError, PydanticCustomError
 
-from api_v1.controller_management.schemas import AllowedControllers, SearchinDbHostBodyForMonitoringAndManagementProxy, \
+from api_v1.controller_management.schemas import (
+    AllowedControllers,
+    SearchinDbHostBodyForMonitoringAndManagementProxy,
     TrafficLightsObjectsTableFields
+)
 from api_v1.controller_management.checkers.archive.custom_checkers import HostData
 
 
@@ -49,7 +52,6 @@ class MonitoringHostDataChecker(HostData):
         res = True
         for validate_class in self.get_validate_classes():
             try:
-                print(f'self.properties.model_dump(): {self.properties.model_dump()}')
                 validate_class(**self.properties.model_dump())
             except ValidationError as e:
                 self.properties.errors.append(e.errors(include_input=False))
