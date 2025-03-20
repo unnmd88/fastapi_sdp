@@ -1,12 +1,9 @@
-from pydantic import BaseModel, ConfigDict, IPvAnyAddress, field_validator
+from pydantic import BaseModel, IPvAnyAddress, field_validator
 from pydantic_core import ValidationError, PydanticCustomError
-from sqlalchemy.sql.annotation import Annotated
 
 from api_v1.controller_management.schemas import AllowedControllers, SearchinDbHostBodyForMonitoringAndManagementProxy, \
     TrafficLightsObjectsTableFields
 from api_v1.controller_management.checkers.archive.custom_checkers import HostData
-from core.user_exceptions.validate_exceptions import NotFoundInDB
-from pydantic import Field
 
 
 class TypeController(BaseModel):
