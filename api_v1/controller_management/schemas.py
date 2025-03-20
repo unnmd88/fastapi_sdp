@@ -80,7 +80,7 @@ class TrafficLightsObjectsTableFields(StrEnum):
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-def get_search_in_db_field(field: str) -> str:
+def get_field_for_search_in_db(field: str) -> str:
 
     if check_is_ipv4(field):
         return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
@@ -106,7 +106,7 @@ class NumbersOrIpv4(BaseModel):
 class SearchinDbHostBody(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
-    search_in_db_field: Annotated[str, AfterValidator(get_search_in_db_field)]
+    search_in_db_field: Annotated[str, AfterValidator(get_field_for_search_in_db)]
     db_records: Annotated[list, Field(default=[])]
 
     # @computed_field
