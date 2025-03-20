@@ -8,21 +8,26 @@ from typing import Any, Type, TypeVar
 
 from pydantic import BaseModel
 
-from ..checkers.checkers import MonitoringHostDataChecker
-
 import logging_config
-from ..host_entity import BaseDataHosts
-from ..schemas import SearchinDbHostBodyForMonitoringAndManagementProxy, SearchinDbHostBodyForMonitoring
+from api_v1.controller_management.checkers.checkers import MonitoringHostDataChecker
+from api_v1.controller_management.host_entity import BaseDataHosts
+from api_v1.controller_management.schemas import (
+    SearchinDbHostBodyForMonitoringAndManagementProxy,
+    SearchinDbHostBodyForMonitoring
+)
+# from ..checkers.checkers import MonitoringHostDataChecker
+# from ..host_entity import BaseDataHosts
+# from ..schemas import SearchinDbHostBodyForMonitoringAndManagementProxy, SearchinDbHostBodyForMonitoring
+
 
 logger = logging.getLogger(__name__)
 
+T_PydanticModel = TypeVar(
+    "T_PydanticModel",
+    SearchinDbHostBodyForMonitoringAndManagementProxy,
+    SearchinDbHostBodyForMonitoring
 
-# T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
-
-T_PydanticModel = TypeVar("T_PydanticModel",
-                          SearchinDbHostBodyForMonitoringAndManagementProxy,
-                          SearchinDbHostBodyForMonitoring
-                          )
+)
 
 
 class _BaseHostsSorters(BaseDataHosts):
