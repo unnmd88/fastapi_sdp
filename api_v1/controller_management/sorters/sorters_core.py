@@ -23,11 +23,10 @@ T_PydanticModel = TypeVar(
     "T_PydanticModel",
     SearchinDbHostBodyForMonitoringAndManagementProxy,
     SearchinDbHostBodyForMonitoring
-
 )
 
 
-class _BaseHostsSorters(BaseDataHosts):
+class BaseHostsSorters(BaseDataHosts):
     """
     Базовый класс сортировок хостов, переданных пользователем.
     """
@@ -37,9 +36,6 @@ class _BaseHostsSorters(BaseDataHosts):
         # self.hosts_with_errors = []
         self.hosts_with_errors = {}
 
-    def create_hosts_data(self) -> dict:
-        return copy.deepcopy(self.source_data)
-
     def __repr__(self):
         return (
             f'self.income_data: {self.source_data}\n'
@@ -47,6 +43,9 @@ class _BaseHostsSorters(BaseDataHosts):
             f'self.good_hosts: {self.hosts_without_errors}\n'
             f'self.bad_hosts: {self.hosts_with_errors}\n'
         )
+
+    def _create_hosts_data(self) -> dict:
+        return copy.deepcopy(self.source_data)
 
     def add_host_to_container_with_bad_hosts(self, host: dict[str, Any]):
         """

@@ -32,7 +32,7 @@ class AfterRead(BaseDataHosts):
             f'self.hosts: {self.hosts_data}\n'
         )
 
-    def create_hosts_data(self) -> dict[str, SearchinDbHostBody | SearchinDbHostBodyForMonitoringAndManagementProxy]:
+    def _create_hosts_data(self) -> dict[str, SearchinDbHostBody | SearchinDbHostBodyForMonitoringAndManagementProxy]:
         return {
             host: self.pydantic_class(
                 ip_or_name_source=host,
