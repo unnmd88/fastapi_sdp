@@ -15,9 +15,6 @@ from api_v1.controller_management.schemas import (
     SearchinDbHostBodyForMonitoringAndManagementProxy,
     SearchinDbHostBodyForMonitoring
 )
-# from ..checkers.checkers import MonitoringHostDataChecker
-# from ..host_entity import BaseDataHosts
-# from ..schemas import SearchinDbHostBodyForMonitoringAndManagementProxy, SearchinDbHostBodyForMonitoring
 
 
 logger = logging.getLogger(__name__)
