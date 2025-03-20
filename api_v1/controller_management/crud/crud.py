@@ -26,6 +26,7 @@ from sqlalchemy.engine.row import RowMapping
 #     data_hosts.sorting_hosts_after_search_from_db()
 #     return data_hosts
 
+# uvicorn.run('main:app', host='192.168.45.93', port=8001, reload=True)
 
 async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
     """

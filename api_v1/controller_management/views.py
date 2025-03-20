@@ -68,20 +68,20 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
     return hosts_from_db.get_good_hosts_and_bad_hosts_as_dict()
 
 
-@router.post('/search-and-get-state-test')
-async def get_state_t(data: NumbersOrIpv4):
-
-    states = services.StatesMonitoring(income_data=data, search_in_db=True)
-    return await states.compose_request()
-
-
-
-    start_time = time.time()
-    print(f'da: {data}')
-    print(f'da!! : {data.hosts}')
-    hosts_from_db = await search_hosts_from_db_for_monitoring_and_management(data)
-    print(f'Время запроса составило: {time.time() - start_time}')
-    return hosts_from_db.hosts_data_for_monitoring_and_management
+# @router.post('/search-and-get-state-test')
+# async def get_state_t(data: NumbersOrIpv4):
+#
+#     states = services.StatesMonitoring(income_data=data, search_in_db=True)
+#     return await states.compose_request()
+#
+#
+#
+#     start_time = time.time()
+#     print(f'da: {data}')
+#     print(f'da!! : {data.hosts}')
+#     hosts_from_db = await search_hosts_from_db_for_monitoring_and_management(data)
+#     print(f'Время запроса составило: {time.time() - start_time}')
+#     return hosts_from_db.hosts_data_for_monitoring_and_management
 
 
 @router.post('/search-and-get-state')
