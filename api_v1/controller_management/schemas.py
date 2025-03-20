@@ -97,7 +97,7 @@ class NumbersOrIpv4(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "examples": [
             {
-                "hosts": ["11", "192.168.0.1", "2390"]
+                "hosts": ["11", "2390"]
             },
         ],
     })
@@ -164,25 +164,84 @@ class FastMonitoring(BaseModel):
         json_schema_extra= {
             "examples": [
                 {
-                    "192.168.0.2": {
-                        AllowedDataHostFields.type_controller: "Swarco(required field)",
-                }
-                },
+                    "hosts":
+                        {
+                            "192.168.0.2": {
+                                AllowedDataHostFields.type_controller: "Swarco(required field)",
+                            },
 
-                {
-                    "192.168.0.1": {
-                        AllowedDataHostFields.host_id: "1111(optional field)",
-                        AllowedDataHostFields.scn: "CO1111(optional field)",
-                        AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
-                        AllowedDataHostFields.type_controller: "Swarco(required field)",
-                    }
-                },
+                            "192.168.0.1": {
+                                AllowedDataHostFields.host_id: "1111(optional field)",
+                                AllowedDataHostFields.scn: "CO1111(optional field)",
+                                AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
+                                AllowedDataHostFields.type_controller: "Swarco(required field)",
+                            }
+                        },
+                }
             ],
         }
     )
 
 
 """ Response """
+
+
+class ResponseSearchinDb(BaseModel):
+    source_data: Annotated[NumbersOrIpv4, Field(description='TEst11')]
+    results: list[dict[str, SearchinDbHostBody]]
+    time_execution: Annotated[float, Field(default=0)]
+
+    model_config = ConfigDict(
+        extra='allow',
+        json_schema_extra={
+            "examples": [
+                {
+
+                    "source_data": {
+                        "hosts": [
+                            "11",
+                            "2390"
+                        ]
+                    },
+                    "results": [
+                        {
+                            "11": {
+                                "ip_or_name_source": "11",
+                                "search_in_db_field": "number",
+                                "db_records": [
+                                    {
+                                        "number": "11",
+                                        "ip_adress": "10.179.28.9",
+                                        "type_controller": "Swarco",
+                                        "address": "Бережковская наб. д.22, 24    ЗАО (ЗАО-9)",
+                                        "description": "Приоритет ОТ"
+                                    }
+                                ],
+                                "count_records": 1
+                            },
+                            "2390": {
+                                "ip_or_name_source": "2390",
+                                "search_in_db_field": "number",
+                                "db_records": [
+                                    {
+                                        "number": "2390",
+                                        "ip_adress": "10.179.16.121",
+                                        "type_controller": "Peek",
+                                        "address": "Зеленоград г. Панфиловский (пр.пр. 648) пр-т - Андреевка (пр.пр. 647) ул. (САО-7)",
+                                        "description": "Приоритет ОТ. Переведен в фикс по особому распоряжению.07.08.2024"
+                                    }
+                                ],
+                                "count_records": 1
+                            }
+                        }
+                    ],
+                    "time_execution": 0
+
+                },
+            ],
+        }
+    )
+
 
 json_schema_monitoring_response = {
         "examples": [
@@ -213,9 +272,8 @@ json_schema_monitoring_response = {
                             "current_mode": "VA"
                         }
                     }
-                }
-            },
-            {
+                },
+
                 "10.179.16.121": {
                     "number": None,
                     "ip_adress": "10.179.16.121",
@@ -252,17 +310,9 @@ json_schema_monitoring_response = {
                         }
                     }
                 }
-            }
+            },
         ],
     }
-
-
-class ResponseSearchinDb(BaseModel):
-    # model_config = ConfigDict(extra='allow')
-
-    source_data: Annotated[NumbersOrIpv4, Field(description='TEst11')]
-    results: list[dict[str, SearchinDbHostBody]]
-    time_execution: Annotated[float, Field(default=0)]
 
 
 class ResponseGetState(BaseModel):
@@ -270,38 +320,36 @@ class ResponseGetState(BaseModel):
         json_schema_extra=json_schema_monitoring_response
     )
 
+
 """ Проверка данных(свойств) определённого хоста """
 
 
-
-class FastRequestMonitoringAndManagement(BaseModel):
-
-    hosts: Annotated[dict[IPvAnyAddress, dict[str, str]], MinLen(1), SkipValidation]
-
-    model_config = ConfigDict(
-        use_enum_values=True,
-        extra='allow',
-        json_schema_extra= {
-            "examples": [
-                {
-                    "192.168.0.2": {
-                        AllowedDataHostFields.type_controller: "Swarco(required field)",
-                }
-                },
-
-                {
-                    "192.168.0.1": {
-                        AllowedDataHostFields.host_id: "1111(optional field)",
-                        AllowedDataHostFields.scn: "CO1111(optional field)",
-                        AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
-                        AllowedDataHostFields.type_controller: "Swarco(required field)",
-                    }
-                },
-            ],
-        }
-    )
-
-
+# class FastRequestMonitoringAndManagement(BaseModel):
+#
+#     hosts: Annotated[dict[IPvAnyAddress, dict[str, str]], MinLen(1), SkipValidation]
+#
+#     model_config = ConfigDict(
+#         use_enum_values=True,
+#         extra='allow',
+#         json_schema_extra= {
+#             "examples": [
+#                 {
+#                     "192.168.0.2": {
+#                         AllowedDataHostFields.type_controller: "Swarco(required field)",
+#                 }
+#                 },
+#
+#                 {
+#                     "192.168.0.1": {
+#                         AllowedDataHostFields.host_id: "1111(optional field)",
+#                         AllowedDataHostFields.scn: "CO1111(optional field)",
+#                         AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
+#                         AllowedDataHostFields.type_controller: "Swarco(required field)",
+#                     }
+#                 },
+#             ],
+#         }
+#     )
 
 
 """ Модели БД """

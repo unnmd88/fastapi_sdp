@@ -12,7 +12,7 @@ from api_v1.controller_management.crud.crud import search_hosts_from_db, \
     search_hosts_from_db_for_monitoring_and_management
 from . import services
 from api_v1.controller_management.sorters import sorters
-from .schemas import T1, NumbersOrIpv4, FastRequestMonitoringAndManagement, FastMonitoring, ResponseGetState
+from .schemas import T1, NumbersOrIpv4, FastMonitoring, ResponseGetState, ResponseSearchinDb
 import logging_config
 
 
@@ -49,7 +49,7 @@ router = APIRouter(tags=['traffic-lights'])
 
 
 @router.post('/properties')
-async def get_hosts(data: NumbersOrIpv4):
+async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
     start_time = time.time()
     print(f'da: {data}')

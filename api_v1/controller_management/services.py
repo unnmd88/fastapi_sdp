@@ -10,7 +10,7 @@ from api_v1.controller_management.crud.crud import search_hosts_from_db, \
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedDataHostFields,
-    AllowedMonitoringEntity, NumbersOrIpv4, FastRequestMonitoringAndManagement,
+    AllowedMonitoringEntity, NumbersOrIpv4,
     SearchinDbHostBodyForMonitoring
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
@@ -24,7 +24,8 @@ from api_v1.controller_management.sorters import sorters
 T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
 # S = TypeVar('S', sorters.HostSorterMonitoring, sorters.SearchHostsInDb)
 S = TypeVar('S')
-P = TypeVar('P', NumbersOrIpv4, FastRequestMonitoringAndManagement)
+# P = TypeVar('P', NumbersOrIpv4, FastRequestMonitoringAndManagement)
+P = TypeVar('P')
 
 
 class Controllers(metaclass=abc.ABCMeta):
