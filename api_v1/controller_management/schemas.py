@@ -128,6 +128,7 @@ class SearchinDbHostBodyForMonitoringAndManagementProxy(SearchinDbHostBody):
 
 
 class DataHostMixin(BaseModel):
+
     model_config = ConfigDict(extra='allow')
 
     number: Annotated[str | None, Field(default=None)]
@@ -158,9 +159,102 @@ class FastMonitoring(BaseModel):
     def add_m(cls, hosts: dict[str, Any]) -> dict[str, DataHostMixin]:
         return {k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k})) for k, v in hosts.items()}
 
+    model_config = ConfigDict(
+        extra='allow',
+        json_schema_extra= {
+            "examples": [
+                {
+                    "192.168.0.2": {
+                        AllowedDataHostFields.type_controller: "Swarco(required field)",
+                }
+                },
+
+                {
+                    "192.168.0.1": {
+                        AllowedDataHostFields.host_id: "1111(optional field)",
+                        AllowedDataHostFields.scn: "CO1111(optional field)",
+                        AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
+                        AllowedDataHostFields.type_controller: "Swarco(required field)",
+                    }
+                },
+            ],
+        }
+    )
 
 
 """ Response """
+
+json_schema_monitoring_response = {
+        "examples": [
+            {
+                "10.179.18.41": {
+                    "number": None,
+                    "ip_adress": "10.179.18.41",
+                    "type_controller": "Поток (P)",
+                    "address": None,
+                    "description": None,
+                    "option": None,
+                    "errors": [],
+                    "response": {
+                        "protocol": "snmp",
+                        "ip_address": "10.179.18.41",
+                        "errors": [],
+                        "data": {
+                            "operation_mode": "1",
+                            "dark": "0",
+                            "flash": "0",
+                            "current_stage": 2,
+                            "current_plan": "2",
+                            "local_adaptive_status": "1",
+                            "num_detectors": "27",
+                            "has_det_faults": "0",
+                            "is_mode_man": "0",
+                            "curr_status_mode": "3_light",
+                            "current_mode": "VA"
+                        }
+                    }
+                }
+            },
+            {
+                "10.179.16.121": {
+                    "number": None,
+                    "ip_adress": "10.179.16.121",
+                    "type_controller": "Peek",
+                    "address": None,
+                    "description": None,
+                    "option": None,
+                    "errors": [],
+                    "response": {
+                        "protocol": "http",
+                        "ip_address": "10.179.16.121",
+                        "errors": [],
+                        "data": {
+                            "current_address": "Moscow: Панфиловс пр / Андреевка",
+                            "current_plan": "002",
+                            "current_plan_parameter": "002",
+                            "current_time": "2025-03-20 12:42:31",
+                            "current_alarms": "",
+                            "number_of_streams": 2,
+                            "streams_data": [
+                                {
+                                    "xp": "1",
+                                    "current_status": "УПРАВЛЕНИЕ",
+                                    "current_mode": "FT",
+                                    "current_stage": "1"
+                                },
+                                {
+                                    "xp": "2",
+                                    "current_status": "УПРАВЛЕНИЕ",
+                                    "current_mode": "FT",
+                                    "current_stage": "6"
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        ],
+    }
 
 
 class ResponseSearchinDb(BaseModel):
@@ -171,67 +265,13 @@ class ResponseSearchinDb(BaseModel):
     time_execution: Annotated[float, Field(default=0)]
 
 
+class ResponseGetState(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra=json_schema_monitoring_response
+    )
+
 """ Проверка данных(свойств) определённого хоста """
 
-
-""" Входные данные запроса """
-
-class GetStateResponse(BaseModel):
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "start_time": 1738355663,
-                    "request_errors": None,
-                    "host_id": 1,
-                    "protocol": "http",
-                    "valid_data_request": None,
-                    "type_controller": "Swarco",
-                    "address": None,
-                    "type": None,
-                    "request_execution_time": 1,
-                    "request_entity": [
-                        "get_state"
-                    ],
-                    "responce_entity": {
-                        "raw_data": {
-                            "current_states": {
-                                "basic": {
-                                    "current_mode": "VA",
-                                    "current_stage": "S1/S1",
-                                    "current_stage_time": "0",
-                                    "current_cyc": "190",
-                                    "current_plan": "P1Ка",
-                                    "system_time": "31.01-23:35:17",
-                                    "current_state_buttons": "SIGNALS=ON",
-                                    "web_content": [
-                                        "*** ITC-2 Linux  ***",
-                                        "13703 31.01-23:35:17",
-                                        "P1Ка      VA     190",
-                                        "1-1 ВКЛ_ОШ S1/S1 0  ",
-                                        "1 0 0 0 0 0 0 0",
-                                        "SIGNALS=ON"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "request_time": "2025-01-31 23:34:23"
-                }
-            ]
-        }
-    }
-
-
-
-# class HostEntity(BaseModel):
-#     type_controller: Annotated[AllowedControllers, MinLen(1)]
-#
-#
-# class MonitoringHostEntity(HostEntity):
-#
-#     host_id: Annotated[str, Field(default=None)]
 
 
 class FastRequestMonitoringAndManagement(BaseModel):

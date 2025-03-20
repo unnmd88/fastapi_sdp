@@ -12,7 +12,7 @@ from api_v1.controller_management.crud.crud import search_hosts_from_db, \
     search_hosts_from_db_for_monitoring_and_management
 from . import services
 from api_v1.controller_management.sorters import sorters
-from .schemas import T1, NumbersOrIpv4, FastRequestMonitoringAndManagement, FastMonitoring
+from .schemas import T1, NumbersOrIpv4, FastRequestMonitoringAndManagement, FastMonitoring, ResponseGetState
 import logging_config
 
 
@@ -85,7 +85,7 @@ async def get_state_t(data: NumbersOrIpv4):
 
 
 @router.post('/search-and-get-state')
-async def get_state(data: NumbersOrIpv4):
+async def get_state(data: NumbersOrIpv4) -> ResponseGetState:
     # FIX ME
     # Если в списке hosts будет "192.168.0.1", то возникает ошибка!
     # Проверить и найти в чем проблема
@@ -109,23 +109,36 @@ async def get_state(data: FastMonitoring):
 
 
 
+""" Примеры тела запроса """
 
+'''
+{
+  "hosts": {
+    "10.179.16.121": {
+      "type_controller": "Peek"
+    },
+"10.179.67.121": {
+      "type_controller": "Поток (P)"
+    },
+"10.179.8.17": {
+      "type_controller": "Swarco"
+    },
+"10.179.18.41": {
+      "type_controller": "Поток (P)"
+    },
+    "10.179.59.9": {
+      "type_controller": "Peek"
+    },
+    "10.179.59": {
+      "type_controller": "Peek"
+    },
+    "10.179.59.9": {
+      "type_controller": "Greek"
+    },
+    "10.179.59.91": {
+      "type_controlhfler": "Greek"
+    }
+  }
+}
 
-
-
-async def main(objs):
-    # taks = [o.get_multiple(oids=oids_swarco) for o in objs]
-    # res = await asyncio.gather(*taks)
-    # async with TaskGroup() as tg:
-    #     print('tg1')
-    #     # res = [tg.create_task(coro=o.get_multiple(oids=oids_swarco), name=o.ip_v4)  for o in objs]
-    #     res = [tg.create_task(coro=o.get_data_for_basic_current_state(), name=o.ip_v4).add_done_callback(tets_callback)  for o in objs]
-
-    async with TaskGroup() as tg:
-        print('tg2')
-        # res = [tg1.create_task(coro=o.get_multiple(oids=oids_swarco), name=o.ip_v4)  for o in objs]
-        res = [tg.create_task(coro=o.get_data_for_basic_current_state(), name=o.ip_v4)  for o in objs]
-
-    return res
-
-
+'''
