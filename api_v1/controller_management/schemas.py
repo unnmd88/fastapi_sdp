@@ -77,55 +77,6 @@ class TrafficLightsObjectsTableFields(StrEnum):
     ALL = '*'
 
 
-
-class GetStateResponse(BaseModel):
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "start_time": 1738355663,
-                    "request_errors": None,
-                    "host_id": 1,
-                    "protocol": "http",
-                    "valid_data_request": None,
-                    "type_controller": "Swarco",
-                    "address": None,
-                    "type": None,
-                    "request_execution_time": 1,
-                    "request_entity": [
-                        "get_state"
-                    ],
-                    "responce_entity": {
-                        "raw_data": {
-                            "current_states": {
-                                "basic": {
-                                    "current_mode": "VA",
-                                    "current_stage": "S1/S1",
-                                    "current_stage_time": "0",
-                                    "current_cyc": "190",
-                                    "current_plan": "P1Ка",
-                                    "system_time": "31.01-23:35:17",
-                                    "current_state_buttons": "SIGNALS=ON",
-                                    "web_content": [
-                                        "*** ITC-2 Linux  ***",
-                                        "13703 31.01-23:35:17",
-                                        "P1Ка      VA     190",
-                                        "1-1 ВКЛ_ОШ S1/S1 0  ",
-                                        "1 0 0 0 0 0 0 0",
-                                        "SIGNALS=ON"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "request_time": "2025-01-31 23:34:23"
-                }
-            ]
-        }
-    }
-
-
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
@@ -142,7 +93,6 @@ def get_search_in_db_field(field: str) -> str:
 class NumbersOrIpv4(BaseModel):
 
     hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
-    # hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30)]
 
     model_config = ConfigDict(json_schema_extra={
         "examples": [
@@ -151,11 +101,6 @@ class NumbersOrIpv4(BaseModel):
             },
         ],
     })
-
-    # @field_validator('hosts', mode='after')
-    # @classmethod
-    # def to_dict_with_data(cls, hosts: list) -> dict[str,  Any]:
-    #     return {host: build_fileds_for_search_in_db(host) for host in hosts}
 
 
 class SearchinDbHostBody(BaseModel):
@@ -231,7 +176,52 @@ class ResponseSearchinDb(BaseModel):
 
 """ Входные данные запроса """
 
+class GetStateResponse(BaseModel):
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "start_time": 1738355663,
+                    "request_errors": None,
+                    "host_id": 1,
+                    "protocol": "http",
+                    "valid_data_request": None,
+                    "type_controller": "Swarco",
+                    "address": None,
+                    "type": None,
+                    "request_execution_time": 1,
+                    "request_entity": [
+                        "get_state"
+                    ],
+                    "responce_entity": {
+                        "raw_data": {
+                            "current_states": {
+                                "basic": {
+                                    "current_mode": "VA",
+                                    "current_stage": "S1/S1",
+                                    "current_stage_time": "0",
+                                    "current_cyc": "190",
+                                    "current_plan": "P1Ка",
+                                    "system_time": "31.01-23:35:17",
+                                    "current_state_buttons": "SIGNALS=ON",
+                                    "web_content": [
+                                        "*** ITC-2 Linux  ***",
+                                        "13703 31.01-23:35:17",
+                                        "P1Ка      VA     190",
+                                        "1-1 ВКЛ_ОШ S1/S1 0  ",
+                                        "1 0 0 0 0 0 0 0",
+                                        "SIGNALS=ON"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "request_time": "2025-01-31 23:34:23"
+                }
+            ]
+        }
+    }
 
 
 
