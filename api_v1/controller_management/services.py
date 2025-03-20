@@ -34,7 +34,8 @@ class Controllers(metaclass=abc.ABCMeta):
     sorter: Type[S]
 
     def __init__(
-            self, *,
+            self,
+            *,
             income_data: P,
             search_in_db: bool
     ):
@@ -57,7 +58,6 @@ class Controllers(metaclass=abc.ABCMeta):
     async def _make_request(self):
 
         self.result_tasks = []
-        print(f'self.allowed_hosts: {self.allowed_to_request_hosts}')
         async with aiohttp.ClientSession() as self._session:
             async with TaskGroup() as tg:
                 for ip_v4, data_host in self.allowed_to_request_hosts.items():
