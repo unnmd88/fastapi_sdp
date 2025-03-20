@@ -173,7 +173,7 @@ class FastMonitoring(BaseModel):
                             "192.168.0.1": {
                                 AllowedDataHostFields.host_id: "1111(optional field)",
                                 AllowedDataHostFields.scn: "CO1111(optional field)",
-                                AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
+                                AllowedDataHostFields.options: f'{", ".join([o for o in AllowedMonitoringEntity])} (optional field)',
                                 AllowedDataHostFields.type_controller: "Swarco(required field)",
                             }
                         },
@@ -317,6 +317,7 @@ json_schema_monitoring_response = {
 
 class ResponseGetState(BaseModel):
     model_config = ConfigDict(
+        extra='allow',
         json_schema_extra=json_schema_monitoring_response
     )
 
