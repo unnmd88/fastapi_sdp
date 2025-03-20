@@ -24,68 +24,6 @@ T_PydanticModel = TypeVar("T_PydanticModel",
                           SearchinDbHostBodyForMonitoring
                           )
 
-# class _BaseHostsSorters(BaseHost):
-#     """
-#     Базовый класс сортировок хостов, переданных пользователем.
-#     """
-#     def __init__(
-#             self,
-#             income_data: T_PydanticModel | dict[str, Any],
-#             bad_hosts: list[dict] | None = None,
-#     ):
-#         self.source_data = income_data
-#         self.hosts_data = self.create_hosts_data(self.source_data.hosts)
-#         print(f'New hosts_data: {self.hosts_data}')
-#         self.good_hosts: dict | None = None
-#         self.bad_hosts = bad_hosts or []
-#
-#     @abc.abstractmethod
-#     def create_hosts_data(self, hosts) -> dict:
-#         ...
-#
-#     def __repr__(self):
-#         return (
-#             f'self.income_data: {self.source_data}\n'
-#             f'self.income_hosts: {self.hosts_data}\n'
-#             f'self.good_hosts: {self.good_hosts}\n'
-#             f'self.bad_hosts: {self.bad_hosts}\n'
-#         )
-#
-#     def add_host_to_container_with_bad_hosts(self, host: dict[str, Any]):
-#         """
-#         Добавляет хост с ошибками в контейнер self.bad_hosts
-#         :param host: Хост, который будет добавлен в контейнер self.bad_hosts.
-#         :return: None
-#         """
-#         if isinstance(self.bad_hosts, list):
-#             self.bad_hosts.append(host)
-#         elif isinstance(self.bad_hosts, dict):
-#             self.bad_hosts |= host
-#         else:
-#             raise TypeError(f'DEBUG: Тип контейнера < self.bad_hosts > должен быть dict или list')
-#
-#     def get_good_hosts_and_bad_hosts_as_dict(self) -> dict:
-#         """
-#         Возвращает словарь всех хостов(прошедших валидацию и хостов с ошибками)
-#         :return: Словарь со всеми хостами запроса.
-#         """
-#         return self.good_hosts | self.get_bad_hosts_as_dict()
-#
-#     def get_bad_hosts_as_dict(self) -> dict:
-#         """
-#         Возвращает self.bad_hosts в виде списка.
-#         :return: self.bad_hosts в виде списка.
-#         """
-#         return functools.reduce(lambda x, y: x | y, self.bad_hosts, {})
-#
-#     def _get_income_hosts(self):
-#
-#         if isinstance(self.source_data, dict):
-#             return copy.deepcopy(self.source_data)
-#         elif isinstance(self.source_data, BaseModel):
-#             return copy.deepcopy(self.source_data.hosts)
-#         raise ValueError('self.income_data должен быть типом dict или экземпляром Pydantic Model с атрибутом hosts')
-
 
 class _BaseHostsSorters(BaseDataHosts):
     """
@@ -163,12 +101,12 @@ class _BaseHostsSorters(BaseDataHosts):
 
             current_host = checker_class(ip_or_name=curr_host_ipv4, properties=current_data_host)
             if current_host.properties.errors:
-                print(f'current_host.full_host_data_as_dict: {current_host.full_host_data_as_dict}')
+                # print(f'current_host.full_host_data_as_dict: {current_host.full_host_data_as_dict}')
                 self.add_host_to_container_with_bad_hosts(current_host.full_host_data_as_dict)
                 # self.hosts_with_errors.append(current_host.full_host_data_as_dict)
                 continue
             self._sort_current_host(current_host)
-        print(f'self.hosts_with_eER: {self.hosts_with_errors}')
+        # print(f'self.hosts_with_eER: {self.hosts_with_errors}')
         return self.hosts_without_errors
 
     def _sort_current_host(self, current_host: MonitoringHostDataChecker) -> None:
