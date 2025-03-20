@@ -45,30 +45,6 @@ class FoundInDatabase(BaseModel):
                 }
             )
 
-# Исходный
-# class MonitoringHostDataChecker(HostData):
-#
-#     def validate_all(self):
-#         res = True
-#         for validate_class in self.get_validate_classes():
-#             try:
-#                 validate_class(**self._get_full_host_data_as_dict())
-#             except ValidationError as e:
-#                 self.add_error_entity_for_current_host(e.errors())
-#                 res = False
-#         return res
-#
-#     def get_validate_classes(self):
-#         return (TypeController, )
-#
-#
-#     def get_validate_methods(self):
-#         """
-#         Возвращает список с методами валидаций.
-#         :return:
-#         """
-#         return [self.validate_all]
-
 
 class MonitoringHostDataChecker(HostData):
 

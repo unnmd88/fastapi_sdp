@@ -102,7 +102,7 @@ class StatesMonitoring(Controllers):
 
     def get_coro(
             self, ip: str,
-            data_host: dict | SearchinDbHostBodyForMonitoring
+            data_host: SearchinDbHostBodyForMonitoring
     ) -> Coroutine:
         type_controller = data_host.type_controller
         option = data_host.option
