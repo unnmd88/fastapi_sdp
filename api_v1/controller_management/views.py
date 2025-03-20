@@ -69,7 +69,7 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
 
 # @router.post('/search-and-get-state-test')
-# async def get_state_t(data: NumbersOrIpv4):
+# async def search_and_get_state(data: NumbersOrIpv4):
 #
 #     states = services.StatesMonitoring(income_data=data, search_in_db=True)
 #     return await states.compose_request()
@@ -85,7 +85,7 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
 
 @router.post('/search-and-get-state')
-async def get_state(data: NumbersOrIpv4) -> ResponseGetState:
+async def search_and_get_state(data: NumbersOrIpv4):
     # FIX ME
     # Если в списке hosts будет "192.168.0.1", то возникает ошибка!
     # Проверить и найти в чем проблема
@@ -104,7 +104,6 @@ async def get_state(data: FastMonitoring):
 
     print(f'data: \n {data}')
     states = services.StatesMonitoring(income_data=data, search_in_db=False)
-
     return await states.compose_request()
 
 

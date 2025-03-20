@@ -85,6 +85,8 @@ class Controllers(metaclass=abc.ABCMeta):
 
         await self._make_request()
         self.add_response_to_data_hosts()
+        for t in self.result_tasks:
+            print(f't: {t.result().response_as_dict}')
         return {'Время составило': time.time() - start_time} | self.get_all_hosts_as_dict()
 
     def get_all_hosts_as_dict(self):
