@@ -137,18 +137,6 @@ def get_search_in_db_field(field: str) -> str:
         return str(TrafficLightsObjectsTableFields.NUMBER)
 
 
-# class SearchHostsInDb(BaseModel):
-#
-#     ip_or_name_from_user: ip_or_name
-#
-#     @computed_field
-#     @property
-#     def search_in_db_field(self) -> str:
-#         if check_is_ipv4(self.ip_or_name_from_user):
-#             return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
-#         else:
-#             return str(TrafficLightsObjectsTableFields.NUMBER)
-
 """ Взаимосвязаны с запросом в БД. """
 
 class NumbersOrIpv4(BaseModel):
