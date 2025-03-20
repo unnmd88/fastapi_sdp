@@ -129,18 +129,8 @@ class GetStateResponse(BaseModel):
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-def build_fileds_for_search_in_db(val) -> dict[str, dict[str, None | str]]:
-
-    return {
-        str(AllowedDataHostFields.ip_or_name_from_user): None,
-        str(AllowedDataHostFields.found): False,
-        str(AllowedDataHostFields.count): 0,
-        str(AllowedDataHostFields.db_records): [],
-        str(AllowedDataHostFields.search_in_db_field): get_search_in_db_field(val)
-        }
-
-
 def get_search_in_db_field(field: str) -> str:
+
     if check_is_ipv4(field):
         return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
     else:
@@ -215,7 +205,6 @@ class DataHostMixin(BaseModel):
     option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
 
 
-
 class SearchinDbHostBodyForMonitoring(SearchinDbHostBodyForMonitoringAndManagementProxy, DataHostMixin):
     model_config = ConfigDict(extra='allow')
 
@@ -227,8 +216,6 @@ class SearchinDbHostBodyForMonitoring(SearchinDbHostBodyForMonitoringAndManageme
 
 class FastMonitoring(BaseModel):
 
-    # hosts: Annotated[dict[IPvAnyAddress, dict[str, str]], MinLen(1), SkipValidation]
-
     hosts: Annotated[
         dict[str, DataHostMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
@@ -237,13 +224,6 @@ class FastMonitoring(BaseModel):
     @classmethod
     def add_m(cls, hosts: dict[str, Any]) -> dict[str, DataHostMixin]:
         return {k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k})) for k, v in hosts.items()}
-        # d = {}
-        # for k, val in v.items():
-        #     print(f'k: {k}')
-        #     print(f'val: {val}')
-        #     d[k] = DataHostMixin(**val)
-        # return d
-
 
 
 
