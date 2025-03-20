@@ -73,18 +73,6 @@ class AfterSearchInDbChecker(HostData):
         super().__init__(ip_or_name, properties)
         self.properties: SearchinDbHostBodyForMonitoringAndManagementProxy = properties
 
-    def validate_all(self):
-        """
-        Проверяет валидность найденной записи хоста из бд.
-        Осуществляет проверку валидности хоста для запроса
-        мониторинга или управления.
-        :return: True, если проверка
-                 использовать для мониторинга или управления.
-        """
-        if not self.validate_record():
-            return False
-        return True
-
     def validate_record(self):
         try:
             FoundInDatabase(db_records=self.properties.db_records)

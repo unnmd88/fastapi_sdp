@@ -94,7 +94,8 @@ class _BaseHostsSorters(BaseDataHosts):
     def __init__(self, source_data: dict[str, T_PydanticModel]):
         super().__init__(source_data)
         self.hosts_without_errors = {}
-        self.hosts_with_errors = []
+        # self.hosts_with_errors = []
+        self.hosts_with_errors = {}
 
     def create_hosts_data(self) -> dict:
         return copy.deepcopy(self.source_data)
@@ -163,7 +164,8 @@ class _BaseHostsSorters(BaseDataHosts):
             current_host = checker_class(ip_or_name=curr_host_ipv4, properties=current_data_host)
             if current_host.properties.errors:
                 print(f'current_host.full_host_data_as_dict: {current_host.full_host_data_as_dict}')
-                self.hosts_with_errors.append(current_host.full_host_data_as_dict)
+                self.add_host_to_container_with_bad_hosts(current_host.full_host_data_as_dict)
+                # self.hosts_with_errors.append(current_host.full_host_data_as_dict)
                 continue
             self._sort_current_host(current_host)
         print(f'self.hosts_with_eER: {self.hosts_with_errors}')
