@@ -90,14 +90,12 @@ class ForMonitoringAndManagement(AfterRead):
         processed_data_hosts = {}
         for curr_host_ipv4, current_data_host in self.hosts_data.items():
             current_host = AfterSearchInDbChecker(ip_or_name=curr_host_ipv4, properties=current_data_host)
-            if current_host.validate_all():
+            if current_host.validate_record():
                 record = current_host.properties.db_records[0]
                 key_ip = record[TrafficLightsObjectsTableFields.IP_ADDRESS]
                 model = SearchinDbHostBodyForMonitoring(
                     **(current_data_host.model_dump() | record)
                 )
-                print(f'[key_ip] = {key_ip}')
-                print(f'[model] = {model}')
                 processed_data_hosts[key_ip] = model
             else:
                 processed_data_hosts[curr_host_ipv4] = current_data_host
