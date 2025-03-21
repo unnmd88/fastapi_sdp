@@ -14,66 +14,6 @@ from sqlalchemy import select, or_, Select
 from sqlalchemy.engine.row import RowMapping
 
 
-# async def search_hosts_from_db(income_data: NumbersOrIpv4) -> HostSorterSearchInDB:
-#     """
-#     Производит поиск и сортировку хостов после поиска в БД.
-#     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
-#     атрибуты с данными о результатах поиска.
-#     :param income_data: Экземпляр модели pydantic с хостами из views.py.
-#     :return: Экземпляр модели HostSorterSearchInDB.
-#     """
-#     print(f'income_data!!! ++ {income_data}')
-#     data_hosts = HostSorterSearchInDB(income_data)
-#     search_entity = data_hosts.get_hosts_data_for_search_in_db()
-#     db = SearchHosts()
-#
-#     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(search_entity))
-#     # return data_hosts.hosts_after_search
-#
-#     data_hosts.sorting_hosts_after_search_from_db()
-#     return data_hosts
-
-# uvicorn.run('main:app', host='192.168.45.93', port=8001, reload=True)
-
-# # Deprecated
-# async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
-#     """
-#     Производит поиск и сортировку хостов после поиска в БД.
-#     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
-#     атрибуты с данными о результатах поиска.
-#     :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
-#     :return: Экземпляр модели HostSorterSearchInDB.
-#     """
-#     return
-#     print(f'income_data!!! ++ {source_hosts_data}')
-#     data_hosts = AfterRead(source_hosts_data)
-#     db = ReadHostsByIpOrNum()
-#
-#     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
-#     print(f'daT: {data_hosts.hosts_after_search}')
-#     data_hosts.process_data_hosts_after_request()
-#     return data_hosts
-#
-# # Deprecated
-# async def search_hosts_from_db_for_monitoring_and_management(source_hosts_data: NumbersOrIpv4) -> ForMonitoringAndManagement:
-#     """
-#     Производит поиск и сортировку хостов после поиска в БД.
-#     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
-#     атрибуты с данными о результатах поиска.
-#     :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
-#     :return: Экземпляр модели HostSorterSearchInDB.
-#     """
-#     return
-#     print(f'income_data!!! ++ {source_hosts_data}')
-#     data_hosts = ForMonitoringAndManagement(source_hosts_data)
-#     db = ReadHostsByIpOrNum()
-#
-#     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
-#     print(f'daT: {data_hosts.hosts_after_search}')
-#     data_hosts.process_data_hosts_after_request()
-#     return data_hosts
-
-
 class BaseRead:
     """
     Базовый класс поиска в БД.
