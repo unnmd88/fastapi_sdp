@@ -3,6 +3,7 @@ from typing import TypeVar, Any
 
 from pydantic import BaseModel
 
+
 T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel, covariant=True)
 
 
