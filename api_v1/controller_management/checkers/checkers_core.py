@@ -1,20 +1,16 @@
 import json
 from typing import TypeVar
 
+from pydantic import ValidationError
+
 from api_v1.controller_management.schemas import (
     AllowedDataHostFields,
-    SearchinDbHostBodyForMonitoringAndManagementProxy,
-    # SearchinDbHostBodyForMonitoring
+    T_PydanticModel
 )
-
 from core.user_exceptions import validate_exceptions
 
 
-E = TypeVar('E', bound=validate_exceptions.BaseClientException)
-T_PydanticModel = TypeVar("T_PydanticModel",
-                          # SearchinDbHostBodyForMonitoringAndManagementProxy,
-                          # SearchinDbHostBodyForMonitoring
-                          )
+# E = TypeVar('E', bound=ValidationError, covariant=True)
 
 
 class HostData:
@@ -25,7 +21,6 @@ class HostData:
     def __init__(self, ip_or_name: str, properties: T_PydanticModel):
         self.ip_or_name = ip_or_name
         self.properties = properties
-        # self.ip_or_name_and_properties_as_dict = self.get_full_host_data_as_dict()
 
     def __repr__(self):
         return (
@@ -34,28 +29,13 @@ class HostData:
             # f'self.ip_or_name_and_properties_as_dict: {json.dumps(self.ip_or_name_and_properties_as_dict, indent=2)}\n'
         )
 
-    def add_error_entity_for_current_host(self, exc: E | str | list) -> None:
+    def add_error_entity_for_current_host(self, exc: str | list) -> None:
         """
         Добавляет сообщение с текстом ошибки.
         :param exc: Экземпляр пользовательского класса ошибки.
         :return: None
         """
-        if isinstance(exc, validate_exceptions.BaseClientException):
-            e = exc.get_data_about_exc()
-            self.properties[str(AllowedDataHostFields.errors)].append(e)
-        elif isinstance(exc, (str, list)):
-            try:
-                self.properties[str(AllowedDataHostFields.errors)] += exc
-            except TypeError:
-                self.properties.errors += exc
-            # self.properties[str(AllowedDataHostFields.errors)].append(exc)
-
-        else:
-            raise ValueError
-        # if not isinstance(exc, validate_exceptions.BaseClientException):
-        #     raise ValueError
-        # self.properties[str(AllowedDataHostFields.errors)].append(exc.get_data_about_exc())
-        # self.properties[str(AllowedDataHostFields.errors)].append(e)
+        self.properties.errors += exc
 
     @property
     def full_host_data_as_dict(self):

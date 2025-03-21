@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Annotated, Any
+from typing import Annotated, Any, TypeVar
 from annotated_types import MinLen, MaxLen
 
 from pydantic import (
@@ -138,11 +138,6 @@ class SearchinDbHostBody(BaseModel):
     def count_records(self) -> int:
         return len(self.db_records)
 
-# Deprecated
-class SearchinDbHostBodyForMonitoringAndManagementProxy(SearchinDbHostBody):
-
-    errors: Annotated[list, Field(default=[])]
-
 
 class DataHostMonitoring(SearchinDbHostBody, HostBodyMonitoringMixin):
     pass
@@ -159,20 +154,6 @@ class DataHostMonitoring(SearchinDbHostBody, HostBodyMonitoringMixin):
 
 class DataHostManagement(SearchinDbHostBody, HostBodyManagementMixin):
     pass
-
-
-# class SearchinDbHostBodyForMonitoring:
-#
-#     model_config = ConfigDict(extra='allow')
-#
-#     errors: Annotated[list, Field(exclude=False)] # New
-#     db_records: Annotated[list, Field(default=[], exclude=True)]
-#
-#
-# class SearchinDbHostBodyForManagement:
-#
-#     model_config = ConfigDict(extra='allow')
-#     db_records: Annotated[list, Field(default=[], exclude=True)]
 
 
 """ Без запроса в БД. """
@@ -369,33 +350,13 @@ class ResponseGetState(BaseModel):
 
 """ Проверка данных(свойств) определённого хоста """
 
-
-# class FastRequestMonitoringAndManagement(BaseModel):
-#
-#     hosts: Annotated[dict[IPvAnyAddress, dict[str, str]], MinLen(1), SkipValidation]
-#
-#     model_config = ConfigDict(
-#         use_enum_values=True,
-#         extra='allow',
-#         json_schema_extra= {
-#             "examples": [
-#                 {
-#                     "192.168.0.2": {
-#                         AllowedDataHostFields.type_controller: "Swarco(required field)",
-#                 }
-#                 },
-#
-#                 {
-#                     "192.168.0.1": {
-#                         AllowedDataHostFields.host_id: "1111(optional field)",
-#                         AllowedDataHostFields.scn: "CO1111(optional field)",
-#                         AllowedDataHostFields.options: ", ".join([o for o in AllowedMonitoringEntity]),
-#                         AllowedDataHostFields.type_controller: "Swarco(required field)",
-#                     }
-#                 },
-#             ],
-#         }
-#     )
+T_PydanticModel = TypeVar(
+    "T_PydanticModel",
+    DataHostMonitoring,
+    DataHostManagement,
+    FastMonitoring,
+    FastManagement
+)
 
 
 """ Модели БД """

@@ -14,19 +14,12 @@ from api_v1.controller_management.schemas import (
     DataHostMonitoring,
     DataHostManagement,
     FastMonitoring,
-    FastManagement
+    FastManagement,
+    T_PydanticModel
 )
 
 
 logger = logging.getLogger(__name__)
-
-T_PydanticModel = TypeVar(
-    "T_PydanticModel",
-    DataHostMonitoring,
-    DataHostManagement,
-    FastMonitoring,
-    FastManagement
-)
 
 
 class BaseHostsSorters(BaseDataHosts):
