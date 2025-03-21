@@ -1,11 +1,13 @@
+import time
 from typing import Any, TypeVar, Type
 
 from api_v1.controller_management.checkers.checkers import AfterSearchInDbChecker
-from api_v1.controller_management.crud.processing import AfterRead, ForMonitoringAndManagement
+# from api_v1.controller_management.crud.processing import AfterRead, ForMonitoringAndManagement
 from api_v1.controller_management.host_entity import BaseDataHosts
-from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, NumbersOrIpv4, AllowedDataHostFields, \
-    SearchinDbHostBody, ResponseSearchinDb, SearchinDbHostBodyForMonitoring, SearchinDbHostBodyForManagement, \
-    DataHostMonitoring, DataHostManagement
+from api_v1.controller_management.schemas import (TrafficLightsObjectsTableFields, NumbersOrIpv4, AllowedDataHostFields, \
+    SearchinDbHostBody, ResponseSearchinDb,
+                                                  # SearchinDbHostBodyForMonitoring, SearchinDbHostBodyForManagement, \
+    DataHostMonitoring, DataHostManagement)
 # from api_v1.controller_management.sorters import logger
 from core.models import db_helper, TrafficLightsObjects
 from sqlalchemy import select, or_, Select
@@ -33,43 +35,43 @@ from sqlalchemy.engine.row import RowMapping
 
 # uvicorn.run('main:app', host='192.168.45.93', port=8001, reload=True)
 
-# Deprecated
-async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
-    """
-    Производит поиск и сортировку хостов после поиска в БД.
-    Возвращает экземпляр класса HostSorterSearchInDB, который содержит
-    атрибуты с данными о результатах поиска.
-    :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
-    :return: Экземпляр модели HostSorterSearchInDB.
-    """
-    return
-    print(f'income_data!!! ++ {source_hosts_data}')
-    data_hosts = AfterRead(source_hosts_data)
-    db = ReadHostsByIpOrNum()
-
-    data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
-    print(f'daT: {data_hosts.hosts_after_search}')
-    data_hosts.process_data_hosts_after_request()
-    return data_hosts
-
-# Deprecated
-async def search_hosts_from_db_for_monitoring_and_management(source_hosts_data: NumbersOrIpv4) -> ForMonitoringAndManagement:
-    """
-    Производит поиск и сортировку хостов после поиска в БД.
-    Возвращает экземпляр класса HostSorterSearchInDB, который содержит
-    атрибуты с данными о результатах поиска.
-    :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
-    :return: Экземпляр модели HostSorterSearchInDB.
-    """
-    return
-    print(f'income_data!!! ++ {source_hosts_data}')
-    data_hosts = ForMonitoringAndManagement(source_hosts_data)
-    db = ReadHostsByIpOrNum()
-
-    data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
-    print(f'daT: {data_hosts.hosts_after_search}')
-    data_hosts.process_data_hosts_after_request()
-    return data_hosts
+# # Deprecated
+# async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
+#     """
+#     Производит поиск и сортировку хостов после поиска в БД.
+#     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
+#     атрибуты с данными о результатах поиска.
+#     :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
+#     :return: Экземпляр модели HostSorterSearchInDB.
+#     """
+#     return
+#     print(f'income_data!!! ++ {source_hosts_data}')
+#     data_hosts = AfterRead(source_hosts_data)
+#     db = ReadHostsByIpOrNum()
+#
+#     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
+#     print(f'daT: {data_hosts.hosts_after_search}')
+#     data_hosts.process_data_hosts_after_request()
+#     return data_hosts
+#
+# # Deprecated
+# async def search_hosts_from_db_for_monitoring_and_management(source_hosts_data: NumbersOrIpv4) -> ForMonitoringAndManagement:
+#     """
+#     Производит поиск и сортировку хостов после поиска в БД.
+#     Возвращает экземпляр класса HostSorterSearchInDB, который содержит
+#     атрибуты с данными о результатах поиска.
+#     :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
+#     :return: Экземпляр модели HostSorterSearchInDB.
+#     """
+#     return
+#     print(f'income_data!!! ++ {source_hosts_data}')
+#     data_hosts = ForMonitoringAndManagement(source_hosts_data)
+#     db = ReadHostsByIpOrNum()
+#
+#     data_hosts.hosts_after_search = await db.get_hosts_where(db.get_stmt_where(data_hosts.hosts_data))
+#     print(f'daT: {data_hosts.hosts_after_search}')
+#     data_hosts.process_data_hosts_after_request()
+#     return data_hosts
 
 
 class BaseRead:
@@ -128,8 +130,11 @@ class ReadHostsByIpOrNum(BaseRead):
                  найденной записи.
         """
         return (
-            TrafficLightsObjects.number, TrafficLightsObjects.ip_adress, TrafficLightsObjects.type_controller,
-            TrafficLightsObjects.address, TrafficLightsObjects.description
+            TrafficLightsObjects.number,
+            TrafficLightsObjects.ip_adress,
+            TrafficLightsObjects.type_controller,
+            TrafficLightsObjects.address,
+            TrafficLightsObjects.description
         )
 
 
@@ -141,6 +146,7 @@ class BaseProcessor(BaseDataHosts):
         super().__init__(source_data)
         self.hosts_after_search: list | None = None
         self.db = self._get_search_in_db_instance()
+        self.start_time = time.time()
 
     @classmethod
     def _get_search_in_db_instance(cls):
@@ -203,7 +209,11 @@ class HostPropertiesProcessors(BaseProcessor):
     @property
     def response_as_model(self):
         try:
-            return ResponseSearchinDb(source_data=self.source_data, results=[self.hosts_data])
+            return ResponseSearchinDb(
+                source_data=self.source_data,
+                results=[self.hosts_data],
+                time_execution=time.time() - self.start_time
+            )
         except ValueError:
             return self.response_dict
 
@@ -215,13 +225,12 @@ class HostPropertiesProcessors(BaseProcessor):
         }
 
 
-T_Checker = TypeVar('T_Checker', bound=AfterSearchInDbChecker)
+# T_Checker = TypeVar('T_Checker', bound=AfterSearchInDbChecker)
 
 T_HostModels = TypeVar(
     'T_HostModels',
-    SearchinDbHostBodyForMonitoring,
-    SearchinDbHostBodyForManagement
-
+    DataHostMonitoring,
+    DataHostManagement
 )
 
 class _MonitoringAndManagementProcessors(BaseProcessor):

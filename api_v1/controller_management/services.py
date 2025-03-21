@@ -6,18 +6,28 @@ from asyncio import TaskGroup
 import aiohttp
 from pysnmp.entity.engine import SnmpEngine
 
-from api_v1.controller_management.crud.crud import search_hosts_from_db_for_monitoring_and_management, \
-    MonitoringProcessors, ManagementProcessors
+from api_v1.controller_management.crud.crud import (
+    MonitoringProcessors,
+    ManagementProcessors
+)
+
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedMonitoringEntity,
-    SearchinDbHostBodyForMonitoring, FastMonitoring, FastManagement, DataHostManagement, DataHostMonitoring,
-    AllowedManagementEntity
+    AllowedManagementEntity,
+    HostBodyMonitoringMixin,
+    HostBodyManagementMixin,
 )
 from api_v1.controller_management.sorters import sorters
-from api_v1.controller_management.sorters.sorters import HostSorterMonitoring, HostSorterManagement
+from api_v1.controller_management.sorters.sorters import (
+    HostSorterMonitoring,
+    HostSorterManagement
+)
 
-from sdp_lib.management_controllers.snmp import stcip, ug405
+from sdp_lib.management_controllers.snmp import (
+    stcip,
+    ug405
+)
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
 from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
@@ -28,9 +38,7 @@ import logging_config
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
-# S = TypeVar('S', sorters.HostSorterMonitoring, sorters.SearchHostsInDb)
 S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
-# P = TypeVar('P', NumbersOrIpv4, FastRequestMonitoringAndManagement)
 P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
@@ -138,7 +146,7 @@ class StatesMonitoring(Controllers):
 
     def get_coro(
             self, ip: str,
-            data_host: DataHostMonitoring
+            data_host: HostBodyMonitoringMixin
     ) -> Coroutine:
         type_controller = data_host.type_controller
         option = data_host.option
@@ -164,7 +172,7 @@ class Management(Controllers):
 
     def get_coro(
             self, ip: str,
-            data_host: DataHostManagement
+            data_host: HostBodyManagementMixin
     ) -> Coroutine:
         type_controller = data_host.type_controller
         option = data_host.option

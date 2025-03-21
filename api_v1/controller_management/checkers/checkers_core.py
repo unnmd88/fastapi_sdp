@@ -4,7 +4,7 @@ from typing import TypeVar
 from api_v1.controller_management.schemas import (
     AllowedDataHostFields,
     SearchinDbHostBodyForMonitoringAndManagementProxy,
-    SearchinDbHostBodyForMonitoring
+    # SearchinDbHostBodyForMonitoring
 )
 
 from core.user_exceptions import validate_exceptions
@@ -12,8 +12,8 @@ from core.user_exceptions import validate_exceptions
 
 E = TypeVar('E', bound=validate_exceptions.BaseClientException)
 T_PydanticModel = TypeVar("T_PydanticModel",
-                          SearchinDbHostBodyForMonitoringAndManagementProxy,
-                          SearchinDbHostBodyForMonitoring
+                          # SearchinDbHostBodyForMonitoringAndManagementProxy,
+                          # SearchinDbHostBodyForMonitoring
                           )
 
 

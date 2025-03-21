@@ -3,8 +3,9 @@ from pydantic_core import ValidationError, PydanticCustomError
 
 from api_v1.controller_management.schemas import (
     AllowedControllers,
-    SearchinDbHostBodyForMonitoringAndManagementProxy,
-    TrafficLightsObjectsTableFields
+    AllowedManagementEntity,
+    TrafficLightsObjectsTableFields,
+    SearchinDbHostBody,
 )
 from api_v1.controller_management.checkers.archive.custom_checkers import HostData
 
@@ -15,8 +16,8 @@ class TypeControllerAndIp(BaseModel):
 
 
 class SetCommand(TypeControllerAndIp):
-    command: str
-    value: str
+    command: AllowedManagementEntity
+    value: str | int
 
 
 class FoundInDatabase(BaseModel):
@@ -99,9 +100,9 @@ class ManagementHostDataChecker(HostData):
 
 class AfterSearchInDbChecker(HostData):
 
-    def __init__(self, ip_or_name: str, properties: SearchinDbHostBodyForMonitoringAndManagementProxy):
+    def __init__(self, ip_or_name: str, properties: SearchinDbHostBody):
         super().__init__(ip_or_name, properties)
-        self.properties: SearchinDbHostBodyForMonitoringAndManagementProxy = properties
+        self.properties: SearchinDbHostBody = properties
 
     def validate_record(self):
         try:

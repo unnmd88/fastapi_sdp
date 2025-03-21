@@ -1,5 +1,8 @@
 from api_v1.controller_management.sorters.sorters_core import BaseHostsSorters
-from api_v1.controller_management.checkers.checkers import MonitoringHostDataChecker
+from api_v1.controller_management.checkers.checkers import (
+    MonitoringHostDataChecker,
+    ManagementHostDataChecker
+)
 
 
 class HostSorterMonitoring(BaseHostsSorters):
@@ -19,4 +22,4 @@ class HostSorterManagement(BaseHostsSorters):
         Возвращает класс для валидации данных полей, применяемый в методе self.sort.
         :return:
         """
-        return MonitoringHostDataChecker
+        return ManagementHostDataChecker

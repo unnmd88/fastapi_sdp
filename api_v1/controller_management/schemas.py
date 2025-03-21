@@ -85,6 +85,24 @@ def get_field_for_search_in_db(field: str) -> str:
     else:
         return str(TrafficLightsObjectsTableFields.NUMBER)
 
+""" Mixins """
+
+class HostBodyMonitoringMixin(BaseModel):
+
+    model_config = ConfigDict(extra='allow')
+
+    number: Annotated[str | None, Field(default=None)]
+    ip_adress: Annotated[str | None, Field(default=None)]
+    type_controller: Annotated[str | None, Field(default=None)]
+    address: Annotated[str | None, Field(default=None)]
+    description: Annotated[str | None, Field(default=None)]
+    option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
+
+
+class HostBodyManagementMixin(HostBodyMonitoringMixin):
+    command: str
+    value: Annotated[int | str, Field()]
+
 
 """ Взаимосвязаны с запросом в БД. """
 
@@ -126,35 +144,35 @@ class SearchinDbHostBodyForMonitoringAndManagementProxy(SearchinDbHostBody):
     errors: Annotated[list, Field(default=[])]
 
 
-class DataHostMonitoring(SearchinDbHostBody):
+class DataHostMonitoring(SearchinDbHostBody, HostBodyMonitoringMixin):
+    pass
 
-    model_config = ConfigDict(extra='allow')
-
-    number: Annotated[str | None, Field(default=None)]
-    ip_adress: Annotated[str | None, Field(default=None)]
-    type_controller: Annotated[str | None, Field(default=None)]
-    address: Annotated[str | None, Field(default=None)]
-    description: Annotated[str | None, Field(default=None)]
-    option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
-
-
-class DataHostManagement(DataHostMonitoring):
-    command: str
-    value: str | int
+    # model_config = ConfigDict(extra='allow')
+    #
+    # number: Annotated[str | None, Field(default=None)]
+    # ip_adress: Annotated[str | None, Field(default=None)]
+    # type_controller: Annotated[str | None, Field(default=None)]
+    # address: Annotated[str | None, Field(default=None)]
+    # description: Annotated[str | None, Field(default=None)]
+    # option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
 
 
-class SearchinDbHostBodyForMonitoring:
-
-    model_config = ConfigDict(extra='allow')
-
-    errors: Annotated[list, Field(exclude=False)] # New
-    db_records: Annotated[list, Field(default=[], exclude=True)]
+class DataHostManagement(SearchinDbHostBody, HostBodyManagementMixin):
+    pass
 
 
-class SearchinDbHostBodyForManagement:
-
-    model_config = ConfigDict(extra='allow')
-    db_records: Annotated[list, Field(default=[], exclude=True)]
+# class SearchinDbHostBodyForMonitoring:
+#
+#     model_config = ConfigDict(extra='allow')
+#
+#     errors: Annotated[list, Field(exclude=False)] # New
+#     db_records: Annotated[list, Field(default=[], exclude=True)]
+#
+#
+# class SearchinDbHostBodyForManagement:
+#
+#     model_config = ConfigDict(extra='allow')
+#     db_records: Annotated[list, Field(default=[], exclude=True)]
 
 
 """ Без запроса в БД. """
@@ -163,18 +181,19 @@ class SearchinDbHostBodyForManagement:
 class FastMonitoring(BaseModel):
 
     hosts: Annotated[
-        dict[str, DataHostMonitoring], MinLen(1), MaxLen(30), SkipValidation
+        dict[str, HostBodyMonitoringMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
+
 
     @field_validator('hosts', mode='before')
     @classmethod
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, DataHostMonitoring]:
+    def add_m(cls, hosts: dict[str, Any]) -> dict[str, HostBodyMonitoringMixin]:
         # return {
         #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
         #     for k, v in hosts.items()
         # }
         return {
-            k: DataHostMonitoring(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
+            k: HostBodyMonitoringMixin(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
             for k, v in hosts.items()
         }
 
@@ -205,7 +224,7 @@ class FastMonitoring(BaseModel):
 class FastManagement(FastMonitoring):
 
     hosts: Annotated[
-        dict[str, DataHostManagement], MinLen(1), MaxLen(30), SkipValidation
+        dict[str, HostBodyManagementMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
 
 
