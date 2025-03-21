@@ -7,10 +7,6 @@ from api_v1.controller_management.schemas import (
     AllowedDataHostFields,
     T_PydanticModel
 )
-from core.user_exceptions import validate_exceptions
-
-
-# E = TypeVar('E', bound=ValidationError, covariant=True)
 
 
 class HostData:
