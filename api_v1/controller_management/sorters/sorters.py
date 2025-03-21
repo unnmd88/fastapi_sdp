@@ -10,3 +10,13 @@ class HostSorterMonitoring(BaseHostsSorters):
         :return:
         """
         return MonitoringHostDataChecker
+
+
+class HostSorterManagement(BaseHostsSorters):
+
+    def _get_checker_class(self):
+        """
+        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+        :return:
+        """
+        return MonitoringHostDataChecker

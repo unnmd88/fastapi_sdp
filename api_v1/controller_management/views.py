@@ -5,11 +5,12 @@ from fastapi import APIRouter
 
 from api_v1.controller_management.crud.crud import search_hosts_from_db
 from api_v1.controller_management import services
+from api_v1.controller_management.crud.crud import HostPropertiesProcessors
 from api_v1.controller_management.schemas import (
     NumbersOrIpv4,
     FastMonitoring,
     ResponseGetState,
-    ResponseSearchinDb
+    ResponseSearchinDb, FastManagement
 )
 import logging_config
 
@@ -32,6 +33,10 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
+    hosts_from_db = HostPropertiesProcessors(data)
+    await hosts_from_db.search_hosts_and_processing()
+    return hosts_from_db.response_as_model
+
     # print(f'da!! : {data.hosts}')
     hosts_from_db = await search_hosts_from_db(data)
     # print(f'Время запроса составило: {time.time() - start_time}')
@@ -54,6 +59,11 @@ async def get_state(data: FastMonitoring) -> ResponseGetState:
     return await states.compose_request()
 
 
+@router.post('/set-command')
+async def get_state(data: FastManagement):
+
+    set_command = services.Management(income_data=data, search_in_db=False)
+    return await set_command.compose_request()
 
 """ Примеры тела запроса """
 

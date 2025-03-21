@@ -1,17 +1,14 @@
 from enum import StrEnum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 from annotated_types import MinLen, MaxLen
-from mypy.fastparse import TryStar
 
 from pydantic import (
     BaseModel,
-    IPvAnyAddress,
     Field,
     ConfigDict,
     computed_field,
     AfterValidator, SkipValidation, field_validator, model_serializer
 )
-from pydantic.main import IncEx
 from pydantic_core import ValidationError
 
 from sdp_lib.utils_common import check_is_ipv4, remove_duplicates
@@ -60,6 +57,7 @@ class AllowedDataHostFields(StrEnum):
     execution_time = 'execution_time'
     ip_or_name_from_user = 'ip_or_name_from_user'
     entity = 'entity'
+    ip_adress = 'ip_adress'
     ipv4 = 'ip_address'
     ip_or_name = 'ip/name'
     options = 'options'
@@ -108,6 +106,7 @@ class SearchinDbHostBody(BaseModel):
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
     search_in_db_field: Annotated[str, AfterValidator(get_field_for_search_in_db)]
     db_records: Annotated[list, Field(default=[])]
+    errors: Annotated[list, Field(default=[])]
 
     # @computed_field
     @property
@@ -121,13 +120,13 @@ class SearchinDbHostBody(BaseModel):
     def count_records(self) -> int:
         return len(self.db_records)
 
-
+# Deprecated
 class SearchinDbHostBodyForMonitoringAndManagementProxy(SearchinDbHostBody):
 
     errors: Annotated[list, Field(default=[])]
 
 
-class DataHostMixin(BaseModel):
+class DataHostMonitoring(SearchinDbHostBody):
 
     model_config = ConfigDict(extra='allow')
 
@@ -139,9 +138,22 @@ class DataHostMixin(BaseModel):
     option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
 
 
-class SearchinDbHostBodyForMonitoring(SearchinDbHostBodyForMonitoringAndManagementProxy, DataHostMixin):
+class DataHostManagement(DataHostMonitoring):
+    command: str
+    value: str | int
+
+
+class SearchinDbHostBodyForMonitoring:
+
     model_config = ConfigDict(extra='allow')
 
+    errors: Annotated[list, Field(exclude=False)] # New
+    db_records: Annotated[list, Field(default=[], exclude=True)]
+
+
+class SearchinDbHostBodyForManagement:
+
+    model_config = ConfigDict(extra='allow')
     db_records: Annotated[list, Field(default=[], exclude=True)]
 
 
@@ -151,13 +163,20 @@ class SearchinDbHostBodyForMonitoring(SearchinDbHostBodyForMonitoringAndManageme
 class FastMonitoring(BaseModel):
 
     hosts: Annotated[
-        dict[str, DataHostMixin], MinLen(1), MaxLen(30), SkipValidation
+        dict[str, DataHostMonitoring], MinLen(1), MaxLen(30), SkipValidation
     ]
 
     @field_validator('hosts', mode='before')
     @classmethod
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, DataHostMixin]:
-        return {k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k})) for k, v in hosts.items()}
+    def add_m(cls, hosts: dict[str, Any]) -> dict[str, DataHostMonitoring]:
+        # return {
+        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
+        #     for k, v in hosts.items()
+        # }
+        return {
+            k: DataHostMonitoring(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
+            for k, v in hosts.items()
+        }
 
     model_config = ConfigDict(
         extra='allow',
@@ -181,6 +200,13 @@ class FastMonitoring(BaseModel):
             ],
         }
     )
+
+
+class FastManagement(FastMonitoring):
+
+    hosts: Annotated[
+        dict[str, DataHostManagement], MinLen(1), MaxLen(30), SkipValidation
+    ]
 
 
 """ Response """

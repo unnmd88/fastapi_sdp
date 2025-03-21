@@ -1,6 +1,11 @@
+from typing import Any, TypeVar, Type
+
+from api_v1.controller_management.checkers.checkers import AfterSearchInDbChecker
 from api_v1.controller_management.crud.processing import AfterRead, ForMonitoringAndManagement
+from api_v1.controller_management.host_entity import BaseDataHosts
 from api_v1.controller_management.schemas import TrafficLightsObjectsTableFields, NumbersOrIpv4, AllowedDataHostFields, \
-    SearchinDbHostBody
+    SearchinDbHostBody, ResponseSearchinDb, SearchinDbHostBodyForMonitoring, SearchinDbHostBodyForManagement, \
+    DataHostMonitoring, DataHostManagement
 # from api_v1.controller_management.sorters import logger
 from core.models import db_helper, TrafficLightsObjects
 from sqlalchemy import select, or_, Select
@@ -28,6 +33,7 @@ from sqlalchemy.engine.row import RowMapping
 
 # uvicorn.run('main:app', host='192.168.45.93', port=8001, reload=True)
 
+# Deprecated
 async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
     """
     Производит поиск и сортировку хостов после поиска в БД.
@@ -36,6 +42,7 @@ async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
     :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
     :return: Экземпляр модели HostSorterSearchInDB.
     """
+    return
     print(f'income_data!!! ++ {source_hosts_data}')
     data_hosts = AfterRead(source_hosts_data)
     db = ReadHostsByIpOrNum()
@@ -45,7 +52,7 @@ async def search_hosts_from_db(source_hosts_data: NumbersOrIpv4) -> AfterRead:
     data_hosts.process_data_hosts_after_request()
     return data_hosts
 
-
+# Deprecated
 async def search_hosts_from_db_for_monitoring_and_management(source_hosts_data: NumbersOrIpv4) -> ForMonitoringAndManagement:
     """
     Производит поиск и сортировку хостов после поиска в БД.
@@ -54,6 +61,7 @@ async def search_hosts_from_db_for_monitoring_and_management(source_hosts_data: 
     :param source_hosts_data: Экземпляр модели pydantic с хостами из views.py.
     :return: Экземпляр модели HostSorterSearchInDB.
     """
+    return
     print(f'income_data!!! ++ {source_hosts_data}')
     data_hosts = ForMonitoringAndManagement(source_hosts_data)
     db = ReadHostsByIpOrNum()
@@ -125,4 +133,122 @@ class ReadHostsByIpOrNum(BaseRead):
         )
 
 
+class BaseProcessor(BaseDataHosts):
 
+    search_in_db_class = ReadHostsByIpOrNum
+
+    def __init__(self, source_data: NumbersOrIpv4):
+        super().__init__(source_data)
+        self.hosts_after_search: list | None = None
+        self.db = self._get_search_in_db_instance()
+
+    @classmethod
+    def _get_search_in_db_instance(cls):
+        return cls.search_in_db_class()
+
+    def __repr__(self):
+        return (
+            f'self.income_data: {self.source_data}\n'
+            f'self.hosts_after_search: {self.hosts_after_search}\n'
+            f'self.hosts: {self.hosts_data}\n'
+        )
+
+    def _create_hosts_data(self) -> dict[str, SearchinDbHostBody]:
+        return {
+            host: SearchinDbHostBody(
+                ip_or_name_source=host,
+                search_in_db_field=host,
+                db_records=[]
+            )
+            for host in self.source_data.hosts
+        }
+
+    def _process_data_hosts_after_request(self):
+
+        for found_record in self.hosts_after_search:
+            self._add_record_to_hosts_data(dict(found_record))
+
+    def _add_record_to_hosts_data(
+            self,
+            found_record: dict[str, Any]
+    ) -> str | None:
+
+        number, ip = (
+            found_record[TrafficLightsObjectsTableFields.NUMBER],
+            found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
+        )
+        if number is None and ip is None:
+            return None
+
+        if number in self.hosts_data:
+            key = number
+        elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self.hosts_data:
+            key = ip
+        else:
+            raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
+        # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
+        self.hosts_data[key].db_records.append(found_record)
+        return key
+
+    async def search_hosts_and_processing(self):
+        self.hosts_after_search = await self.db.get_hosts_where(
+            self.db.get_stmt_where(self.hosts_data)
+        )
+        self._process_data_hosts_after_request()
+        return self.hosts_data
+
+
+class HostPropertiesProcessors(BaseProcessor):
+
+    @property
+    def response_as_model(self):
+        try:
+            return ResponseSearchinDb(source_data=self.source_data, results=[self.hosts_data])
+        except ValueError:
+            return self.response_dict
+
+    @property
+    def response_dict(self):
+        return {
+            AllowedDataHostFields.source_data: self.source_data,
+            AllowedDataHostFields.results: [self.hosts_data],
+        }
+
+
+T_Checker = TypeVar('T_Checker', bound=AfterSearchInDbChecker)
+
+T_HostModels = TypeVar(
+    'T_HostModels',
+    SearchinDbHostBodyForMonitoring,
+    SearchinDbHostBodyForManagement
+
+)
+
+class _MonitoringAndManagementProcessors(BaseProcessor):
+
+    checker = AfterSearchInDbChecker
+    host_model: Type[T_HostModels]
+
+    def _process_data_hosts_after_request(self):
+        super()._process_data_hosts_after_request()
+        processed_data_hosts = {}
+        for curr_host_ipv4, current_data_host in self.hosts_data.items():
+            current_host = self.checker(ip_or_name=curr_host_ipv4, properties=current_data_host)
+            if current_host.validate_record():
+                record = current_host.properties.db_records[0]
+                key_ip = record[TrafficLightsObjectsTableFields.IP_ADDRESS]
+                model = self.host_model(
+                    **(current_data_host.model_dump() | record)
+                )
+                processed_data_hosts[key_ip] = model
+            else:
+                processed_data_hosts[curr_host_ipv4] = current_data_host
+        self.hosts_data = processed_data_hosts
+
+
+class MonitoringProcessors(_MonitoringAndManagementProcessors):
+    host_model = DataHostMonitoring
+
+
+class ManagementProcessors(_MonitoringAndManagementProcessors):
+    host_model = DataHostManagement

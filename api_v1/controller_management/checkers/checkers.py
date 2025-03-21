@@ -9,9 +9,14 @@ from api_v1.controller_management.schemas import (
 from api_v1.controller_management.checkers.archive.custom_checkers import HostData
 
 
-class TypeController(BaseModel):
+class TypeControllerAndIp(BaseModel):
     type_controller: AllowedControllers
     ip_adress: IPvAnyAddress
+
+
+class SetCommand(TypeControllerAndIp):
+    command: str
+    value: str
 
 
 class FoundInDatabase(BaseModel):
@@ -59,7 +64,30 @@ class MonitoringHostDataChecker(HostData):
         return res
 
     def get_validate_classes(self):
-        return (TypeController, )
+        return (TypeControllerAndIp,)
+
+    def get_validate_methods(self):
+        """
+        Возвращает список с методами валидаций.
+        :return:
+        """
+        return [self.validate_all]
+
+
+class ManagementHostDataChecker(HostData):
+
+    def validate_all(self):
+        res = True
+        for validate_class in self.get_validate_classes():
+            try:
+                validate_class(**self.properties.model_dump())
+            except ValidationError as e:
+                self.properties.errors.append(e.errors(include_input=False))
+                res = False
+        return res
+
+    def get_validate_classes(self):
+        return (SetCommand,)
 
     def get_validate_methods(self):
         """

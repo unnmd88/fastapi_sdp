@@ -1,39 +1,49 @@
 import abc
+import logging
 import time
 from typing import Coroutine, Type, TypeVar
 from asyncio import TaskGroup
 import aiohttp
 from pysnmp.entity.engine import SnmpEngine
 
-from api_v1.controller_management.crud.crud import search_hosts_from_db_for_monitoring_and_management
+from api_v1.controller_management.crud.crud import search_hosts_from_db_for_monitoring_and_management, \
+    MonitoringProcessors, ManagementProcessors
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedMonitoringEntity,
-    SearchinDbHostBodyForMonitoring
+    SearchinDbHostBodyForMonitoring, FastMonitoring, FastManagement, DataHostManagement, DataHostMonitoring,
+    AllowedManagementEntity
 )
 from api_v1.controller_management.sorters import sorters
+from api_v1.controller_management.sorters.sorters import HostSorterMonitoring, HostSorterManagement
 
 from sdp_lib.management_controllers.snmp import stcip, ug405
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
+from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
 
+import logging_config
+
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
 # S = TypeVar('S', sorters.HostSorterMonitoring, sorters.SearchHostsInDb)
-S = TypeVar('S')
+S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 # P = TypeVar('P', NumbersOrIpv4, FastRequestMonitoringAndManagement)
-P = TypeVar('P')
+P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
 class Controllers(metaclass=abc.ABCMeta):
 
     snmp_engine = SnmpEngine()
     sorter: Type[S]
+    processor: Type[P]
 
     def __init__(
             self,
             *,
-            income_data: P,
+            income_data,
             search_in_db: bool
     ):
 
@@ -45,8 +55,12 @@ class Controllers(metaclass=abc.ABCMeta):
         self._session = None
 
     @classmethod
-    def get_sorter_class(cls):
+    def _get_sorter_class(cls) -> Type[S]:
         return cls.sorter
+
+    @classmethod
+    def _get_processor_class(cls) -> Type[P]:
+        return cls.processor
 
     @abc.abstractmethod
     def get_coro(self, ip_v4: str, data_host: dict) -> Coroutine:
@@ -64,16 +78,37 @@ class Controllers(metaclass=abc.ABCMeta):
                     ))
         return self.result_tasks
 
+    # async def compose_request(self):
+    #
+    #     start_time = time.time()
+    #     if self.search_in_db:
+    #         hosts_from_db = await search_hosts_from_db_for_monitoring_and_management(self.income_data)
+    #         data_hosts = self.get_sorter_class()(
+    #             hosts_from_db.hosts_data
+    #         )
+    #     else:
+    #         data_hosts = self.get_sorter_class()(self.income_data.hosts)
+    #
+    #     data_hosts.sort()
+    #
+    #     self.allowed_to_request_hosts = data_hosts.hosts_without_errors
+    #     self.bad_hosts = data_hosts.hosts_with_errors
+    #
+    #     await self._make_request()
+    #     self.add_response_to_data_hosts()
+    #     for t in self.result_tasks:
+    #         print(f't: {t.result().response_as_dict}')
+    #     return {'Время составило': time.time() - start_time} | self.get_all_hosts_as_dict()
+
     async def compose_request(self):
 
         start_time = time.time()
         if self.search_in_db:
-            hosts_from_db = await search_hosts_from_db_for_monitoring_and_management(self.income_data)
-            data_hosts = self.get_sorter_class()(
-                hosts_from_db.hosts_data
-            )
+            hosts_from_db: P = self._get_processor_class()(self.income_data)
+            await hosts_from_db.search_hosts_and_processing()
+            data_hosts = self._get_sorter_class()(hosts_from_db.hosts_data)
         else:
-            data_hosts = self.get_sorter_class()(self.income_data.hosts)
+            data_hosts = self._get_sorter_class()(self.income_data.hosts)
 
         data_hosts.sort()
 
@@ -98,10 +133,12 @@ class Controllers(metaclass=abc.ABCMeta):
 class StatesMonitoring(Controllers):
 
     sorter = sorters.HostSorterMonitoring
+    processor = MonitoringProcessors
+
 
     def get_coro(
             self, ip: str,
-            data_host: SearchinDbHostBodyForMonitoring
+            data_host: DataHostMonitoring
     ) -> Coroutine:
         type_controller = data_host.type_controller
         option = data_host.option
@@ -115,6 +152,34 @@ class StatesMonitoring(Controllers):
                 return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
                 return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
+            case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
+                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse()
+            case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
+                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
+        raise TypeError('DEBUG')
+
+
+class Management(Controllers):
+    sorter = sorters.HostSorterManagement
+
+    def get_coro(
+            self, ip: str,
+            data_host: DataHostManagement
+    ) -> Coroutine:
+        type_controller = data_host.type_controller
+        option = data_host.option
+        command = data_host.command
+        value = data_host.value
+        match (type_controller, command):
+            case (AllowedControllers.SWARCO, None):
+                return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+            case (AllowedControllers.POTOK_S, None):
+                return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+            case (AllowedControllers.POTOK_P, None):
+                scn = data_host.number
+                return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
+            case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
+                return peek_SetStage(ip_v4=ip, session=self._session).set_entity(value)
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
                 return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
