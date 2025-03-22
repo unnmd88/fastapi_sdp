@@ -59,9 +59,10 @@ class MultipleData(PeekWeb):
         :param results: Список с завершёнными задачами.
         :return:
         """
-        error,response = None, {}
+        error, response = None, {}
         for r in results:
-            curr_err, curr_res = r.result().response_as_model
+            obj = r.result()
+            curr_err, curr_res = obj.response
             response |= curr_res
             error = curr_err or error
         return error, response # Fix me
