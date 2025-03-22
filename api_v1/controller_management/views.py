@@ -3,6 +3,7 @@ import time
 
 from fastapi import APIRouter
 
+from core.settings import settings
 from api_v1.controller_management import services
 from api_v1.controller_management.crud.crud import HostPropertiesProcessors
 from api_v1.controller_management.schemas import (
@@ -16,7 +17,7 @@ import logging_config
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=['traffic-lights'])
+router = APIRouter()
 
 
 # @router.post('/get-hosts-test/{test_val}')
@@ -27,7 +28,7 @@ router = APIRouter(tags=['traffic-lights'])
 #     return data
 
 
-@router.post('/properties')
+@router.post('/properties', tags=[settings.traffic_lights_tag_static_properties])
 async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
     start_time = time.time()
@@ -37,25 +38,24 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
     return hosts_from_db.response_as_model
 
 
-@router.post('/search-and-get-state')
+@router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
 async def search_and_get_state(data: NumbersOrIpv4) -> ResponseGetState:
     states = services.StatesMonitoring(income_data=data, search_in_db=True)
     return await states.compose_request()
 
 
-@router.post('/get-state')
+@router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
 async def get_state(data: FastMonitoring) -> ResponseGetState:
-
-    print(f'data: \n {data}')
+    # print(f'data: \n {data}')
     states = services.StatesMonitoring(income_data=data, search_in_db=False)
     return await states.compose_request()
 
 
-@router.post('/set-command')
-async def get_state(data: FastManagement):
+@router.post('/set-command', tags=[settings.traffic_lights_tag_management])
+async def set_command(data: FastManagement):
 
-    set_command = services.Management(income_data=data, search_in_db=False)
-    return await set_command.compose_request()
+    result_set_command = services.Management(income_data=data, search_in_db=False)
+    return await result_set_command.compose_request()
 
 """ Примеры тела запроса """
 

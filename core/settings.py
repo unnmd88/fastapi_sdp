@@ -3,7 +3,9 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 class SettingsDb(BaseSettings):
     POSTGRES_USER: str
@@ -28,6 +30,10 @@ class SettingsDb(BaseSettings):
 
 class Settings(BaseSettings):
     api_v1_prefix: str = '/api/v1'
+    traffic_lights_tag_static_properties: str = 'Traffic lights static properties'
+    traffic_lights_tag_monitoring: str = 'Traffic lights monitoring'
+    traffic_lights_tag_management: str = 'Traffic lights management'
+
 
 settings_db = SettingsDb()
 settings = Settings()

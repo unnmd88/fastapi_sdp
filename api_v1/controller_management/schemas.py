@@ -22,10 +22,10 @@ class AllowedControllers(StrEnum):
 
 
 class AllowedMonitoringEntity(StrEnum):
-    BASE = 'base'
+    # BASE = 'base'
     INPUTS = 'inputs'
     ADVANCED = 'advanced'
-    BASE_AND_INPUTS = 'base_and_inputs'
+    # BASE_AND_INPUTS = 'base_and_inputs'
 
 
 class AllowedMonitoringOptions(StrEnum):
@@ -60,7 +60,7 @@ class AllowedDataHostFields(StrEnum):
     ip_adress = 'ip_adress'
     ipv4 = 'ip_address'
     ip_or_name = 'ip/name'
-    options = 'options'
+    option = 'option'
     #Database entity
     search_in_db = 'search_in_db'
     search_in_db_field = 'search_in_db_field'
@@ -192,7 +192,7 @@ class FastMonitoring(BaseModel):
                             "192.168.0.1": {
                                 AllowedDataHostFields.host_id: "1111(optional field)",
                                 AllowedDataHostFields.scn: "CO1111(optional field)",
-                                AllowedDataHostFields.options: f'{", ".join([o for o in AllowedMonitoringEntity])} (optional field)',
+                                AllowedDataHostFields.option: f'{", ".join([o for o in AllowedMonitoringEntity])} (optional field)',
                                 AllowedDataHostFields.type_controller: "Swarco(required field)",
                             }
                         },

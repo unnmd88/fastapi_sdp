@@ -1,9 +1,7 @@
 from contextlib import asynccontextmanager
 
-import aiohttp
 from fastapi import FastAPI
 import uvicorn
-from pysnmp.entity.engine import SnmpEngine
 
 from core.models import Base, db_helper
 from api_v1 import router as router_v1
