@@ -67,6 +67,10 @@ class AllowedDataHostFields(StrEnum):
     found = 'found'
     count = 'count'
     db_records = 'db_records'
+    #management
+    command = 'command'
+    value = 'value'
+
 
 
 class TrafficLightsObjectsTableFields(StrEnum):
@@ -207,6 +211,30 @@ class FastManagement(FastMonitoring):
     hosts: Annotated[
         dict[str, HostBodyManagementMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
+
+    model_config = ConfigDict(
+        json_schema_extra= {
+            "examples": [
+                {
+                    "hosts":
+                        {
+                            "192.168.0.2": {
+                                AllowedDataHostFields.type_controller: "Peek",
+                                AllowedDataHostFields.command: AllowedManagementEntity.SET_STAGE,
+                                AllowedDataHostFields.value: 1
+                            },
+
+                            # "192.168.0.1": {
+                            #     AllowedDataHostFields.host_id: "1111(optional field)",
+                            #     AllowedDataHostFields.scn: "CO1111(optional field)",
+                            #     AllowedDataHostFields.option: f'{", ".join([o for o in AllowedMonitoringEntity])} (optional field)',
+                            #     AllowedDataHostFields.type_controller: "Swarco(required field)",
+                            # }
+                        },
+                }
+            ],
+        }
+    )
 
 
 """ Response """
