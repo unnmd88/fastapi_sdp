@@ -1,5 +1,5 @@
 from collections.abc import KeysView
-from typing import Any, Self
+from typing import Self
 
 from pysnmp.hlapi.v3arch.asyncio import *
 from pysnmp.proto import errind
@@ -7,7 +7,7 @@ from pysnmp.proto import errind
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.parsers_snmp import MainParser
+from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp import MainParser
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 

@@ -6,8 +6,7 @@ from pysnmp.proto.rfc1902 import Unsigned32
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
-from sdp_lib.management_controllers.parsers.parsers_snmp import MainParser
-from sdp_lib.management_controllers.snmp.request import snmp_engine
+from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp import MainParser
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
 from sdp_lib.management_controllers.snmp.oids import Oids
 
@@ -101,8 +100,6 @@ class SwarcoSTCIP(BaseSTCIP):
         elif response_data.get(FieldsNames.curr_plan) == '13' and response_data.get(FieldsNames.plan_source) == '3':
             mode = str(NamesMode.SYNC)
         return mode
-
-
 
 
 class PotokS(BaseSTCIP):
