@@ -15,9 +15,10 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 
 class BaseSTCIP(SnmpHost):
 
-    @property
-    def host_protocol(self):
-        return str(FieldsNames.protocol_stcip)
+    host_protocol = FieldsNames.protocol_stcip
+    # @property
+    # def host_protocol(self):
+    #     return str(FieldsNames.protocol_stcip)
 
     def get_community(self) -> tuple[str, str]:
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')

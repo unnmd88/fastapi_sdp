@@ -6,12 +6,9 @@ from pysnmp.smi.rfc1902 import ObjectType
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.parsers_core import Parsers
 
-
 class BaseSnmpParser(Parsers):
 
     stage_values_get: dict
-    protocol_: str
-    # stage_values_set: dict
 
     def __init__(
             self,
@@ -28,11 +25,10 @@ class BaseSnmpParser(Parsers):
     def matches(self):
         ...
 
-    @classmethod
-    def host_protocol(cls):
-        return cls.protocol_
-
     def get_current_mode(self):
+        raise NotImplementedError()
+
+    def add_current_mode_to_response(self):
         raise NotImplementedError()
 
     def get_status(self, val):
@@ -67,6 +63,13 @@ class BaseSnmpParser(Parsers):
     def processing_oid_from_response(cls, oid: str) -> str:
         return oid
 
+    def add_extras_for_response(self, **kwargs):
+        for field_name, val in kwargs.items():
+            self.parsed_content_as_dict[field_name] = val
+
+    def add_host_protocol_ro_response(self):
+        self.add_extras_for_response(**{FieldsNames.host_protocol: self.host_instance.host_protocol})
+
     @classmethod
     def parse_varbinds_base(cls, varbinds: tuple[ObjectType, ...]):
         for oid, val in varbinds:
@@ -81,7 +84,10 @@ class BaseSnmpParser(Parsers):
                 oid, val = self.processing_oid_from_response(str(oid)), val.prettyPrint()
                 field_name, fn = _matches.get(oid)
                 self.parsed_content_as_dict[str(field_name)] = fn(val)
-            self.parsed_content_as_dict[str(FieldsNames.curr_mode)] = self.get_current_mode()
+            self.add_current_mode_to_response()
+            self.add_host_protocol_ro_response()
+
+            # self.parsed_content_as_dict[str(FieldsNames.curr_mode)] = self.get_current_mode()
         except TypeError:
             return self.parsed_content_as_dict
         print(f'ip: {self.host_instance.ip_v4} | resp: {self.parsed_content_as_dict}')

@@ -4,9 +4,7 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core impor
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-class StcipBase(BaseSnmpParser):
-
-    protocol_ = str(FieldsNames.protocol_stcip)
+class BaseStcip(BaseSnmpParser):
 
     status_equipment = {
         '0': 'noInformation',
@@ -25,8 +23,11 @@ class StcipBase(BaseSnmpParser):
     def convert_val_to_num_stage_get_req(cls, val) -> int | None:
         return cls.stage_values_get.get(val)
 
+    def add_current_mode_to_response(self):
+        self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
 
-class SwarcoStcipParser(StcipBase):
+
+class SwarcoStcipParser(BaseStcip):
 
     stage_values_get = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
 
@@ -111,6 +112,8 @@ class SwarcoStcipParser(StcipBase):
                 return str(NamesMode.SYNC)
         return None
 
+
+
     @property
     def matches(self):
         return {
@@ -124,7 +127,7 @@ class SwarcoStcipParser(StcipBase):
         }
 
 
-class PotokSParser(StcipBase):
+class PotokSParser(BaseStcip):
 
     stage_values_get = {str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))}
 

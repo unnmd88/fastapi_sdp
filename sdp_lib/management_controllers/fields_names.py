@@ -9,6 +9,7 @@ class FieldsNames(StrEnum):
     data = 'data'
     response = 'response'
 
+    host_protocol = 'host_protocol'
     protocol = 'protocol'
     protocol_snmp = 'snmp'
     protocol_stcip = 'stcip'

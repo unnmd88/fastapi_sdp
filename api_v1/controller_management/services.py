@@ -37,7 +37,7 @@ import logging_config
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T', stcip.MonitoringSwarco, stcip.MonitoringPotokS, ug405.PotokP, peek_MainPage)
+T = TypeVar('T', stcip.MonitoringSwarco, stcip.MonitoringPotokS, ug405.MonitoringPotokP, peek_MainPage)
 S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
@@ -157,7 +157,7 @@ class StatesMonitoring(Controllers):
                 return stcip.MonitoringPotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
                 scn = data_host.number
-                return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
+                return ug405.MonitoringPotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
                 return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
