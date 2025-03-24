@@ -55,7 +55,7 @@ class BaseUG405(SnmpHost):
     def processing_oid_from_response(self, oid: str) -> str:
         return oid.replace(self.scn_as_dec, '')
 
-    def get_oids_for_get_request(self):
+    def get_oids_for_get_state(self):
         return self.add_scn_to_oids(self.matches.keys())
 
     async def get_and_parse(self, engine: SnmpEngine = None):
@@ -83,7 +83,8 @@ class BaseUG405(SnmpHost):
     ):
         raise NotImplementedError
 
-    def convert_val_to_num_stage_get_req(self, val: str) -> int:
+    @classmethod
+    def convert_val_to_num_stage_get_req(cls, val: str) -> int:
         """
         Конвертирует значение, полученное из oid фазы в номер фазы десятичного представления
         :param val: значение, необходимое отобразить в десятичном виде

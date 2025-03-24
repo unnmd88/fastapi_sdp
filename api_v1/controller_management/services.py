@@ -37,7 +37,7 @@ import logging_config
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
+T = TypeVar('T', stcip.MonitoringSwarco, stcip.MonitoringPotokS, ug405.PotokP, peek_MainPage)
 S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
@@ -152,9 +152,9 @@ class StatesMonitoring(Controllers):
         option = data_host.option
         match (type_controller, option):
             case (AllowedControllers.SWARCO, None):
-                return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.MonitoringSwarco(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_S, None):
-                return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.MonitoringPotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
                 scn = data_host.number
                 return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)

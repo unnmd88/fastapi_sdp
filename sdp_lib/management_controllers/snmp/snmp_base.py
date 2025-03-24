@@ -7,7 +7,7 @@ from pysnmp.proto import errind
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp import MainParser
+# from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core import SwarcoStcipBase
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
@@ -175,10 +175,8 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 
 class SnmpHost(Host):
 
-    stage_values_get: dict
-    stage_values_set: dict
-    matches: dict
-    parser_class = MainParser
+    oids_state: tuple[Oids]
+    parser_class: Any
 
     @classmethod
     def get_parser(cls, var_binds, instance):
@@ -190,19 +188,11 @@ class SnmpHost(Host):
         self.parser = None
 
     def get_community(self) -> tuple[str, str]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def get_oids_for_get_request(self):
-        raise NotImplementedError
-
-    def get_current_mode(self, response):
-        raise NotImplementedError
-
-    def processing_oid_from_response(self, oid: str) -> str:
-        raise NotImplementedError
-
-    def add_extras_for_response(self, parsed_response: dict) -> dict:
-        raise NotImplementedError
+    @classmethod
+    def get_oids_for_get_state(cls):
+        return cls.oids_state
 
     @property
     def protocol(self):
@@ -210,7 +200,7 @@ class SnmpHost(Host):
 
     async def get(
             self,
-            oids: list[str | Oids] | KeysView[str | Oids],
+            oids: list[str | Oids] | tuple[str | Oids, ...] | KeysView[str | Oids],
             engine: SnmpEngine,
             timeout: float = 1,
             retries: int = 0
@@ -286,7 +276,7 @@ class SnmpHost(Host):
     async def get_and_parse(self, engine: SnmpEngine) -> Self:
 
         error_indication, error_status, error_index, var_binds = await self.get(
-            oids=self.get_oids_for_get_request(),
+            oids=self.get_oids_for_get_state(),
             engine=engine
         )
         if self.check_response_and_add_error_if_has(error_indication, error_status, error_index):
@@ -299,25 +289,25 @@ class SnmpHost(Host):
             self.add_data_to_data_response_attrs(BadControllerType())
             return self
 
-        self.parser.data_for_response = self.add_extras_for_response(self.parser.data_for_response)
+        # self.parser.data_for_response = self.add_extras_for_response(self.parser.data_for_response)
         self.add_data_to_data_response_attrs(data=self.parser.data_for_response)
         return self
 
-    def convert_val_to_num_stage_get_req(self, val: str) -> int | None:
-        """
-        Конвертирует значение из oid фазы в номер фазы из get заспроа
-        :param val: значение, которое будет сконвертировано в десятичный номер фазы.
-        :return: номер фазы в десятичном представлении
-        """
-        return self.stage_values_get.get(val)
+    # def convert_val_to_num_stage_get_req(self, val: str) -> int | None:
+    #     """
+    #     Конвертирует значение из oid фазы в номер фазы из get заспроа
+    #     :param val: значение, которое будет сконвертировано в десятичный номер фазы.
+    #     :return: номер фазы в десятичном представлении
+    #     """
+    #     return self.stage_values_get.get(val)
+    #
+    # def convert_val_to_num_stage_set_req(self, val: str) -> int | None:
+    #     """
+    #     Конвертирует номер фазы в значение для установки в oid фазы
+    #     :param val: номер фазы, который будет сконвертирован в соответствующее значение
+    #     :return: Значение фазы, которое будет установлено.
+    #     """
+    #     return self.stage_values_set.get(val)
 
-    def convert_val_to_num_stage_set_req(self, val: str) -> int | None:
-        """
-        Конвертирует номер фазы в значение для установки в oid фазы
-        :param val: номер фазы, который будет сконвертирован в соответствующее значение
-        :return: Значение фазы, которое будет установлено.
-        """
-        return self.stage_values_set.get(val)
-
-    def get_val_as_str(self, val: str | int) -> str:
-        return str(val)
+    # def get_val_as_str(self, val: str | int) -> str:
+    #     return str(val)
