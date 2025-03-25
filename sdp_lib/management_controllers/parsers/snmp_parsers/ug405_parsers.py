@@ -40,6 +40,15 @@ class ParserPotokP(BaseUG405):
         #     self.parsed_content_as_dict.get(FieldsNames.has_det_faults),
         #     self.parsed_content_as_dict.get(FieldsNames.is_mode_man),
         # )
+        print(f'mathc')
+        print((
+            self.parsed_content_as_dict.get(FieldsNames.operation_mode),
+            self.parsed_content_as_dict.get(FieldsNames.local_adaptive_status),
+            self.parsed_content_as_dict.get(FieldsNames.num_detectors),
+            self.parsed_content_as_dict.get(FieldsNames.has_det_faults),
+            self.parsed_content_as_dict.get(FieldsNames.is_mode_man),
+        ))
+
         match (
             self.parsed_content_as_dict.get(FieldsNames.operation_mode),
             self.parsed_content_as_dict.get(FieldsNames.local_adaptive_status),
@@ -51,8 +60,10 @@ class ParserPotokP(BaseUG405):
                 return str(NamesMode.VA)
             case ['1', '0', '0', _, _]:
                 return str(NamesMode.FT)
+            case ['1', '0', num_det, '1', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+                return str(NamesMode.FT)
             # case[self.UTC_OPERATION_MODE, _, _, _, _]:
-            case[self.UTC_OPERATION_MODE,*rest]:
+            case[self.UTC_OPERATION_MODE, *rest]:
                 return str(NamesMode.CENTRAL)
             # case[_, _, _, _, '1']:
             case[*rest, '1']:

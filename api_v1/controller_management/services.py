@@ -156,7 +156,7 @@ class StatesMonitoring(Controllers):
             case (AllowedControllers.POTOK_S, None):
                 return stcip.MonitoringPotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
-                scn = data_host.number
+                scn = ug405.MonitoringPotokP.add_CO_to_scn(data_host.number)
                 return ug405.MonitoringPotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
                 return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()

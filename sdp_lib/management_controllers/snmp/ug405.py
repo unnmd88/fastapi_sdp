@@ -1,4 +1,3 @@
-import math
 import os
 
 from pysnmp.entity.engine import SnmpEngine
@@ -117,10 +116,19 @@ class BaseUG405(SnmpHost):
         """
         return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
 
+    @staticmethod
+    def add_CO_to_scn(scn: str) -> str | None:
+        if not isinstance(scn, str) or not scn.isdigit():
+            return None
+        return f'CO{scn}'
+
+
     def add_scn_to_oids(self, oids):
         return [f'{oid}{self.scn_as_dec}' if oid in self.scn_required_oids else oid for oid in oids]
 
     async def get_and_parse(self, engine: SnmpEngine = None):
+        print(f'scn_as_chars!!!>> {self.scn_as_chars}')
+        print(f'scn_as_dec!!!>> {self.scn_as_dec}')
         if self.scn_as_dec is None:
             error_indication, error_status, error_index, var_binds = await self.get(
                 oids=[Oids.utcReplySiteID],
@@ -132,8 +140,7 @@ class BaseUG405(SnmpHost):
                 self.add_data_to_data_response_attrs(e)
         if self.ERRORS:
             return self
-        print(f'scn_as_chars!!!>> {self.scn_as_chars}')
-        print(f'scn_as_dec!!!>> {self.scn_as_dec}')
+
 
         return await super().get_and_parse(engine=engine)
 
@@ -165,6 +172,8 @@ class MonitoringPotokP(BaseUG405):
 
     def get_oids_for_get_state(self):
         print('+scn ', self.add_scn_to_oids(self.oids_state))
+        print('scn ', self.scn_as_chars)
+        print('scn ', self.scn_as_dec)
         return self.add_scn_to_oids(self.oids_state)
 
     def set_scn_from_response(
@@ -174,6 +183,7 @@ class MonitoringPotokP(BaseUG405):
             error_index,
             var_binds
     )-> None:
+        print(f'str(var_binds[0][1]): {str(var_binds[0][1])}')
 
         if any(err for err in (error_indication, error_status, error_index)) or not var_binds:
             raise BadControllerType()
