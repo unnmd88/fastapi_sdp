@@ -33,21 +33,6 @@ class ParserPotokP(BaseUG405):
     }
 
     def get_current_mode(self) -> str | None:
-        # operation_mode, local_adaptive_status, num_detectors, has_det_faults, is_mode_man = (
-        #     self.parsed_content_as_dict .get(FieldsNames.operation_mode),
-        #     self.parsed_content_as_dict.get(FieldsNames.local_adaptive_status),
-        #     self.parsed_content_as_dict.get(FieldsNames.num_detectors),
-        #     self.parsed_content_as_dict.get(FieldsNames.has_det_faults),
-        #     self.parsed_content_as_dict.get(FieldsNames.is_mode_man),
-        # )
-        print(f'mathc')
-        print((
-            self.parsed_content_as_dict.get(FieldsNames.operation_mode),
-            self.parsed_content_as_dict.get(FieldsNames.local_adaptive_status),
-            self.parsed_content_as_dict.get(FieldsNames.num_detectors),
-            self.parsed_content_as_dict.get(FieldsNames.has_det_faults),
-            self.parsed_content_as_dict.get(FieldsNames.is_mode_man),
-        ))
 
         match (
             self.parsed_content_as_dict.get(FieldsNames.operation_mode),
@@ -62,10 +47,8 @@ class ParserPotokP(BaseUG405):
                 return str(NamesMode.FT)
             case ['1', '0', num_det, '1', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
                 return str(NamesMode.FT)
-            # case[self.UTC_OPERATION_MODE, _, _, _, _]:
             case[self.UTC_OPERATION_MODE, *rest]:
                 return str(NamesMode.CENTRAL)
-            # case[_, _, _, _, '1']:
             case[*rest, '1']:
                 return str(NamesMode.MANUAL)
         return None
