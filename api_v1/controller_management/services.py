@@ -26,7 +26,6 @@ from api_v1.controller_management.sorters.sorters import (
 
 from sdp_lib.management_controllers.snmp import (
     stcip,
-    ug405
 )
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
@@ -191,7 +190,8 @@ class Management(Controllers):
                 return stcip.PotokS(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
                 scn = data_host.number
-                return ug405.PotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
+                # return ug405.PotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
+                pass
             case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
                 return peek_SetStage(ip_v4=ip, session=self._session).set_entity(value)
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
