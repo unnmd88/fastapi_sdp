@@ -51,15 +51,19 @@ class CurrentStatesPotokS(BaseSTCIP):
 
 class SwarcoSTCIPManagement(SnmpHost):
 
-    stage_values_set = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
+    # stage_values_set = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
+
+    stage_values_set = {
+        stage_num: Unsigned32(stage_num + 1) for stage_num in range(1, 8)
+    } | {8: Unsigned32(1), 0: Unsigned32(0)}
 
     def get_community(self) -> tuple[str, str]:
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
 
-    async def set_stage(self, val: str):
-        v = Unsigned32(self.stage_values_set.get(val))
+    async def set_stage(self, val: int):
+
         oids = [
-            (Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(v))
+            (Oids.swarcoUTCTrafftechPhaseCommand, self.stage_values_set.get(val))
         ]
         res = await self.set(oids=oids, engine=SnmpEngine())
 
@@ -69,11 +73,10 @@ class SwarcoSTCIPManagement(SnmpHost):
 
 async def main():
 
-
-    o = CurrentStatesSwarco('10.179.58.233')
-    r = await o.get_and_parse(SnmpEngine())
-    print(f'r: {r.response_as_dict}')
-    return r
+    val = Unsigned32('1')
+    print(f'val: {val}')
+    print(f'type(val): {type(val)}')
+    return val
     # print(o)
 
 

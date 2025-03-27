@@ -152,12 +152,12 @@ class StatesMonitoring(Controllers):
         option = data_host.option
         match (type_controller, option):
             case (AllowedControllers.SWARCO, None):
-                return stcip.CurrentStatesSwarco(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.CurrentStatesSwarco(ip_v4=ip).get_basic_states_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_S, None):
-                return stcip.CurrentStatesPotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.CurrentStatesPotokS(ip_v4=ip).get_basic_states_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
                 scn = ug405.MonitoringPotokP.add_CO_to_scn(data_host.number)
-                return ug405.MonitoringPotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
+                return ug405.MonitoringPotokP(ip_v4=ip, scn=scn).get_basic_states_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, None):
                 return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
@@ -180,12 +180,12 @@ class Management(Controllers):
         value = data_host.value
         match (type_controller, command):
             case (AllowedControllers.SWARCO, None):
-                return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.SwarcoSTCIP(ip_v4=ip).get_basic_states_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_S, None):
-                return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.PotokS(ip_v4=ip).get_basic_states_and_parse(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
                 scn = data_host.number
-                return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
+                return ug405.PotokP(ip_v4=ip, scn=scn).get_basic_states_and_parse(engine=self.snmp_engine)
             case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
                 return peek_SetStage(ip_v4=ip, session=self._session).set_entity(value)
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):

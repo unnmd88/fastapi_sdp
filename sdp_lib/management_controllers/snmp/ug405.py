@@ -126,7 +126,7 @@ class BaseUG405(SnmpHost):
     def add_scn_to_oids(self, oids):
         return [f'{oid}{self.scn_as_dec}' if oid in self.scn_required_oids else oid for oid in oids]
 
-    async def get_and_parse(self, engine: SnmpEngine = None):
+    async def get_basic_states_and_parse(self, engine: SnmpEngine = None):
         print(f'scn_as_chars!!!>> {self.scn_as_chars}')
         print(f'scn_as_dec!!!>> {self.scn_as_dec}')
         if self.scn_as_dec is None:
@@ -142,7 +142,7 @@ class BaseUG405(SnmpHost):
             return self
 
 
-        return await super().get_and_parse(engine=engine)
+        return await super().get_basic_states_and_parse(engine=engine)
 
     def set_scn_from_response(
             self,

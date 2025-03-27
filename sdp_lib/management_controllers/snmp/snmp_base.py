@@ -28,6 +28,9 @@ class SnmpHost(Host):
     def get_community(self) -> tuple[str, str]:
         raise NotImplementedError()
 
+    def get_oids(self):
+        raise NotImplementedError()
+
     @classmethod
     def get_oids_for_get_state(cls):
         return cls.oids_state
@@ -100,7 +103,7 @@ class SnmpHost(Host):
         print(error_indication, error_status, error_index, var_binds)
         return error_indication, error_status, error_index, var_binds
 
-    def check_response_and_add_error_if_has(
+    def __check_response_and_add_error_if_has(
             self,
             error_indication: errind.ErrorIndication,
             error_status: Integer32 | int,
@@ -112,13 +115,15 @@ class SnmpHost(Host):
             self.add_data_to_data_response_attrs(BadControllerType())
         return self.ERRORS
 
-    async def get_and_parse(self, engine: SnmpEngine) -> Self:
+    def __parse_response_all_types_requests(
+            self,
+            error_indication: errind.ErrorIndication,
+            error_status: Integer32 | int,
+            error_index: Integer32 | int,
+            var_binds: tuple[ObjectType, ...]
+    ) -> Self:
 
-        error_indication, error_status, error_index, var_binds = await self.get(
-            oids=self.get_oids_for_get_state(),
-            engine=engine
-        )
-        if self.check_response_and_add_error_if_has(error_indication, error_status, error_index):
+        if self.__check_response_and_add_error_if_has(error_indication, error_status, error_index):
             return self
 
         self.parser = self.get_parser(self, var_binds)
@@ -131,6 +136,30 @@ class SnmpHost(Host):
         # self.parser.data_for_response = self.add_extras_for_response(self.parser.data_for_response)
         self.add_data_to_data_response_attrs(data=self.parser.data_for_response)
         return self
+
+    async def get_basic_states_and_parse(self, engine: SnmpEngine) -> Self:
+
+        response = await self.get(
+            oids=self.get_oids_for_get_state(),
+            engine=engine
+        )
+        return self.__parse_response_all_types_requests(*response)
+        # if self.check_response_and_add_error_if_has(error_indication, error_status, error_index):
+        #     return self
+        #
+        # self.parser = self.get_parser(self, var_binds)
+        # self.parser.parse()
+        #
+        # if not self.parser.data_for_response:
+        #     self.add_data_to_data_response_attrs(BadControllerType())
+        #     return self
+        #
+        # # self.parser.data_for_response = self.add_extras_for_response(self.parser.data_for_response)
+        # self.add_data_to_data_response_attrs(data=self.parser.data_for_response)
+        # return self
+
+
+
 
     # def convert_val_to_num_stage_get_req(self, val: str) -> int | None:
     #     """
