@@ -154,45 +154,45 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 #         raise NotImplementedError()
 
 
-class MonitoringPotokP(UG405Host):
-
-    parser_class = ParserPotokP
-
-    oids_state = (
-        Oids.utcType2OperationMode,
-        Oids.potokP_utcReplyDarkStatus,
-        Oids.utcReplyFR,
-        Oids.utcReplyGn,
-        Oids.potokP_utcReplyPlanStatus,
-        Oids.potokP_utcReplyLocalAdaptiv,
-        Oids.utcType2ScootDetectorCount,
-        Oids.utcReplyDF,
-        Oids.utcReplyMC,
-    )
-
-    def get_oids_for_get_state(self):
-        print('+scn ', self.add_scn_to_oids(self.oids_state))
-        print('scn ', self.scn_as_chars)
-        print('scn ', self.scn_as_dec)
-        return self.add_scn_to_oids(self.oids_state)
-
-    def set_scn_from_response(
-            self,
-            error_indication,
-            error_status,
-            error_index,
-            var_binds
-    )-> None:
-        print(f'str(var_binds[0][1]): {str(var_binds[0][1])}')
-
-        if any(err for err in (error_indication, error_status, error_index)) or not var_binds:
-            raise BadControllerType()
-
-        try:
-            self.scn_as_chars = str(var_binds[0][1])
-            self.scn_as_dec = self.get_scn_as_ascii()
-        except IndexError:
-            raise BadControllerType()
+# class MonitoringPotokP(UG405Host):
+#
+#     parser_class = ParserPotokP
+#
+#     oids_state = (
+#         Oids.utcType2OperationMode,
+#         Oids.potokP_utcReplyDarkStatus,
+#         Oids.utcReplyFR,
+#         Oids.utcReplyGn,
+#         Oids.potokP_utcReplyPlanStatus,
+#         Oids.potokP_utcReplyLocalAdaptiv,
+#         Oids.utcType2ScootDetectorCount,
+#         Oids.utcReplyDF,
+#         Oids.utcReplyMC,
+#     )
+#
+#     def get_oids_for_get_state(self):
+#         print('+scn ', self.add_scn_to_oids(self.oids_state))
+#         print('scn ', self.scn_as_chars)
+#         print('scn ', self.scn_as_dec)
+#         return self.add_scn_to_oids(self.oids_state)
+#
+#     def set_scn_from_response(
+#             self,
+#             error_indication,
+#             error_status,
+#             error_index,
+#             var_binds
+#     )-> None:
+#         print(f'str(var_binds[0][1]): {str(var_binds[0][1])}')
+#
+#         if any(err for err in (error_indication, error_status, error_index)) or not var_binds:
+#             raise BadControllerType()
+#
+#         try:
+#             self.scn_as_chars = str(var_binds[0][1])
+#             self.scn_as_dec = self.get_scn_as_ascii()
+#         except IndexError:
+#             raise BadControllerType()
 
 
 # class PotokP(BaseUG405):
