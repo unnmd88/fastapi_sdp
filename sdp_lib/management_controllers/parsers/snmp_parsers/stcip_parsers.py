@@ -55,36 +55,8 @@ class SwarcoStcipParser(BaseStcip):
     FT_STATUS_TRUE            = '1'
     FT_STATUS_FALSE           = '0'
 
-
     def get_soft_flags_180_181_status(self, octet_string: str) -> str:
         return octet_string[179: 181]
-
-    # def get_current_mode(self) -> str | None:
-    #
-    #     mode = None
-    #
-    #     if self.parsed_content_as_dict.get(FieldsNames.curr_plan) == '16' and self.parsed_content_as_dict.get \
-    #                 (FieldsNames.plan_source) == '3':
-    #         mode = str(NamesMode.CENTRAL)
-    #     elif (
-    #             self.parsed_content_as_dict.get(FieldsNames.fixed_time_status) == '1'
-    #             or '1' in self.parsed_content_as_dict.get(FieldsNames.status_soft_flag180_181, '')
-    #             or self.parsed_content_as_dict.get(FieldsNames.num_detectors) == '0'
-    #     ):
-    #         mode = str(NamesMode.FT)
-    #     elif (
-    #             self.parsed_content_as_dict.get(FieldsNames.fixed_time_status) == '0'
-    #             and '1' not in self.parsed_content_as_dict.get(FieldsNames.status_soft_flag180_181, '')
-    #             and int(self.parsed_content_as_dict.get(FieldsNames.num_detectors)) > 0
-    #     ):
-    #         mode = str(NamesMode.VA)
-    #     elif self.parsed_content_as_dict.get(FieldsNames.curr_plan) == '15' and self.parsed_content_as_dict.get \
-    #                 (FieldsNames.plan_source) == '3':
-    #         mode = str(NamesMode.MANUAL)
-    #     elif self.parsed_content_as_dict.get(FieldsNames.curr_plan) == '13' and self.parsed_content_as_dict.get \
-    #                 (FieldsNames.plan_source) == '3':
-    #         mode = str(NamesMode.SYNC)
-    #     return mode
 
     def get_current_mode(self) -> str | None:
 
@@ -111,8 +83,6 @@ class SwarcoStcipParser(BaseStcip):
             ):
                 return str(NamesMode.SYNC)
         return None
-
-
 
     @property
     def matches(self):

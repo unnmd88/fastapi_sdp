@@ -2,11 +2,11 @@ import asyncio
 
 from pysnmp.entity.engine import SnmpEngine
 
-from sdp_lib.management_controllers.snmp.stcip import MonitoringSwarco
+from sdp_lib.management_controllers.snmp.stcip import CurrentStatesSwarco
 
 
 async def main():
-    o = MonitoringSwarco('10.45.154.16')
+    o = CurrentStatesSwarco('10.45.154.16')
     r = await o.get_and_parse(SnmpEngine())
     return r
 

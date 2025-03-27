@@ -16,15 +16,12 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 class BaseSTCIP(SnmpHost):
 
     host_protocol = FieldsNames.protocol_stcip
-    # @property
-    # def host_protocol(self):
-    #     return str(FieldsNames.protocol_stcip)
 
     def get_community(self) -> tuple[str, str]:
         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
 
 
-class MonitoringSwarco(BaseSTCIP):
+class CurrentStatesSwarco(BaseSTCIP):
 
     parser_class = SwarcoStcipParser
 
@@ -39,7 +36,7 @@ class MonitoringSwarco(BaseSTCIP):
     )
 
 
-class MonitoringPotokS(BaseSTCIP):
+class CurrentStatesPotokS(BaseSTCIP):
 
     parser_class = PotokSParser
 
@@ -73,7 +70,7 @@ class SwarcoSTCIPManagement(SnmpHost):
 async def main():
 
 
-    o = MonitoringSwarco('10.179.58.233')
+    o = CurrentStatesSwarco('10.179.58.233')
     r = await o.get_and_parse(SnmpEngine())
     print(f'r: {r.response_as_dict}')
     return r
