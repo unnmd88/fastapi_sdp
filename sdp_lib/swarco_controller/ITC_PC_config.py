@@ -115,7 +115,7 @@ class SwarcoParseConfigXML:
             if not intergreen_tag:
                 raise ValueError
         # print(f'--intergreen tag after = {intergreen_tag}')
-        num_groups = int(self.general_intersection_data.get(NamesForSwarcoXML.GROUPS.value))
+        num_groups = int(self.general_intersection_data.snmp_get(NamesForSwarcoXML.GROUPS.value))
         # print(f'--num_groups after = {num_groups}')
 
         not_confl, matrix_dict = '  -  . ;', None
@@ -223,7 +223,7 @@ class SwarcoParseConfigXML:
             ]
         )
 
-        filename = f"{filename}/{self.general_intersection_data.get('intersection')} {self.set_curr_datetime()}.PTC2"
+        filename = f"{filename}/{self.general_intersection_data.snmp_get('intersection')} {self.set_curr_datetime()}.PTC2"
         with open(filename, 'w') as file:
             head_Work006 = 'NewSheet  : Work.006'
             head_Work015 = 'NewSheet693  : Work.015'

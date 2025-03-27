@@ -4,7 +4,6 @@ import os
 from pysnmp.entity.engine import SnmpEngine
 from pysnmp.proto.rfc1902 import Unsigned32
 
-from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
     SwarcoStcipParser,
     PotokSParser
@@ -13,50 +12,41 @@ from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost, StcipHost
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-# class StcipHost(SnmpHost):
-#
-#     host_protocol = FieldsNames.protocol_stcip
-#
-#     def get_community(self) -> tuple[str, str]:
-#         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
-
-
-class AbstractGetCommand(StcipHost):
+class AbstractGetRequest(StcipHost):
 
     method = SnmpHost.snmp_get
-
     oids: tuple[Oids, ...]
 
     def get_oids(self):
         return self.oids
 
 
-# class CurrentStatesSwarco(AbstractGetCommand):
-#
-#     parser_class = SwarcoStcipParser
-#
-#     oids = (
-#         Oids.swarcoUTCTrafftechFixedTimeStatus,
-#         Oids.swarcoUTCTrafftechPlanSource,
-#         Oids.swarcoUTCStatusEquipment,
-#         Oids.swarcoUTCTrafftechPhaseStatus,
-#         Oids.swarcoUTCTrafftechPlanCurrent,
-#         Oids.swarcoUTCDetectorQty,
-#         Oids.swarcoSoftIOStatus
-#     )
-#
-#
-# class CurrentStatesPotokS(AbstractGetCommand):
-#
-#     parser_class = PotokSParser
-#
-#     oids = (
-#         Oids.swarcoUTCStatusEquipment,
-#         Oids.swarcoUTCTrafftechPhaseStatus,
-#         Oids.swarcoUTCTrafftechPlanCurrent,
-#         Oids.swarcoUTCStatusMode,
-#         Oids.swarcoUTCDetectorQty,
-#     )
+class CurrentStatesSwarco(AbstractGetRequest):
+
+    parser_class = SwarcoStcipParser
+
+    oids = (
+        Oids.swarcoUTCTrafftechFixedTimeStatus,
+        Oids.swarcoUTCTrafftechPlanSource,
+        Oids.swarcoUTCStatusEquipment,
+        Oids.swarcoUTCTrafftechPhaseStatus,
+        Oids.swarcoUTCTrafftechPlanCurrent,
+        Oids.swarcoUTCDetectorQty,
+        Oids.swarcoSoftIOStatus
+    )
+
+
+class CurrentStatesPotokS(AbstractGetRequest):
+
+    parser_class = PotokSParser
+
+    oids = (
+        Oids.swarcoUTCStatusEquipment,
+        Oids.swarcoUTCTrafftechPhaseStatus,
+        Oids.swarcoUTCTrafftechPlanCurrent,
+        Oids.swarcoUTCStatusMode,
+        Oids.swarcoUTCDetectorQty,
+    )
 
 
 class SwarcoSTCIPManagement(SnmpHost):
@@ -87,8 +77,6 @@ class SwarcoSTCIPManagement(SnmpHost):
 class SetCommandSwarco(SnmpHost):
 
     parser_class = SwarcoStcipParser
-
-
 
 
 class SetAbstract(SnmpHost):

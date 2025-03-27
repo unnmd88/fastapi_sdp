@@ -8,7 +8,7 @@ from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.parsers.snmp_parsers.ug405_parsers import ParserPotokP
-from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost
+from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost, UG405Host
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
@@ -81,80 +81,80 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 #         raise NotImplementedError()
 
 
-class BaseUG405(SnmpHost):
+# class BaseUG405(SnmpHost):
+#
+#     host_protocol = FieldsNames.protocol_ug405
+#
+#     scn_required_oids = {
+#         Oids.utcReplyGn, Oids.utcReplyFR, Oids.utcReplyDF, Oids.utcControlTO,
+#         Oids.utcControlFn, Oids.potokP_utcReplyPlanStatus, Oids.potokP_utcReplyPlanSource,
+#         Oids.potokP_utcReplyPlanSource, Oids.potokP_utcReplyDarkStatus,
+#         Oids.potokP_utcReplyLocalAdaptiv, Oids.potokP_utcReplyHardwareErr,
+#         Oids.potokP_utcReplySoftwareErr, Oids.potokP_utcReplyElectricalCircuitErr,
+#         Oids.utcReplyMC, Oids.utcReplyCF, Oids.utcReplyVSn, Oids.utcType2ScootDetectorCount
+#     }
+#
+#     def __init__(self, ip_v4: str, host_id=None, scn=None):
+#         super().__init__(ip_v4, host_id)
+#         self.scn_as_chars = scn
+#         self.scn_as_dec = self.get_scn_as_ascii()
+#
+#     def get_community(self) -> tuple[str, str]:
+#         return os.getenv('communityUG405_r'), os.getenv('communityUG405_w')
+#
+#     def get_scn_as_ascii(self) -> str | None:
+#         if self.scn_as_chars is not None:
+#             return self.convert_scn(self.scn_as_chars)
+#         return None
+#
+#     @staticmethod
+#     def convert_scn(scn: str) -> str:
+#         """
+#         Генерирует SCN
+#         :param scn -> символы строки, которые необходимо конвертировать в scn
+#         :return -> возвращет scn
+#         """
+#         return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
+#
+#     @staticmethod
+#     def add_CO_to_scn(scn: str) -> str | None:
+#         if not isinstance(scn, str) or not scn.isdigit():
+#             return None
+#         return f'CO{scn}'
+#
+#
+#     def add_scn_to_oids(self, oids):
+#         return [f'{oid}{self.scn_as_dec}' if oid in self.scn_required_oids else oid for oid in oids]
+#
+#     async def request_and_parse_response(self, engine: SnmpEngine = None):
+#         print(f'scn_as_chars!!!>> {self.scn_as_chars}')
+#         print(f'scn_as_dec!!!>> {self.scn_as_dec}')
+#         if self.scn_as_dec is None:
+#             error_indication, error_status, error_index, var_binds = await self.get(
+#                 oids=[Oids.utcReplySiteID],
+#                 engine=engine
+#             )
+#             try:
+#                 self.set_scn_from_response(error_indication, error_status, error_index, var_binds)
+#             except BadControllerType as e:
+#                 self.add_data_to_data_response_attrs(e)
+#         if self.ERRORS:
+#             return self
+#
+#
+#         return await super().request_and_parse_response(engine=engine)
+#
+#     def set_scn_from_response(
+#             self,
+#             error_indication,
+#             error_status,
+#             error_index,
+#             var_binds
+#     ):
+#         raise NotImplementedError()
 
-    host_protocol = FieldsNames.protocol_ug405
 
-    scn_required_oids = {
-        Oids.utcReplyGn, Oids.utcReplyFR, Oids.utcReplyDF, Oids.utcControlTO,
-        Oids.utcControlFn, Oids.potokP_utcReplyPlanStatus, Oids.potokP_utcReplyPlanSource,
-        Oids.potokP_utcReplyPlanSource, Oids.potokP_utcReplyDarkStatus,
-        Oids.potokP_utcReplyLocalAdaptiv, Oids.potokP_utcReplyHardwareErr,
-        Oids.potokP_utcReplySoftwareErr, Oids.potokP_utcReplyElectricalCircuitErr,
-        Oids.utcReplyMC, Oids.utcReplyCF, Oids.utcReplyVSn, Oids.utcType2ScootDetectorCount
-    }
-
-    def __init__(self, ip_v4: str, host_id=None, scn=None):
-        super().__init__(ip_v4, host_id)
-        self.scn_as_chars = scn
-        self.scn_as_dec = self.get_scn_as_ascii()
-
-    def get_community(self) -> tuple[str, str]:
-        return os.getenv('communityUG405_r'), os.getenv('communityUG405_w')
-
-    def get_scn_as_ascii(self) -> str | None:
-        if self.scn_as_chars is not None:
-            return self.convert_scn(self.scn_as_chars)
-        return None
-
-    @staticmethod
-    def convert_scn(scn: str) -> str:
-        """
-        Генерирует SCN
-        :param scn -> символы строки, которые необходимо конвертировать в scn
-        :return -> возвращет scn
-        """
-        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
-
-    @staticmethod
-    def add_CO_to_scn(scn: str) -> str | None:
-        if not isinstance(scn, str) or not scn.isdigit():
-            return None
-        return f'CO{scn}'
-
-
-    def add_scn_to_oids(self, oids):
-        return [f'{oid}{self.scn_as_dec}' if oid in self.scn_required_oids else oid for oid in oids]
-
-    async def get_basic_states_and_parse(self, engine: SnmpEngine = None):
-        print(f'scn_as_chars!!!>> {self.scn_as_chars}')
-        print(f'scn_as_dec!!!>> {self.scn_as_dec}')
-        if self.scn_as_dec is None:
-            error_indication, error_status, error_index, var_binds = await self.get(
-                oids=[Oids.utcReplySiteID],
-                engine=engine
-            )
-            try:
-                self.set_scn_from_response(error_indication, error_status, error_index, var_binds)
-            except BadControllerType as e:
-                self.add_data_to_data_response_attrs(e)
-        if self.ERRORS:
-            return self
-
-
-        return await super().get_basic_states_and_parse(engine=engine)
-
-    def set_scn_from_response(
-            self,
-            error_indication,
-            error_status,
-            error_index,
-            var_binds
-    ):
-        raise NotImplementedError()
-
-
-class MonitoringPotokP(BaseUG405):
+class MonitoringPotokP(UG405Host):
 
     parser_class = ParserPotokP
 

@@ -2887,8 +2887,8 @@ class GetDifferentStatesFromWeb(PeekWebContent):
         """
 
         varBinds, basic_curr_mode = self.parse_current_mode(varBinds)
-        inps = self.inputs_to_list_for_json(varBinds.get(self.GET_INPUTS_CONTENT))
-        user_parameters = self.user_parameters_to_list_for_json(varBinds.get(self.GET_USER_PARAMETERS_CONTENT))
+        inps = self.inputs_to_list_for_json(varBinds.snmp_get(self.GET_INPUTS_CONTENT))
+        user_parameters = self.user_parameters_to_list_for_json(varBinds.snmp_get(self.GET_USER_PARAMETERS_CONTENT))
         part_of_json = {}
         part_of_json |= basic_curr_mode
         part_of_json[EntityJsonResponce.INPUTS.value] = inps
@@ -3058,17 +3058,17 @@ class SwarcoWebContent(SwarcoWebLogin):
         content_to_dict = ast.literal_eval(content)
         logger.debug(content_to_dict)
 
-        if content_to_dict.get('virtual_display').get('display2'):
-            content_to_list = content_to_dict.get('virtual_display').get('display2')
-        elif content_to_dict.get('virtual_display').get('display1'):
-            content_to_list = content_to_dict.get('virtual_display').get('display1')
+        if content_to_dict.snmp_get('virtual_display').snmp_get('display2'):
+            content_to_list = content_to_dict.snmp_get('virtual_display').snmp_get('display2')
+        elif content_to_dict.snmp_get('virtual_display').snmp_get('display1'):
+            content_to_list = content_to_dict.snmp_get('virtual_display').snmp_get('display1')
         else:
             raise ValueError
         # logger.debug(content_to_list)
         # logger.debug(type(content_to_list))
 
         content_to_list.append(
-            " ".join([str(v) for v in content_to_dict.get('virtual_display').get('signals')])
+            " ".join([str(v) for v in content_to_dict.snmp_get('virtual_display').snmp_get('signals')])
         )
         return content_to_list
 
