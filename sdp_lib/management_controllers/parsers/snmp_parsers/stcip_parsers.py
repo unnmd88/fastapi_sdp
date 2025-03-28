@@ -23,13 +23,20 @@ class StcipExtensions(BaseSnmpParser):
     def convert_val_to_num_stage_get_req(cls, val) -> int | None:
         return cls.stage_values_get.get(val)
 
-    def get_current_mode_and_add_to_extras_dict(self) -> None:
-        self.extras_data[FieldsNames.curr_mode] = self.get_current_mode()
+    def processing_oid_from_response(self, oid: str) -> str:
+        return oid
 
 
-class SwarcoStcipMonitoringParser(StcipExtensions):
+class Monitoring(StcipExtensions):
+
+    def add_depends_data_to_response(self):
+        self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
+
+
+class SwarcoStcipMonitoringParser(Monitoring):
 
     stage_values_get = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
+
 
     plan_source = {
         '1': 'trafficActuatedPlanSelectionCommand',
@@ -95,14 +102,12 @@ class SwarcoStcipMonitoringParser(StcipExtensions):
             Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
             Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_180_181_status),
             Oids.swarcoUTCTrafftechPhaseCommand:
-                (f'{FieldsNames.set_stage}[{Oids.swarcoUTCTrafftechPhaseCommand}]',
-                 lambda val: val)
+                (Oids.swarcoUTCTrafftechPhaseCommand,
+                 lambda val: [val, self.stage_values_get.get(val)])
         }
 
-    def add_depends_data_to_response(self):
-        self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
 
-class PotokSMonitoringParser(StcipExtensions):
+class PotokSMonitoringParser(Monitoring):
 
     stage_values_get = {str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))}
 
@@ -127,3 +132,16 @@ class PotokSMonitoringParser(StcipExtensions):
         Oids.swarcoUTCStatusMode: (FieldsNames.curr_status_mode, self.get_val_as_str),
         Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
     }
+
+
+class SwarcoStcipManagementParser(SwarcoStcipMonitoringParser):
+
+    def add_depends_data_to_response(self):
+        pass
+
+
+class PotokStcipManagementParser(SwarcoStcipMonitoringParser):
+
+    def add_depends_data_to_response(self):
+        pass
+

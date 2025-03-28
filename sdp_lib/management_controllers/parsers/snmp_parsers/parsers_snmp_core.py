@@ -34,13 +34,13 @@ class BaseSnmpParser(Parsers):
     def add_extras_to_response(self):
         pass
 
+    def add_depends_data_to_response(self):
+        pass
+
     def get_status(self, val):
         pass
 
     def get_current_mode(self):
-        pass
-
-    def add_depends_data_to_response(self):
         pass
 
     def get_current_status_mode(self):
@@ -67,13 +67,11 @@ class BaseSnmpParser(Parsers):
         except ValueError:
             print(f'Значение val: {val}')
 
-    @classmethod
-    def get_val_as_str(cls, val) -> str:
+    def get_val_as_str(self, val) -> str:
         return str(val)
 
-    @classmethod
-    def processing_oid_from_response(cls, oid: str) -> str:
-        return oid
+    def processing_oid_from_response(self, oid: str) -> str:
+        pass
 
     def add_fields_to_response(self, **kwargs):
         for field_name, val in kwargs.items():
@@ -115,9 +113,7 @@ class BaseSnmpParser(Parsers):
         return self.data_for_response
 
 
-# class SnmpExtensions(BaseSnmpParser):
-#
-#
-#
-#     def get_current_status_mode(self):
-#         pass
+class SnmpSetRequestParser(BaseSnmpParser):
+
+    def get_current_status_mode(self):
+        pass

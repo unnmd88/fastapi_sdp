@@ -49,57 +49,57 @@ class CurrentStatesPotokS(AbstractGetRequest):
     )
 
 
-class SwarcoSTCIPManagement(SnmpHost):
-
-    # stage_values_set = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
-
-    stage_values_set = {
-        stage_num: Unsigned32(stage_num + 1) for stage_num in range(1, 8)
-    } | {8: Unsigned32(1), 0: Unsigned32(0)}
-
-    def get_community(self) -> tuple[str, str]:
-        return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
-
-    async def set_stage(self, val: int):
-
-        oids = [
-            (Oids.swarcoUTCTrafftechPhaseCommand, self.stage_values_set.get(val))
-        ]
-        res = await self.snmp_set(oids=oids, engine=SnmpEngine())
-
-        print(f'res::>> {res}')
-        return res
+# class SwarcoSTCIPManagement(SnmpHost):
+#
+#     # stage_values_set = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
+#
+#     stage_values_set = {
+#         stage_num: Unsigned32(stage_num + 1) for stage_num in range(1, 8)
+#     } | {8: Unsigned32(1), 0: Unsigned32(0)}
+#
+#     def get_community(self) -> tuple[str, str]:
+#         return os.getenv('communitySTCIP_r'), os.getenv('communitySTCIP_w')
+#
+#     async def set_stage(self, val: int):
+#
+#         oids = [
+#             (Oids.swarcoUTCTrafftechPhaseCommand, self.stage_values_set.get(val))
+#         ]
+#         res = await self.snmp_set(oids=oids, engine=SnmpEngine())
+#
+#         print(f'res::>> {res}')
+#         return res
 
 
 """ Set commands """
 
 
-class SetCommandSwarco(SnmpHost):
-
-    parser_class = SwarcoStcipMonitoringParser
-
-
-class SetAbstract(SnmpHost):
-
-    parser_class = SwarcoStcipMonitoringParser
-
-    def __init__(self, ip_v4: str, value):
-        super().__init__(ip_v4)
-        self.value = self.get_value()
-
-    def get_value(self):
-        return self.value
-
-
-class SetStage(SetAbstract):
-    stage_values_set = {
-        stage_num: Unsigned32(stage_num + 1) for stage_num in range(1, 8)
-    } | {8: Unsigned32(1), 0: Unsigned32(0)}
-
-    def get_oids(self):
-        return [
-        (Oids.swarcoUTCTrafftechPhaseCommand, self.stage_values_set.get(self.value, Unsigned32(0)))
-    ]
+# class SetCommandSwarco(SnmpHost):
+#
+#     parser_class = SwarcoStcipMonitoringParser
+#
+#
+# class SetAbstract(SnmpHost):
+#
+#     parser_class = SwarcoStcipMonitoringParser
+#
+#     def __init__(self, ip_v4: str, value):
+#         super().__init__(ip_v4)
+#         self.value = self.get_value()
+#
+#     def get_value(self):
+#         return self.value
+#
+#
+# class SetStage(SetAbstract):
+#     stage_values_set = {
+#         stage_num: Unsigned32(stage_num + 1) for stage_num in range(1, 8)
+#     } | {8: Unsigned32(1), 0: Unsigned32(0)}
+#
+#     def get_oids(self):
+#         return [
+#         (Oids.swarcoUTCTrafftechPhaseCommand, self.stage_values_set.get(self.value, Unsigned32(0)))
+#     ]
 
 
 

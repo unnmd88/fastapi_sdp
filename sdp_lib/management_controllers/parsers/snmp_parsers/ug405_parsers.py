@@ -8,22 +8,16 @@ class UG405Extensions(BaseSnmpParser):
 
     UTC_OPERATION_MODE = '3'
 
-    def processing_oid_from_response(self, oid: str) -> str:
-        return oid.replace(self.host_instance.scn_as_dec , '')
-
     @classmethod
     def convert_val_to_num_stage_get_req(cls, val) -> int | None:
         return cls.convert_hex_to_decimal(val)
 
+    def processing_oid_from_response(self, oid: str) -> str:
+        return oid.replace(self.host_instance.scn_as_dec , '')
+
     def add_depends_data_to_response(self):
         self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
         self.parsed_content_as_dict[FieldsNames.curr_status_mode] = self.get_current_status_mode()
-
-
-    # def add_extras_to_response(self):
-    #     self.add_fields_to_response(**{FieldsNames.curr_mode: self.get_current_mode()})
-    #     self.parsed_content_as_dict[FieldsNames.curr_status_mode] = self.get_current_status_mode()
-
 
 
 class ParserPotokP(UG405Extensions):
