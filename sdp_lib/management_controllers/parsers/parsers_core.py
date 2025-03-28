@@ -8,6 +8,7 @@ class Parsers(metaclass=abc.ABCMeta):
         self.content = content
         self.parsed_content_as_dict = {}
         self.data_for_response: dict[str, Any] | None = None
+        self.extras_data = {}
 
     @abc.abstractmethod
     def parse(self) -> dict[str, Any]:

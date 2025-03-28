@@ -6,8 +6,8 @@ from pysnmp.proto.rfc1902 import Unsigned32
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
-    SwarcoStcipParser,
-    PotokSParser
+    SwarcoStcipMonitoringParser,
+    PotokSMonitoringParser
 )
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost, StcipHost
 from sdp_lib.management_controllers.snmp.oids import Oids
@@ -86,14 +86,14 @@ class SwarcoSTCIPManagement(SnmpHost):
 
 class SetCommandSwarco(SnmpHost):
 
-    parser_class = SwarcoStcipParser
+    parser_class = SwarcoStcipMonitoringParser
 
 
 
 
 class SetAbstract(SnmpHost):
 
-    parser_class = SwarcoStcipParser
+    parser_class = SwarcoStcipMonitoringParser
 
     def __init__(self, ip_v4: str, value):
         super().__init__(ip_v4)

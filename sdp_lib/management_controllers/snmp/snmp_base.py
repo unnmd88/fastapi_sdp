@@ -8,7 +8,7 @@ from pysnmp.proto import errind
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import SwarcoStcipParser
+from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import SwarcoStcipMonitoringParser
 # from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core import SwarcoStcipBase
 from sdp_lib.management_controllers.snmp.oids import Oids
 

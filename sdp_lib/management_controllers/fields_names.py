@@ -53,6 +53,10 @@ class FieldsNames(StrEnum):
 
     red_yellow_green = 'red_yellow_green'
 
+    #Set command section
+    set_stage = 'set_stage'
+
+
 
 class ErrorMessages(StrEnum):
     bad_controller_type = 'bad_controller_type'

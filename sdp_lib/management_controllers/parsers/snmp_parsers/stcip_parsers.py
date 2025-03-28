@@ -4,7 +4,7 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core impor
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-class BaseStcip(BaseSnmpParser):
+class StcipExtensions(BaseSnmpParser):
 
     status_equipment = {
         '0': 'noInformation',
@@ -23,11 +23,11 @@ class BaseStcip(BaseSnmpParser):
     def convert_val_to_num_stage_get_req(cls, val) -> int | None:
         return cls.stage_values_get.get(val)
 
-    def add_current_mode_to_response(self):
-        self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
+    def get_current_mode_and_add_to_extras_dict(self) -> None:
+        self.extras_data[FieldsNames.curr_mode] = self.get_current_mode()
 
 
-class SwarcoStcipParser(BaseStcip):
+class SwarcoStcipMonitoringParser(StcipExtensions):
 
     stage_values_get = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
 
@@ -93,11 +93,16 @@ class SwarcoStcipParser(BaseStcip):
             Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, self.convert_val_to_num_stage_get_req),
             Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_val_as_str),
             Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
-            Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_180_181_status)
+            Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_180_181_status),
+            Oids.swarcoUTCTrafftechPhaseCommand:
+                (f'{FieldsNames.set_stage}[{Oids.swarcoUTCTrafftechPhaseCommand}]',
+                 lambda val: val)
         }
 
+    def add_depends_data_to_response(self):
+        self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
 
-class PotokSParser(BaseStcip):
+class PotokSMonitoringParser(StcipExtensions):
 
     stage_values_get = {str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))}
 

@@ -1,5 +1,6 @@
 import abc
 import math
+from collections.abc import Callable
 
 from pysnmp.smi.rfc1902 import ObjectType
 
@@ -20,19 +21,30 @@ class BaseSnmpParser(Parsers):
         self.current_oid = None
         self.current_val = None
 
+    def call_after_parse_methods(self):
+        self.add_extras_to_response()
+        self.add_depends_data_to_response()
+        self.add_host_protocol_to_response()
+
     @property
     @abc.abstractmethod
     def matches(self):
         ...
 
-    def get_current_mode(self):
-        raise NotImplementedError()
-
-    def add_current_mode_to_response(self):
-        raise NotImplementedError()
+    def add_extras_to_response(self):
+        pass
 
     def get_status(self, val):
-        raise NotImplementedError()
+        pass
+
+    def get_current_mode(self):
+        pass
+
+    def add_depends_data_to_response(self):
+        pass
+
+    def get_current_status_mode(self):
+        pass
 
     def convert_val_to_num_stage_get_req(self, val) -> int | None:
         raise NotImplementedError()
@@ -63,18 +75,19 @@ class BaseSnmpParser(Parsers):
     def processing_oid_from_response(cls, oid: str) -> str:
         return oid
 
-    def add_extras_for_response(self, **kwargs):
+    def add_fields_to_response(self, **kwargs):
         for field_name, val in kwargs.items():
             self.parsed_content_as_dict[field_name] = val
 
-    def add_host_protocol_ro_response(self):
-        self.add_extras_for_response(**{FieldsNames.host_protocol: self.host_instance.host_protocol})
+    def add_host_protocol_to_response(self):
+        self.add_fields_to_response(**{FieldsNames.host_protocol: self.host_instance.host_protocol})
 
     @classmethod
     def parse_varbinds_base(cls, varbinds: tuple[ObjectType, ...]):
         for oid, val in varbinds:
             oid, val = str(oid), val.prettyPrint()
             print(f'oid: {oid}  >>>> val: {val}')
+            print(f'oid: {oid}  >>>> type(val): {type(val)}')
 
     def parse(self) : # Рефакторинг
 
@@ -84,9 +97,16 @@ class BaseSnmpParser(Parsers):
                 oid, val = self.processing_oid_from_response(str(oid)), val.prettyPrint()
                 field_name, fn = _matches.get(oid)
                 self.parsed_content_as_dict[str(field_name)] = fn(val)
-            self.add_current_mode_to_response()
-            self.add_host_protocol_ro_response()
 
+            self.call_after_parse_methods()
+            # self.add_current_mode_to_response()
+            # self.add_extras_to_response()
+            # self.add_depends_data_to_response()
+            # self.add_host_protocol_to_response()
+
+            print('-----DEBUG------')
+
+            # self.parse_varbinds_base(self.content)
             # self.parsed_content_as_dict[str(FieldsNames.curr_mode)] = self.get_current_mode()
         except TypeError:
             return self.parsed_content_as_dict
@@ -95,4 +115,9 @@ class BaseSnmpParser(Parsers):
         return self.data_for_response
 
 
-
+# class SnmpExtensions(BaseSnmpParser):
+#
+#
+#
+#     def get_current_status_mode(self):
+#         pass

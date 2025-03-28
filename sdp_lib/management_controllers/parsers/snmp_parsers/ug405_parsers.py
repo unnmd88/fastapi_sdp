@@ -4,7 +4,7 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core impor
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
-class BaseUG405(BaseSnmpParser):
+class UG405Extensions(BaseSnmpParser):
 
     UTC_OPERATION_MODE = '3'
 
@@ -15,8 +15,18 @@ class BaseUG405(BaseSnmpParser):
     def convert_val_to_num_stage_get_req(cls, val) -> int | None:
         return cls.convert_hex_to_decimal(val)
 
+    def add_depends_data_to_response(self):
+        self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
+        self.parsed_content_as_dict[FieldsNames.curr_status_mode] = self.get_current_status_mode()
 
-class ParserPotokP(BaseUG405):
+
+    # def add_extras_to_response(self):
+    #     self.add_fields_to_response(**{FieldsNames.curr_mode: self.get_current_mode()})
+    #     self.parsed_content_as_dict[FieldsNames.curr_status_mode] = self.get_current_status_mode()
+
+
+
+class ParserPotokP(UG405Extensions):
 
     @property
     def matches(self):
@@ -66,6 +76,6 @@ class ParserPotokP(BaseUG405):
             return str(FieldsNames.dark)
         return None
 
-    def add_current_mode_to_response(self):
-        self.parsed_content_as_dict[FieldsNames.curr_status_mode] = self.get_current_status_mode()
-        self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()
+    # def add_current_mode_to_response_if_has(self):
+    #     self.parsed_content_as_dict[FieldsNames.curr_status_mode] = self.get_current_status_mode()
+    #     self.parsed_content_as_dict[FieldsNames.curr_mode] = self.get_current_mode()

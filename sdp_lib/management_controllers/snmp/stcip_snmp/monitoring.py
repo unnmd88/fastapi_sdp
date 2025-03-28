@@ -5,8 +5,8 @@ from pysnmp.entity.engine import SnmpEngine
 from pysnmp.proto.rfc1902 import Unsigned32
 
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
-    SwarcoStcipParser,
-    PotokSParser
+    SwarcoStcipMonitoringParser,
+    PotokSMonitoringParser
 )
 from sdp_lib.management_controllers.snmp.snmp_base import SnmpHost, StcipHost
 from sdp_lib.management_controllers.snmp.oids import Oids
@@ -23,7 +23,7 @@ class AbstractGetRequest(StcipHost):
 
 class CurrentStatesSwarco(AbstractGetRequest):
 
-    parser_class = SwarcoStcipParser
+    parser_class = SwarcoStcipMonitoringParser
 
     oids = (
         Oids.swarcoUTCTrafftechFixedTimeStatus,
@@ -38,7 +38,7 @@ class CurrentStatesSwarco(AbstractGetRequest):
 
 class CurrentStatesPotokS(AbstractGetRequest):
 
-    parser_class = PotokSParser
+    parser_class = PotokSMonitoringParser
 
     oids = (
         Oids.swarcoUTCStatusEquipment,
@@ -76,12 +76,12 @@ class SwarcoSTCIPManagement(SnmpHost):
 
 class SetCommandSwarco(SnmpHost):
 
-    parser_class = SwarcoStcipParser
+    parser_class = SwarcoStcipMonitoringParser
 
 
 class SetAbstract(SnmpHost):
 
-    parser_class = SwarcoStcipParser
+    parser_class = SwarcoStcipMonitoringParser
 
     def __init__(self, ip_v4: str, value):
         super().__init__(ip_v4)
