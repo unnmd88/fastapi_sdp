@@ -25,19 +25,28 @@ from api_v1.controller_management.sorters.sorters import (
 )
 
 from sdp_lib.management_controllers.snmp import (
-    stcip,
-    ug405
+    stcip, snmp_b,
 )
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
 from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
+
+from sdp_lib.management_controllers.snmp.stcip_snmp import monitoring as stcip_monitoring
+from sdp_lib.management_controllers.snmp.ug405_snmp import monitoring as ug405_monitoring
+
+
+
+
 
 import logging_config
 
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T', stcip.SwarcoSTCIP, stcip.PotokS, ug405.PotokP, peek_MainPage)
+T = TypeVar('T',
+            stcip_monitoring.CurrentStatesSwarco,
+            stcip_monitoring.CurrentStatesPotokS,
+            ug405_monitoring.MonitoringPotokP, peek_MainPage)
 S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
@@ -152,12 +161,15 @@ class StatesMonitoring(Controllers):
         option = data_host.option
         match (type_controller, option):
             case (AllowedControllers.SWARCO, None):
-                return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                # return stcip_monitoring.CurrentStatesSwarco(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
+                return snmp_b.SwarcoStcip(ip_v4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_S, None):
-                return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip_monitoring.CurrentStatesPotokS(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
-                scn = data_host.number
-                return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
+                scn = snmp_b.PotokP.add_CO_to_scn(data_host.number)
+                # scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
+                # return ug405_monitoring.MonitoringPotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
+                return snmp_b.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
             case(AllowedControllers.PEEK, None):
                 return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
@@ -180,12 +192,13 @@ class Management(Controllers):
         value = data_host.value
         match (type_controller, command):
             case (AllowedControllers.SWARCO, None):
-                return stcip.SwarcoSTCIP(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.SwarcoSTCIP(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_S, None):
-                return stcip.PotokS(ip_v4=ip).get_and_parse(engine=self.snmp_engine)
+                return stcip.PotokS(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
                 scn = data_host.number
-                return ug405.PotokP(ip_v4=ip, scn=scn).get_and_parse(engine=self.snmp_engine)
+                # return ug405.PotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
+                pass
             case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
                 return peek_SetStage(ip_v4=ip, session=self._session).set_entity(value)
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):

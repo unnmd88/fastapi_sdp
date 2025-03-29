@@ -9,6 +9,7 @@ class FieldsNames(StrEnum):
     data = 'data'
     response = 'response'
 
+    host_protocol = 'host_protocol'
     protocol = 'protocol'
     protocol_snmp = 'snmp'
     protocol_stcip = 'stcip'
@@ -51,6 +52,10 @@ class FieldsNames(StrEnum):
     all_red = 'all_red'
 
     red_yellow_green = 'red_yellow_green'
+
+    #Set command section
+    set_stage = 'set_stage'
+
 
 
 class ErrorMessages(StrEnum):

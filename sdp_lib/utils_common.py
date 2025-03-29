@@ -86,3 +86,5 @@ def convert_value_to_string(value: Any) -> str:
     :return: Строковое представление value.
     """
     return str(value)
+
+

@@ -13,6 +13,8 @@ class Host:
     ERROR      = 0
     RESPONSE   = 1
 
+    protocol: str
+
     def __init__(self, ip_v4: str, host_id=None):
         self.ip_v4 = ip_v4
         self.host_id = host_id
@@ -38,10 +40,10 @@ class Host:
         else:
             self.__dict__[key] = value
 
-    @property
-    @abc.abstractmethod
-    def protocol(self):
-        ...
+    # @property
+    # @abc.abstractmethod
+    # def protocol(self):
+    #     ...
 
     @property
     def response_as_dict(self):
