@@ -155,6 +155,15 @@ class AbstractUg405Host(SnmpHosts):
         raise NotImplementedError()
 
 
+class AbstractStcipHost(SnmpHosts):
+
+    get_state_oids_state: tuple[Oids, ...]
+    parser: Any
+
+    async def get_states(self):
+        return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
+
+
 class PotokP(AbstractUg405Host):
 
     states_parser = ParserPotokP
@@ -188,7 +197,7 @@ class PotokP(AbstractUg405Host):
         return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
-class SwarcoStcip(SnmpHosts):
+class SwarcoStcip(AbstractStcipHost):
 
     type_controller = swarco_stcip.type_controller
     host_protocol = swarco_stcip.host_protocol
@@ -207,11 +216,11 @@ class SwarcoStcip(SnmpHosts):
 
     states_parser = SwarcoStcipMonitoringParser
 
-    async def get_states(self):
-        return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
+    # async def get_states(self):
+    #     return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
-class PotokS(SnmpHosts):
+class PotokS(AbstractStcipHost):
 
     type_controller = potok_s.type_controller
     host_protocol = potok_s.host_protocol
@@ -228,8 +237,8 @@ class PotokS(SnmpHosts):
 
     states_parser = PotokSMonitoringParser
 
-    async def get_states(self):
-        return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
+    # async def get_states(self):
+    #     return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
 
