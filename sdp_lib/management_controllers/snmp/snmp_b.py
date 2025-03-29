@@ -258,7 +258,11 @@ from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
 """" """"" """" """""
 
-class SnmpHost(Host):
+class SnmpHosts(Host):
+    """
+    Класс абстрактного хоста, в котором реализована логика формирования snmp-запросов,
+    получение и обработка snmp-ответов.
+    """
 
     protocol = FieldsNames.protocol_snmp
 
@@ -284,8 +288,10 @@ class SnmpHost(Host):
         self.last_response = None
 
     async def make_get_request_and_parse_response(self, oids, parser) -> Self:
-        # print(f'method: {self.method.__name__}\noids: {self.get_oids()}')
-
+        """
+        Метод обертка для _common_parse_and_response. В данном методе определяется
+        параметр method для передачи и вызова _common_parse_and_response.
+        """
         return await self._common_parse_and_response(
             oids=oids,
             method=self.request_sender.snmp_get,
@@ -293,56 +299,33 @@ class SnmpHost(Host):
         )
 
     async def _common_parse_and_response(self, oids, method, parser):
-
+        """
+        Осуществляет вызов соответствующего snmp-запроса и передает
+        self.__parse_response_all_types_requests полученный ответ для парса response.
+        """
         self.last_response = await method(oids=oids)
         return self.__parse_response_all_types_requests(parser)
 
-    # def __check_response_errors_and_add_to_host_data_if_has(self) -> bool:
-    #     """
-    #         self.__response[ResponseStructure.ERROR_INDICATION] = error_indication: errind.ErrorIndication,
-    #         self.__response[ResponseStructure.ERROR_STATUS] = error_status: Integer32 | int,
-    #         self.__response[ResponseStructure.ERROR_INDEX] = error_index: Integer32 | int
-    #     """
-    #     if self.last_response[ResponseStructure.ERROR_INDICATION] is not None:
-    #         self.add_data_to_data_response_attrs(self.last_response[ResponseStructure.ERROR_INDICATION])
-    #     elif self.last_response[ResponseStructure.ERROR_STATUS] or self.last_response[ResponseStructure.ERROR_INDEX]:
-    #         self.add_data_to_data_response_attrs(BadControllerType())
-    #     return bool(self.ERRORS)
-
-    # def __parse_response_all_types_requests(self, parser) -> Self:
-    #
-    #     if self.__check_response_errors_and_add_to_host_data_if_has():
-    #         return self
-    #
-    #     self.parser = parser(self)
-    #     self.parser.parse()
-    #
-    #     if not self.parser.data_for_response:
-    #         self.add_data_to_data_response_attrs(BadControllerType())
-    #         return self
-    #
-    #     # self.parser.data_for_response = self.add_extras_for_response(self.parser.data_for_response)
-    #     self.add_data_to_data_response_attrs(data=self.parser.data_for_response)
-    #     return self
-
     def __parse_response_all_types_requests(self, parser) -> Self:
-
+        """
+        Осуществляет проверку snmp-response и передает его парсеру для формирования
+        response из полученных значений оидов.
+        """
         if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
             return self
 
-        self.parser = parser(self)
+        self.parser = parser(self) # Think about refactoring
         self.parser.parse()
 
         if not self.parser.data_for_response:
             self.add_data_to_data_response_attrs(BadControllerType())
             return self
 
-        # self.parser.data_for_response = self.add_extras_for_response(self.parser.data_for_response)
         self.add_data_to_data_response_attrs(data=self.parser.data_for_response)
         return self
 
 
-class Ug405Host(SnmpHost):
+class AbstractUg405Host(SnmpHosts):
 
     scn_required_oids = {
         Oids.utcReplyGn, Oids.utcReplyFR, Oids.utcReplyDF, Oids.utcControlTO,
@@ -357,29 +340,6 @@ class Ug405Host(SnmpHost):
         super().__init__(ip_v4, engine=engine, host_id=host_id)
         self.scn_as_chars = scn
         self.scn_as_ascii_string = self.get_scn_as_ascii_from_scn_as_chars_attr()
-
-    def get_scn_as_ascii_from_scn_as_chars_attr(self) -> str | None:
-        if self.scn_as_chars is not None:
-            return self.convert_scn_from_chars_to_ascii_string(self.scn_as_chars)
-        return None
-
-    @staticmethod
-    def add_CO_to_scn(scn: str) -> str | None:
-        if not isinstance(scn, str) or not scn.isdigit():
-            return None
-        return f'CO{scn}'
-
-    @staticmethod
-    def convert_scn_from_chars_to_ascii_string(scn: str) -> str:
-        """
-        Генерирует SCN
-        :param scn -> символы строки, которые необходимо конвертировать в scn
-        :return -> возвращет scn
-        """
-        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
-
-    def _add_scn_to_oids(self, oids):
-        return [f'{oid}{self.scn_as_ascii_string}' if oid in self.scn_required_oids else oid for oid in oids]
 
     async def _common_parse_and_response(self, oids, method, parser):
 
@@ -402,11 +362,34 @@ class Ug405Host(SnmpHost):
             parser=parser
         )
 
+    def get_scn_as_ascii_from_scn_as_chars_attr(self) -> str | None:
+        if self.scn_as_chars is not None:
+            return self.convert_chars_string_to_ascii_string(self.scn_as_chars)
+        return None
+
+    @staticmethod
+    def add_CO_to_scn(scn: str) -> str | None:
+        if not isinstance(scn, str) or not scn.isdigit():
+            return None
+        return f'CO{scn}'
+
+    @staticmethod
+    def convert_chars_string_to_ascii_string(scn: str) -> str:
+        """
+        Генерирует SCN
+        :param scn -> символы строки, которые необходимо конвертировать в scn
+        :return -> возвращет scn
+        """
+        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
+
+    def _add_scn_to_oids(self, oids):
+        return [f'{oid}{self.scn_as_ascii_string}' if oid in self.scn_required_oids else oid for oid in oids]
+
     def set_scn_from_response(self):
         raise NotImplementedError()
 
 
-class PotokP(Ug405Host):
+class PotokP(AbstractUg405Host):
 
     states_parser = ParserPotokP
 
@@ -439,7 +422,7 @@ class PotokP(Ug405Host):
         return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
-class SwarcoStcip(SnmpHost):
+class SwarcoStcip(SnmpHosts):
 
     type_controller = swarco_stcip.type_controller
     host_protocol = swarco_stcip.host_protocol
@@ -460,19 +443,6 @@ class SwarcoStcip(SnmpHost):
 
     async def get_states(self):
         return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
-
-
-# class PotokP(SnmpHost):
-#
-#     type_controller = potok_p.type_controller
-#     host_protocol = potok_p.host_protocol
-#     community_r = potok_p.community_r
-#     community_w = potok_p.community_w
-
-
-
-
-
 
 
 
