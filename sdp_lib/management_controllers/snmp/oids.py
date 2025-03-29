@@ -66,3 +66,34 @@ class Oids(StrEnum):
     potokP_utcReplyHardwareErr = os.getenv('potokP_utcReplyHardwareErr')
     potokP_utcReplySoftwareErr = os.getenv('potokP_utcReplySoftwareErr')
     potokP_utcReplyElectricalCircuitErr = os.getenv('potokP_utcReplyElectricalCircuitErr')
+
+
+oids_state_swarco = (
+    Oids.swarcoUTCTrafftechFixedTimeStatus,
+    Oids.swarcoUTCTrafftechPlanSource,
+    Oids.swarcoUTCStatusEquipment,
+    Oids.swarcoUTCTrafftechPhaseStatus,
+    Oids.swarcoUTCTrafftechPlanCurrent,
+    Oids.swarcoUTCDetectorQty,
+    Oids.swarcoSoftIOStatus
+)
+
+oids_state_potok_p = (
+    Oids.utcType2OperationMode,
+    Oids.potokP_utcReplyDarkStatus,
+    Oids.utcReplyFR,
+    Oids.utcReplyGn,
+    Oids.potokP_utcReplyPlanStatus,
+    Oids.potokP_utcReplyLocalAdaptiv,
+    Oids.utcType2ScootDetectorCount,
+    Oids.utcReplyDF,
+    Oids.utcReplyMC,
+)
+
+oids_state_potok_s = (
+    Oids.swarcoUTCStatusEquipment,
+    Oids.swarcoUTCTrafftechPhaseStatus,
+    Oids.swarcoUTCTrafftechPlanCurrent,
+    Oids.swarcoUTCStatusMode,
+    Oids.swarcoUTCDetectorQty,
+)

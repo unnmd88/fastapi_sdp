@@ -3,7 +3,7 @@ import os
 import typing
 from collections.abc import KeysView, Callable
 from enum import StrEnum, IntEnum
-from typing import Self
+from typing import Self, TypeVar
 
 from pysnmp.hlapi.v3arch.asyncio import *
 from pysnmp.proto import errind
@@ -14,15 +14,15 @@ from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import SwarcoStcipMonitoringParser, \
     PotokSMonitoringParser
 from sdp_lib.management_controllers.parsers.snmp_parsers.ug405_parsers import ParserPotokP
-from sdp_lib.management_controllers.snmp.host_properties import swarco_stcip, potok_p, HostProtocolData, potok_s
+from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, potok_p, potok_s, HProps
+from sdp_lib.management_controllers.snmp import host_data
 # from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core import SwarcoStcipBase
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
 from sdp_lib.management_controllers.snmp.response_structure import ResponseStructure
-from sdp_lib.management_controllers.snmp.smmp_utils import build_class_attrs
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
-
+DataHosts = TypeVar('DataHosts', bound=HProps)
 
 class SnmpHosts(Host):
     """
@@ -32,11 +32,11 @@ class SnmpHosts(Host):
 
     protocol = FieldsNames.protocol_snmp
 
-    host_properties: HostProtocolData
-    type_controller: str
-    host_protocol: str
-    community_r: str
-    community_w: str
+    host_properties: DataHosts
+    # type_controller: str
+    # host_protocol: str
+    # community_r: str
+    # community_w: str
 
     def __init__(
             self,
@@ -48,7 +48,7 @@ class SnmpHosts(Host):
         super().__init__(ip_v4, host_id)
         self._engine = engine or SnmpEngine()
         self.request_sender = SnmpRequests(
-            self.ip_v4, self.community_r, self.community_w, self._engine
+            self.ip_v4, self.host_properties.community_r, self.host_properties.community_w, self._engine
         )
         self.parser = None
         self.last_response = None
@@ -157,11 +157,13 @@ class AbstractUg405Hosts(SnmpHosts):
 
 class AbstractStcipHosts(SnmpHosts):
 
-    get_state_oids_state: tuple[Oids, ...]
+    # get_state_oids_state: tuple[Oids, ...]
     states_parser: Any
 
     async def get_states(self):
-        return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
+        return await self.make_get_request_and_parse_response(
+            self.host_properties.oids_get_state, self.states_parser
+        )
 
 
 class PotokP(AbstractUg405Hosts):
@@ -222,23 +224,21 @@ class SwarcoStcip(AbstractStcipHosts):
 
 class PotokS(AbstractStcipHosts):
 
-    type_controller = potok_s.type_controller
-    host_protocol = potok_s.host_protocol
-    community_r = potok_s.community_r
-    community_w = potok_s.community_w
-
-    get_state_oids_state = (
-        Oids.swarcoUTCStatusEquipment,
-        Oids.swarcoUTCTrafftechPhaseStatus,
-        Oids.swarcoUTCTrafftechPlanCurrent,
-        Oids.swarcoUTCStatusMode,
-        Oids.swarcoUTCDetectorQty,
-    )
+    host_properties = host_data.potok_s
+    # type_controller = potok_s.type_controller
+    # host_protocol = potok_s.host_protocol
+    # community_r = potok_s.community_r
+    # community_w = potok_s.community_w
+    #
+    # get_state_oids_state = (
+    #     Oids.swarcoUTCStatusEquipment,
+    #     Oids.swarcoUTCTrafftechPhaseStatus,
+    #     Oids.swarcoUTCTrafftechPlanCurrent,
+    #     Oids.swarcoUTCStatusMode,
+    #     Oids.swarcoUTCDetectorQty,
+    # )
 
     states_parser = PotokSMonitoringParser
-
-    # async def get_states(self):
-    #     return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
 
@@ -256,6 +256,7 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
 
 
 

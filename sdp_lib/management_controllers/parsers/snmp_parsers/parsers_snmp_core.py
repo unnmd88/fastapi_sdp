@@ -80,7 +80,7 @@ class BaseSnmpParser(Parsers):
             self.parsed_content_as_dict[field_name] = val
 
     def add_host_protocol_to_response(self):
-        self.add_fields_to_response(**{FieldsNames.host_protocol: self.host_instance.host_protocol})
+        self.add_fields_to_response(**{FieldsNames.host_protocol: self.host_instance.host_properties.host_protocol})
 
     @classmethod
     def parse_varbinds_base(cls, varbinds: tuple[ObjectType, ...]):

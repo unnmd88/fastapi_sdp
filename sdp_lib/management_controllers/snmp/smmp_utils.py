@@ -1,14 +1,42 @@
-from sdp_lib.management_controllers.snmp.host_properties import HostProtocolData
+import os
+import typing
+from dataclasses import dataclass
+import dataclasses
+from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, AllowedControllers
 
 
-def build_class_attrs(props: HostProtocolData):
-    def real_decorator(a_class):
-        def wrapper(*args, **kwargs):
-            a_class.host_properties = props
-            a_class.type_controller = props.type_controller
-            a_class.host_protocol = props.type_controller
-            a_class.community_r = props.community_r
-            a_class.community_w = props.community_w
-            return a_class
-        return wrapper
-    return real_decorator
+class HostProtocolData(typing.NamedTuple):
+
+    type_controller: AllowedControllers
+    community_r: str
+    community_w: str
+    host_protocol: str
+    is_scn_dependency: bool
+
+
+
+
+
+@dataclass
+class Stcip(Host):
+    community_r = 'daaa'
+    community_w = 'aadvaaa'
+    host_protocol = 'stcip'
+
+ovc = Stcip(type_controller='xx')
+
+
+
+# print(x)
+# print(dataclasses.asdict(x))
+# print(dataclasses.fields(A))
+
+
+
+
+if __name__ == '__main__':
+    print(swarco_stcip._asdict())
+
+
+
+
