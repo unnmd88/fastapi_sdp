@@ -44,6 +44,15 @@ potok_p = HostProtocolData(
     is_scn_dependency=True
 )
 
+potok_s = HostProtocolData(
+    type_controller=AllowedControllers.POTOK_S,
+    community_r=os.getenv('communitySTCIP_r'),
+    community_w=os.getenv('communitySTCIP_w'),
+    host_protocol=FieldsNames.protocol_stcip,
+    is_scn_dependency=True
+)
+
 if __name__ == '__main__':
     print(potok_p)
     print(swarco_stcip)
+    print(str(swarco_stcip.type_controller))

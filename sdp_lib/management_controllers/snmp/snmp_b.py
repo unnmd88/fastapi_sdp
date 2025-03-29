@@ -11,13 +11,15 @@ from pysnmp.proto import errind
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import SwarcoStcipMonitoringParser
+from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import SwarcoStcipMonitoringParser, \
+    PotokSMonitoringParser
 from sdp_lib.management_controllers.parsers.snmp_parsers.ug405_parsers import ParserPotokP
-from sdp_lib.management_controllers.snmp.host_properties import swarco_stcip, potok_p, HostProtocolData
+from sdp_lib.management_controllers.snmp.host_properties import swarco_stcip, potok_p, HostProtocolData, potok_s
 # from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core import SwarcoStcipBase
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
 from sdp_lib.management_controllers.snmp.response_structure import ResponseStructure
+from sdp_lib.management_controllers.snmp.smmp_utils import build_class_attrs
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
 
@@ -209,10 +211,31 @@ class SwarcoStcip(SnmpHosts):
         return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
+class PotokS(SnmpHosts):
+
+    type_controller = potok_s.type_controller
+    host_protocol = potok_s.host_protocol
+    community_r = potok_s.community_r
+    community_w = potok_s.community_w
+
+    get_state_oids_state = (
+        Oids.swarcoUTCStatusEquipment,
+        Oids.swarcoUTCTrafftechPhaseStatus,
+        Oids.swarcoUTCTrafftechPlanCurrent,
+        Oids.swarcoUTCStatusMode,
+        Oids.swarcoUTCDetectorQty,
+    )
+
+    states_parser = PotokSMonitoringParser
+
+    async def get_states(self):
+        return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
+
+
 
 async def main():
 
-    obj = PotokP(ip_v4='10.179.112.161',engine=SnmpEngine())
+    obj = PotokS(ip_v4='10.179.68.177',engine=SnmpEngine())
     r = await obj.get_states()
     print(obj.response_as_dict)
     print(r.response)
@@ -224,4 +247,6 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
+
 
