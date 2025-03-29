@@ -6,6 +6,8 @@ from pysnmp.smi.rfc1902 import ObjectType
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.parsers_core import Parsers
+from sdp_lib.management_controllers.snmp.response_structure import ResponseStructure
+
 
 class BaseSnmpParser(Parsers):
 
@@ -14,9 +16,9 @@ class BaseSnmpParser(Parsers):
     def __init__(
             self,
             host_instance,
-            content: tuple[ObjectType, ...]
+            # content: tuple[ObjectType, ...]
     ):
-        super().__init__(content)
+        super().__init__(content=host_instance.last_response[ResponseStructure.VAR_BINDS])
         self.host_instance = host_instance
         self.current_oid = None
         self.current_val = None
@@ -106,7 +108,8 @@ class BaseSnmpParser(Parsers):
 
             # self.parse_varbinds_base(self.content)
             # self.parsed_content_as_dict[str(FieldsNames.curr_mode)] = self.get_current_mode()
-        except TypeError:
+        except TypeError as err:
+            print(f'except TypeError:: {err}')
             return self.parsed_content_as_dict
         print(f'ip: {self.host_instance.ip_v4} | resp: {self.parsed_content_as_dict}')
         self.data_for_response = self.parsed_content_as_dict

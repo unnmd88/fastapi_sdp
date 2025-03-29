@@ -25,7 +25,7 @@ from api_v1.controller_management.sorters.sorters import (
 )
 
 from sdp_lib.management_controllers.snmp import (
-    stcip,
+    stcip, snmp_b,
 )
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
@@ -33,6 +33,10 @@ from sdp_lib.management_controllers.http.peek.management.set_inputs import SetSt
 
 from sdp_lib.management_controllers.snmp.stcip_snmp import monitoring as stcip_monitoring
 from sdp_lib.management_controllers.snmp.ug405_snmp import monitoring as ug405_monitoring
+
+
+
+
 
 import logging_config
 
@@ -157,12 +161,15 @@ class StatesMonitoring(Controllers):
         option = data_host.option
         match (type_controller, option):
             case (AllowedControllers.SWARCO, None):
-                return stcip_monitoring.CurrentStatesSwarco(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
+                # return stcip_monitoring.CurrentStatesSwarco(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
+                return snmp_b.SwarcoStcip(ip_v4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_S, None):
                 return stcip_monitoring.CurrentStatesPotokS(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
             case (AllowedControllers.POTOK_P, None):
-                scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
-                return ug405_monitoring.MonitoringPotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
+                scn = snmp_b.PotokP.add_CO_to_scn(data_host.number)
+                # scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
+                # return ug405_monitoring.MonitoringPotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
+                return snmp_b.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
             case(AllowedControllers.PEEK, None):
                 return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
