@@ -158,7 +158,7 @@ class AbstractUg405Hosts(SnmpHosts):
 class AbstractStcipHosts(SnmpHosts):
 
     get_state_oids_state: tuple[Oids, ...]
-    parser: Any
+    states_parser: Any
 
     async def get_states(self):
         return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
