@@ -97,3 +97,12 @@ oids_state_potok_s = (
     Oids.swarcoUTCStatusMode,
     Oids.swarcoUTCDetectorQty,
 )
+
+oids_scn_required = {
+        Oids.utcReplyGn, Oids.utcReplyFR, Oids.utcReplyDF, Oids.utcControlTO,
+        Oids.utcControlFn, Oids.potokP_utcReplyPlanStatus, Oids.potokP_utcReplyPlanSource,
+        Oids.potokP_utcReplyPlanSource, Oids.potokP_utcReplyDarkStatus,
+        Oids.potokP_utcReplyLocalAdaptiv, Oids.potokP_utcReplyHardwareErr,
+        Oids.potokP_utcReplySoftwareErr, Oids.potokP_utcReplyElectricalCircuitErr,
+        Oids.utcReplyMC, Oids.utcReplyCF, Oids.utcReplyVSn, Oids.utcType2ScootDetectorCount
+    }
