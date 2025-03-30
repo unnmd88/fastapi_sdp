@@ -2,7 +2,9 @@ import asyncio
 import time
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
-from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import SwarcoStandardParser
+from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import SwarcoStandardParser, \
+    PotokPStandardParser
+from sdp_lib.management_controllers.parsers.snmp_parsers.processors import PotokPProcessor
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
     SwarcoStcipMonitoringParser,
     PotokSMonitoringParser
@@ -31,7 +33,8 @@ class PotokS(AbstractStcipHosts):
 
 class PotokP(AbstractUg405Hosts):
 
-    states_parser = ParserPotokP
+    # states_parser = ParserPotokP
+    states_parser = PotokPStandardParser
     host_properties = host_data.potok_p
 
     def set_scn_from_response(self) -> None | BadControllerType:
@@ -56,7 +59,7 @@ async def main():
     # obj = PotokS(ip_v4='10.179.68.177',)
     obj = SwarcoStcip(ip_v4='10.179.57.1')
 
-    # obj = PotokP(ip_v4='10.179.56.105')
+    obj = PotokP(ip_v4='10.179.56.105')
 
     r = await obj.get_states()
     print(obj.response_as_dict)

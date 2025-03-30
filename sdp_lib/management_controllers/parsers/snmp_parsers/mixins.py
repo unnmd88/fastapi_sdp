@@ -34,5 +34,3 @@ class StcipMixin:
 class Ug405Mixin:
     UTC_OPERATION_MODE = '3'
 
-    def processing_oid_from_response(self, oid: str) -> str:
-        return oid.replace(self.host_instance.scn_as_ascii_string , '')

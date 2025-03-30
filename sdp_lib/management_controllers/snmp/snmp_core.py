@@ -1,3 +1,4 @@
+import abc
 from typing import Self, TypeVar
 import asyncio
 from collections.abc import KeysView, Callable
@@ -93,6 +94,13 @@ class SnmpHosts(Host):
         self.add_data_to_data_response_attrs(data=self.parser.data_for_response)
         return self
 
+    @abc.abstractmethod
+    def process_oid(self, oid: str) -> str:
+        ...
+
+    def process_oid_val(self, val: Any) -> str | int:
+        return val.prettyPrint()
+
 
 class AbstractUg405Hosts(SnmpHosts):
 
@@ -162,6 +170,8 @@ class AbstractUg405Hosts(SnmpHosts):
     def set_scn_from_response(self):
         raise NotImplementedError()
 
+    def process_oid(self, oid: str) -> str:
+        return str(oid).replace(self.scn_as_ascii_string, '')
 
 class AbstractStcipHosts(SnmpHosts):
 
@@ -174,7 +184,9 @@ class AbstractStcipHosts(SnmpHosts):
             self.states_parser
         )
 
-
+    def process_oid(self, oid: str) -> str:
+        # raise NotImplementedError()
+        return str(oid)
 
 
 

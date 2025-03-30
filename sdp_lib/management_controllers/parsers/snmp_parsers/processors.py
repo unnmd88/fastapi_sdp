@@ -1,4 +1,5 @@
 import abc
+from collections.abc import Callable
 from functools import cached_property
 from typing import Any
 
@@ -6,7 +7,7 @@ from pysnmp.smi.rfc1902 import ObjectType
 
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import StcipMixin
+from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import StcipMixin, Ug405Mixin
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.smmp_utils import SwarcoConverters, Ug405Converters
@@ -32,7 +33,7 @@ class AbstractProcessor(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def matches(self):
+    def matches(self) -> dict[str | Oids, tuple[FieldsNames, Callable]]:
         ...
 
     @abc.abstractmethod
@@ -42,21 +43,22 @@ class AbstractProcessor(abc.ABC):
     def get_val_as_str(self, val: int | str) -> str:
         return str(val)
 
-    def process_oid(self, oid: str | Oids) -> str | Oids:
-        return str(oid)
-
-    def process_oid_val(self, val: Any) -> str | int:
-        return val.prettyPrint()
+    @property
+    @abc.abstractmethod
+    def dependent_methods(self) -> dict[str, Callable]:
+        ...
 
     def process_varbinds(self) -> dict[str, str | None]:
         for oid, val in self.var_binds:
             print(f'oid: {str(oid)}::: val: {str(val)}')
-            oid, val = self.process_oid(oid), self.process_oid_val(val)
+            # oid, val = self.process_oid(oid), self.process_oid_val(val)
+            oid, val = self.host_instance.process_oid(oid), self.host_instance.process_oid_val(val)
             field_name, cb_fn = self.matches.get(oid)
             self._processed_response_data[field_name] = cb_fn(val)
 
         if self.mode_calculation:
-            self._processed_response_data[FieldsNames.curr_mode] = self.get_current_mode()
+            for field_name, cb_fn in self.dependent_methods.items():
+                self._processed_response_data[field_name] = cb_fn()
         return self._processed_response_data
 
 
@@ -100,6 +102,10 @@ class SwarcoProcessor(AbstractProcessor, StcipMixin):
                 return str(NamesMode.SYNC)
         return None
 
+    @property
+    def dependent_methods(self) -> dict[str, Callable]:
+        return {FieldsNames.curr_mode: self.get_current_mode}
+
     @cached_property
     def matches(self):
         return {
@@ -116,7 +122,48 @@ class SwarcoProcessor(AbstractProcessor, StcipMixin):
         }
 
 
-class PotoPProcessor(AbstractProcessor):
+class PotokPProcessor(AbstractProcessor, Ug405Mixin):
+
+    def get_current_mode(self) -> str | None:
+
+        match (
+            self._processed_response_data.get(FieldsNames.operation_mode),
+            self._processed_response_data.get(FieldsNames.local_adaptive_status),
+            self._processed_response_data.get(FieldsNames.num_detectors),
+            self._processed_response_data.get(FieldsNames.has_det_faults),
+            self._processed_response_data.get(FieldsNames.is_mode_man),
+        ):
+            case ['1', '1', num_det, '0', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+                return str(NamesMode.VA)
+            case ['1', '0', '0', _, _]:
+                return str(NamesMode.FT)
+            case ['1', '0', num_det, '1', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+                return str(NamesMode.FT)
+            case[self.UTC_OPERATION_MODE, *rest]:
+                return str(NamesMode.CENTRAL)
+            case[*rest, '1']:
+                return str(NamesMode.MANUAL)
+        return None
+
+    def get_current_status_mode(self) -> str | None:
+        dark, flash = (
+            self._processed_response_data.get(FieldsNames.dark),
+            self._processed_response_data.get(FieldsNames.flash)
+        )
+        if dark == '0' and flash == '0':
+            return str(FieldsNames.three_light)
+        elif flash == '1':
+            return str(FieldsNames.flash)
+        elif dark == '1':
+            return str(FieldsNames.dark)
+        return None
+
+    @property
+    def dependent_methods(self) -> dict[str, Callable]:
+        return {
+            FieldsNames.curr_status_mode: self.get_current_status_mode,
+            FieldsNames.curr_mode: self.get_current_mode
+        }
 
     @cached_property
     def matches(self):

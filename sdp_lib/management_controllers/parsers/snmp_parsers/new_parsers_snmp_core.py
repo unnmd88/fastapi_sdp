@@ -10,7 +10,7 @@ from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.parsers_core import Parsers
 from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import StcipMixin
-from sdp_lib.management_controllers.parsers.snmp_parsers.processors import SwarcoProcessor
+from sdp_lib.management_controllers.parsers.snmp_parsers.processors import SwarcoProcessor, PotokPProcessor
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.smmp_utils import SwarcoConverters
@@ -164,5 +164,12 @@ class SwarcoStandardParser(BaseSnmpParser):
 
     def get_processor(self):
         return SwarcoProcessor(
+            host_instance=self.host_instance
+        )
+
+class PotokPStandardParser(BaseSnmpParser):
+
+    def get_processor(self):
+        return PotokPProcessor(
             host_instance=self.host_instance
         )
