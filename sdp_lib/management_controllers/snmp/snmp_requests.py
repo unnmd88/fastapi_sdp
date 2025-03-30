@@ -81,9 +81,9 @@ class SnmpRequests:
     ) -> tuple[errind.ErrorIndication, Integer32 | int, Integer32 | int, tuple[ObjectType, ...]]:
         """
         Метод get запросов по snmp v2 протоколу.
-        :param oids: список oids, которые будут отправлены в get запросе
-        :param timeout: таймаут запроса, в секундах
-        :param retries: количество попыток запроса
+        :param oids: список oids, которые будут отправлены в get запросе.
+        :param timeout: таймаут запроса, в секундах.
+        :param retries: количество попыток запроса.
         :return: tuple вида (error_indication, error_status, error_index, var_binds)
                  error_indication -> errind.ErrorIndication, если есть ошибка в запросе/ответе,
                                     иначе None.
@@ -103,7 +103,7 @@ class SnmpRequests:
         asyncio.run(set_request(ip_adress, community, oids))
         ******************************
         """
-        print(f'oids: {oids}')
+        # print(f'oids: {oids}')
         return await get_cmd(
             self.engine,
             CommunityData(self.community_r),

@@ -11,12 +11,12 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
     SwarcoStcipMonitoringParser,
     PotokSMonitoringParser
 )
-from sdp_lib.management_controllers.parsers.snmp_parsers.ug405_parsers import ParserPotokP
-from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, potok_p, potok_s, HostStaticData
+from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
+
 
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
 
