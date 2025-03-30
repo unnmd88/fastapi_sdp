@@ -1,6 +1,7 @@
 import dataclasses
 import os
 import typing
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -36,13 +37,12 @@ __ug405 = (
 )
 
 
-def make_instance_props() -> typing.Generator:
+def make_instance_props() -> Iterator[HostStaticData]:
     matches = {
         AllowedControllers.SWARCO: __stcip,
         AllowedControllers.POTOK_S: __stcip,
         AllowedControllers.POTOK_P: __ug405,
     }
-
     return (HostStaticData(controller, *data) for controller, data in matches.items())
 
 

@@ -14,15 +14,16 @@ from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import SwarcoStcipMonitoringParser, \
     PotokSMonitoringParser
 from sdp_lib.management_controllers.parsers.snmp_parsers.ug405_parsers import ParserPotokP
-from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, potok_p, potok_s, HProps
-from sdp_lib.management_controllers.snmp import host_data
+from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, potok_p, potok_s, HostStaticData
+from sdp_lib.management_controllers.snmp import host_data, oids
+from sdp_lib.management_controllers.snmp.mixins import MixinCurrentStatesPotokS
 # from sdp_lib.management_controllers.parsers.snmp_parsers.parsers_snmp_core import SwarcoStcipBase
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
 from sdp_lib.management_controllers.snmp.response_structure import ResponseStructure
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
-DataHosts = TypeVar('DataHosts', bound=HProps)
+DataHosts = TypeVar('DataHosts', bound=HostStaticData)
 
 class SnmpHosts(Host):
     """
@@ -157,12 +158,12 @@ class AbstractUg405Hosts(SnmpHosts):
 
 class AbstractStcipHosts(SnmpHosts):
 
-    # get_state_oids_state: tuple[Oids, ...]
+    oids_get_state: tuple[Oids, ...]
     states_parser: Any
 
     async def get_states(self):
         return await self.make_get_request_and_parse_response(
-            self.host_properties.oids_get_state, self.states_parser
+            self.oids_get_state, self.states_parser
         )
 
 
@@ -222,23 +223,8 @@ class SwarcoStcip(AbstractStcipHosts):
     #     return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
-class PotokS(AbstractStcipHosts):
-
-    host_properties = host_data.potok_s
-    # type_controller = potok_s.type_controller
-    # host_protocol = potok_s.host_protocol
-    # community_r = potok_s.community_r
-    # community_w = potok_s.community_w
-    #
-    # get_state_oids_state = (
-    #     Oids.swarcoUTCStatusEquipment,
-    #     Oids.swarcoUTCTrafftechPhaseStatus,
-    #     Oids.swarcoUTCTrafftechPlanCurrent,
-    #     Oids.swarcoUTCStatusMode,
-    #     Oids.swarcoUTCDetectorQty,
-    # )
-
-    states_parser = PotokSMonitoringParser
+class PotokS(AbstractStcipHosts, MixinCurrentStatesPotokS):
+    pass
 
 
 
