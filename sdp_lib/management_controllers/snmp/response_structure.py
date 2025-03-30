@@ -1,7 +1,7 @@
 from enum import IntEnum
 
 
-class ResponseStructure(IntEnum):
+class SnmpResponseStructure(IntEnum):
 
     ERROR_INDICATION = 0
     ERROR_STATUS     = 1

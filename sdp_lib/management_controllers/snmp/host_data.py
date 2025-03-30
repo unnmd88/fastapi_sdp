@@ -1,7 +1,5 @@
 import dataclasses
 import os
-import typing
-from collections.abc import Iterator
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -10,6 +8,7 @@ from sdp_lib.management_controllers.constants import AllowedControllers
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.snmp import oids
 from sdp_lib.management_controllers.snmp.oids import Oids
+
 
 load_dotenv()
 
@@ -64,7 +63,12 @@ def make_instance_props() -> list[HostStaticData]:
 
 swarco_stcip = HostStaticData(AllowedControllers.SWARCO, *__stcip, oids.oids_state_swarco)
 potok_s = HostStaticData(AllowedControllers.POTOK_S, *__stcip, oids.oids_state_potok_s)
-potok_p = HostStaticDataWithScn(AllowedControllers.POTOK_P, *__ug405, oids.oids_state_potok_s, oids.oids_scn_required)
+potok_p = HostStaticDataWithScn(AllowedControllers.POTOK_P, *__ug405, oids.oids_state_potok_p, oids.oids_scn_required)
+
+# stage_values_set = {
+#                        stage_num: Unsigned32(stage_num + 1) for stage_num in range(1, 8)
+#                    } | {8: Unsigned32(1), 0: Unsigned32(0)}
+
 
 
 

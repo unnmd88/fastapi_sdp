@@ -25,7 +25,7 @@ from api_v1.controller_management.sorters.sorters import (
 )
 
 from sdp_lib.management_controllers.snmp import (
-    stcip, snmp_b,
+    stcip, snmp_core,
 )
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
