@@ -10,8 +10,9 @@ class Host:
     Базовый класс хоста.
     """
 
-    ERROR      = 0
-    RESPONSE   = 1
+    ERROR        = 0
+    RESPONSE     = 1
+    RAW_RESPONSE = 2
 
     protocol: str
 
@@ -20,7 +21,8 @@ class Host:
         self.host_id = host_id
         self.ERRORS = []
         self.DATA_RESPONSE = {}
-        self.response: list = [self.ERRORS, self.DATA_RESPONSE]
+        self.RAW_RESPONSE = tuple()
+        self.response: list = [self.ERRORS, self.DATA_RESPONSE, self.RAW_RESPONSE]
 
     def __repr__(self):
         return self.__dict__
@@ -78,8 +80,6 @@ class Host:
         return {
             str(FieldsNames.protocol): self.protocol,
             str(FieldsNames.ipv4_address): self.ip_v4,
-            # str(FieldsNames.error): self.response[0],
-            # str(FieldsNames.data): (self.response[1] if isinstance(self.response[1], dict) else {})
             str(FieldsNames.errors): [str(e) for e in self.ERRORS],
             str(FieldsNames.data): self.DATA_RESPONSE
         }
