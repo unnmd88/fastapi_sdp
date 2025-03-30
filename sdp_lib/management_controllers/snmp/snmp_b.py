@@ -158,12 +158,12 @@ class AbstractUg405Hosts(SnmpHosts):
 
 class AbstractStcipHosts(SnmpHosts):
 
-    oids_get_state: tuple[Oids, ...]
+    host_data: host_data.HostStaticData
     states_parser: Any
 
     async def get_states(self):
         return await self.make_get_request_and_parse_response(
-            self.oids_get_state, self.states_parser
+            self.host_properties.oids_get_state, self.states_parser
         )
 
 
@@ -223,8 +223,10 @@ class SwarcoStcip(AbstractStcipHosts):
     #     return await self.make_get_request_and_parse_response(self.get_state_oids_state, self.states_parser)
 
 
-class PotokS(AbstractStcipHosts, MixinCurrentStatesPotokS):
-    pass
+class PotokS(AbstractStcipHosts):
+
+    host_properties = host_data.potok_s
+    states_parser = PotokSMonitoringParser
 
 
 

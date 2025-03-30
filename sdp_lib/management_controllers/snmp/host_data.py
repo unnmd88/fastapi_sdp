@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 
 from sdp_lib.management_controllers.constants import AllowedControllers
 from sdp_lib.management_controllers.fields_names import FieldsNames
-
+from sdp_lib.management_controllers.snmp import oids
+from sdp_lib.management_controllers.snmp.oids import Oids
 
 load_dotenv()
 
@@ -20,6 +21,12 @@ class HostStaticData:
     community_w: str
     host_protocol: str
     is_scn_dependency: bool
+    oids_get_state: tuple
+
+
+@dataclass(frozen=True)
+class HostStaticDataWithScn(HostStaticData):
+    oids_scn_required: set[Oids]
 
 
 __stcip = (
@@ -37,16 +44,28 @@ __ug405 = (
 )
 
 
-def make_instance_props() -> Iterator[HostStaticData]:
+def make_instance_props() -> list[HostStaticData]:
     matches = {
-        AllowedControllers.SWARCO: __stcip,
-        AllowedControllers.POTOK_S: __stcip,
-        AllowedControllers.POTOK_P: __ug405,
+        AllowedControllers.SWARCO: (HostStaticData, __stcip),
+        AllowedControllers.POTOK_S: (HostStaticData, __stcip),
+        AllowedControllers.POTOK_P: (HostStaticDataWithScn, __ug405, oids.oids_scn_required)
     }
-    return (HostStaticData(controller, *data) for controller, data in matches.items())
+    result = []
+    for controller, data in matches.items():
+        a_class = data[0]
+        result.append(a_class(controller, *data[1:]))
+    return result
 
 
-swarco_stcip, potok_s, potok_p = make_instance_props()
+    # return (data[0](controller, *data[1:]) for controller, data in matches.items())
+
+
+# swarco_stcip, potok_s, potok_p = make_instance_props()
+
+swarco_stcip = HostStaticData(AllowedControllers.SWARCO, *__stcip, oids.oids_state_swarco)
+potok_s = HostStaticData(AllowedControllers.POTOK_S, *__stcip, oids.oids_state_potok_s)
+potok_p = HostStaticDataWithScn(AllowedControllers.POTOK_P, *__ug405, oids.oids_state_potok_s, oids.oids_scn_required)
+
 
 
 if __name__ == '__main__':
