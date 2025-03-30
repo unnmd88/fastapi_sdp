@@ -25,17 +25,9 @@ from api_v1.controller_management.sorters.sorters import (
 )
 
 from sdp_lib.management_controllers.snmp import snmp_api
-
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
 from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
-
-# from sdp_lib.management_controllers.snmp.stcip_snmp import monitoring as stcip_monitoring
-# from sdp_lib.management_controllers.snmp.ug405_snmp import monitoring as ug405_monitoring
-
-
-
-
 
 import logging_config
 
@@ -166,7 +158,7 @@ class StatesMonitoring(Controllers):
                 # return stcip_monitoring.CurrentStatesSwarco(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
                 return snmp_api.SwarcoStcip(ip_v4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_S, None):
-                return stcip_monitoring.CurrentStatesPotokS(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
+                return snmp_api.PotokS(ip_v4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_P, None):
                 scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
                 # scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
@@ -182,6 +174,7 @@ class StatesMonitoring(Controllers):
 
 
 class Management(Controllers):
+
     sorter = sorters.HostSorterManagement
 
     def get_coro(
