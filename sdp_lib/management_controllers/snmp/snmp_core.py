@@ -44,6 +44,7 @@ class SnmpHosts(Host):
         )
         self.parser = None
         self.last_response = None
+        self._need_mode_calculation = False
 
     async def make_get_request_and_parse_response(
             self,
@@ -169,7 +170,8 @@ class AbstractStcipHosts(SnmpHosts):
 
     async def get_states(self):
         return await self.make_get_request_and_parse_response(
-            self.host_properties.oids_get_state, self.states_parser
+            self.host_properties.oids_get_state,
+            self.states_parser
         )
 
 

@@ -1,6 +1,8 @@
 import asyncio
+import time
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
+from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import SwarcoStandardParser
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
     SwarcoStcipMonitoringParser,
     PotokSMonitoringParser
@@ -17,7 +19,8 @@ from sdp_lib.management_controllers.snmp.snmp_core import (
 class SwarcoStcip(AbstractStcipHosts):
 
     host_properties = host_data.swarco_stcip
-    states_parser = SwarcoStcipMonitoringParser
+    # states_parser = SwarcoStcipMonitoringParser
+    states_parser = SwarcoStandardParser
 
 
 class PotokS(AbstractStcipHosts):
@@ -46,9 +49,14 @@ class PotokP(AbstractUg405Hosts):
 
 async def main():
 
-    obj = PotokS(ip_v4='10.179.68.177',)
-    obj = SwarcoStcip(ip_v4='10.179.20.129')
-    obj = PotokP(ip_v4='10.179.56.105')
+    # obj = PotokS(ip_v4='10.179.68.177',)
+    # obj = SwarcoStcip(ip_v4='10.179.20.129')
+    # obj = SwarcoStcip(ip_v4='10.179.68.105')
+    # obj = SwarcoStcip(ip_v4='10.179.57.1')
+    # obj = PotokS(ip_v4='10.179.68.177',)
+    obj = SwarcoStcip(ip_v4='10.179.57.1')
+
+    # obj = PotokP(ip_v4='10.179.56.105')
 
     r = await obj.get_states()
     print(obj.response_as_dict)
@@ -60,4 +68,8 @@ async def main():
 
 
 if __name__ == '__main__':
+    start_time = time.time()
+
     asyncio.run(main())
+
+    print(f'время составло: {time.time() - start_time}')
