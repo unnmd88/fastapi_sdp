@@ -117,3 +117,6 @@ class SnmpRequests:
         #       f'var_binds: {var_binds}')
 
         # return self.check_response_and_add_error_if_has(error_indication, error_status, error_index), var_binds
+
+    async def snmp_set(self):
+        raise NotImplementedError()

@@ -1,4 +1,5 @@
 import abc
+import typing
 from collections.abc import Callable
 from functools import cached_property
 from typing import Any
@@ -7,10 +8,22 @@ from pysnmp.smi.rfc1902 import ObjectType
 
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import StcipMixin, Ug405Mixin
+from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import (
+    StcipMixin,
+    Ug405Mixin
+)
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
-from sdp_lib.management_controllers.snmp.smmp_utils import SwarcoConverters, Ug405Converters
+from sdp_lib.management_controllers.snmp.smmp_utils import (
+    SwarcoConverters,
+    Ug405Converters, PotokSConverters
+)
+
+
+class ConfigProcessor(typing.NamedTuple):
+    current_mode: bool = False
+    oid_handler: Callable = None
+    val_oid_handler: Callable = None
 
 
 class AbstractProcessor(abc.ABC):
@@ -25,6 +38,7 @@ class AbstractProcessor(abc.ABC):
         self.host_instance = host_instance
         self.var_binds = var_binds or self.host_instance.last_response[SnmpResponseStructure.VAR_BINDS]
         self.mode_calculation = mode_calculation
+        self._processor_config: ConfigProcessor = self.host_instance.processor_config
         self._processed_response_data = {}
 
     @property
@@ -43,22 +57,43 @@ class AbstractProcessor(abc.ABC):
     def get_val_as_str(self, val: int | str) -> str:
         return str(val)
 
+    def get_oid_val_as_pretty_print(self, val) -> str:
+        return val.prettyPrint()
+
     @property
     @abc.abstractmethod
     def dependent_methods(self) -> dict[str, Callable]:
         ...
 
-    def process_varbinds(self) -> dict[str, str | None]:
+    def custom_parse_varbinds(
+            self,
+            oid_handler: Callable = None,
+            val_oid_handler: Callable = None
+    ):
+        oid_handler = oid_handler or str
+        val_oid_handler = val_oid_handler or self.get_oid_val_as_pretty_print
         for oid, val in self.var_binds:
-            print(f'oid: {str(oid)}::: val: {str(val)}')
-            # oid, val = self.process_oid(oid), self.process_oid_val(val)
-            oid, val = self.host_instance.process_oid(oid), self.host_instance.process_oid_val(val)
-            field_name, cb_fn = self.matches.get(oid)
-            self._processed_response_data[field_name] = cb_fn(val)
+            oid, val = oid_handler(oid), val_oid_handler(val)
+            print(f'oid: {oid}  >>>> val: {val}')
+            print(f'oid: {oid}  >>>> type(val): {type(val)}')
+            self._processed_response_data[oid] = val
 
-        if self.mode_calculation:
-            for field_name, cb_fn in self.dependent_methods.items():
-                self._processed_response_data[field_name] = cb_fn()
+    def process_varbinds(self) -> dict[str, str | None]:
+        if self._processor_config.oid_handler is None and self._processor_config.val_oid_handler is None:
+            for oid, val in self.var_binds:
+                print(f'oid: {str(oid)}::: val: {str(val)}')
+                # oid, val = self.process_oid(oid), self.process_oid_val(val)
+                oid, val = self.host_instance.process_oid(oid), self.host_instance.process_oid_val(val)
+                field_name, cb_fn = self.matches.get(oid)
+                self._processed_response_data[field_name] = cb_fn(val)
+                if self._processor_config.current_mode:
+                    for field_name, cb_fn in self.dependent_methods.items():
+                        self._processed_response_data[field_name] = cb_fn()
+        else:
+            self.custom_parse_varbinds(
+                oid_handler=self._processor_config.oid_handler,
+                val_oid_handler=self._processor_config.val_oid_handler
+            )
         return self._processed_response_data
 
 
@@ -120,6 +155,35 @@ class SwarcoProcessor(AbstractProcessor, StcipMixin):
                 (Oids.swarcoUTCTrafftechPhaseCommand,
                  lambda val: [val, self.stage_values_get.get(val)])
         }
+
+
+class PotokSProcessor(AbstractProcessor, StcipMixin):
+
+    modes = {
+        '8': str(NamesMode.VA),
+        '10': str(NamesMode.MANUAL),
+        '11': str(NamesMode.CENTRAL),
+        '12': str(NamesMode.FT),
+    }
+
+    def get_current_mode(self) -> str | None:
+        return self.modes.get(
+            self._processed_response_data.get(FieldsNames.curr_status_mode)
+        )
+
+    @property
+    def dependent_methods(self) -> dict[str, Callable]:
+        return {FieldsNames.curr_mode: self.get_current_mode}
+
+    @cached_property
+    def matches(self):
+        return {
+        Oids.swarcoUTCStatusEquipment: (FieldsNames.curr_status, self.get_status),
+        Oids.swarcoUTCTrafftechPhaseStatus: (FieldsNames.curr_stage, PotokSConverters.get_num_stage_from_oid_val),
+        Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_val_as_str),
+        Oids.swarcoUTCStatusMode: (FieldsNames.curr_status_mode, self.get_val_as_str),
+        Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
+    }
 
 
 class PotokPProcessor(AbstractProcessor, Ug405Mixin):

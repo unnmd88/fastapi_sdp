@@ -6,15 +6,26 @@ import dataclasses
 from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, AllowedControllers
 
 
-class SwarcoConverters:
+class AbstractStcipConverters:
+
+    matches_val_from_num_stage_to_oid_vals: dict
+
+    @classmethod
+    def get_num_stage_from_oid_val(cls, val: str) -> int | None:
+        return cls.matches_val_from_num_stage_to_oid_vals.get(val)
+
+
+class SwarcoConverters(AbstractStcipConverters):
 
     matches_val_from_num_stage_to_oid_vals = {
         '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0
     }
 
-    @classmethod
-    def get_num_stage_from_oid_val(cls, val: str) -> int | None:
-        return cls.matches_val_from_num_stage_to_oid_vals.get(val)
+
+class PotokSConverters(AbstractStcipConverters):
+    matches_val_from_num_stage_to_oid_vals = {
+        str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))
+    }
 
 
 class Ug405Converters:

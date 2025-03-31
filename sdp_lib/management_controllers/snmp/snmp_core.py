@@ -1,17 +1,14 @@
-import abc
+import typing
 from typing import Self, TypeVar
-import asyncio
 from collections.abc import KeysView, Callable
 
 from pysnmp.hlapi.v3arch.asyncio import *
+from typing_extensions import Literal
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
-    SwarcoStcipMonitoringParser,
-    PotokSMonitoringParser
-)
+from sdp_lib.management_controllers.parsers.snmp_parsers.processors import ConfigProcessor
 from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
@@ -20,6 +17,20 @@ from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
 
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
+T_Oids = TypeVar('T_Oids', tuple[Oids | str, ...], list[Oids | str])
+T_Parsers = TypeVar('T_Parsers')
+
+
+class RequestConfig(typing.NamedTuple):
+    method: Callable
+    oids: T_Oids
+    parser: Any
+
+
+get_mode_config_processor = ConfigProcessor(current_mode=True)
+set_request_config_processor = ConfigProcessor(current_mode=False, oid_handler=str)
+
+# RequestModes: typing.TypeAlias = Literal['get', 'set', 'get_next']
 
 
 class SnmpHosts(Host):
@@ -30,6 +41,7 @@ class SnmpHosts(Host):
 
     protocol = FieldsNames.protocol_snmp
     host_properties: T_DataHosts
+    states_parser: Any
 
     def __init__(
             self,
@@ -46,26 +58,27 @@ class SnmpHosts(Host):
         self.parser = None
         self.last_response = None
         self._need_mode_calculation = False
+        self.processor_config = None
 
-    async def make_get_request_and_parse_response(
-            self,
-            oids: tuple[Oids, ...] | list[Oids],
-            parser
-    ) -> Self:
-        """
-        Метод обертка для _common_parse_and_response. В данном методе определяется
-        параметр method для передачи и вызова _common_parse_and_response.
-        """
-        return await self._common_parse_and_response(
-            oids=oids,
-            method=self.request_sender.snmp_get,
-            parser=parser
-        )
+    # async def make_get_request_and_parse_response(
+    #         self,
+    #         oids: tuple[Oids, ...] | list[Oids],
+    #         parser_config
+    # ) -> Self:
+    #     """
+    #     Метод обертка для _common_parse_and_response. В данном методе определяется
+    #     параметр method для передачи и вызова _common_parse_and_response.
+    #     """
+    #     return await self._make_request_and_build_response(
+    #         method=self.request_sender.snmp_get,
+    #         oids=oids,
+    #         parser_config=parser_config
+    #     )
 
-    async def _common_parse_and_response(
+    async def _make_request_and_build_response(
             self,
-            oids: tuple[Oids, ...] | list[Oids],
             method: Callable,
+            oids: tuple[Oids, ...] | list[Oids],
             parser
     ):
         """
@@ -74,9 +87,9 @@ class SnmpHosts(Host):
         """
         self.last_response = await method(oids=oids)
         print(f'self.last_response: {self.last_response}')
-        return self.__parse_response_all_types_requests(parser)
+        return self.__parse_and_process_response_all_types_requests(parser)
 
-    def __parse_response_all_types_requests(self, parser) -> Self:
+    def __parse_and_process_response_all_types_requests(self, parser) -> Self:
         """
         Осуществляет проверку snmp-response и передает его парсеру для формирования
         response из полученных значений оидов.
@@ -101,6 +114,26 @@ class SnmpHosts(Host):
     def process_oid_val(self, val: Any) -> str | int:
         return val.prettyPrint()
 
+    def _get_config_for_curr_state(self) -> RequestConfig:
+
+        self.processor_config = get_mode_config_processor
+
+        return RequestConfig(
+            method=self.request_sender.snmp_get,
+            oids=self.host_properties.oids_get_state,
+            parser=self.states_parser,
+        )
+
+    def _get_config_for_set_request(self, oids: T_Oids) -> RequestConfig:
+
+        self.processor_config = set_request_config_processor
+
+        return RequestConfig(
+            method=self.request_sender.snmp_set,
+            oids=oids,
+            parser=self.states_parser,
+        )
+
 
 class AbstractUg405Hosts(SnmpHosts):
 
@@ -118,10 +151,19 @@ class AbstractUg405Hosts(SnmpHosts):
         self.scn_as_chars = scn
         self.scn_as_ascii_string = self.get_scn_as_ascii_from_scn_as_chars_attr()
 
-    async def _common_parse_and_response(self, oids, method, parser):
+    @abc.abstractmethod
+    def get_method_for_scn(self) -> Callable:
+        ...
+
+    async def _make_request_and_build_response(
+            self,
+            method: Callable,
+            oids: T_Oids,
+            parser: Any,
+    ):
 
         if self.scn_as_ascii_string is None:
-            self.last_response = await self.request_sender.snmp_get(oids=[Oids.utcReplySiteID])
+            self.last_response = await self.get_method_for_scn()(oids=[Oids.utcReplySiteID])
 
             if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
                 return self
@@ -132,9 +174,9 @@ class AbstractUg405Hosts(SnmpHosts):
         if self.ERRORS:
             return self
 
-        return await super()._common_parse_and_response(
-            oids=self._add_scn_to_oids(oids=oids),
+        return await super()._make_request_and_build_response(
             method=method,
+            oids=self._add_scn_to_oids(oids=oids),
             parser=parser
         )
 
@@ -180,13 +222,11 @@ class AbstractStcipHosts(SnmpHosts):
     states_parser: Any
 
     async def get_states(self):
-        return await self.make_get_request_and_parse_response(
-            self.host_properties.oids_get_state,
-            self.states_parser
+        return await self._make_request_and_build_response(
+            *self._get_config_for_curr_state()
         )
 
     def process_oid(self, oid: str) -> str:
-        # raise NotImplementedError()
         return str(oid)
 
 
