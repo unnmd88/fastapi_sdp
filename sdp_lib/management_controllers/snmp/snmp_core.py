@@ -13,6 +13,7 @@ from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
+from sdp_lib.management_controllers.snmp.smmp_utils import SwarcoConverters
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
 
@@ -30,6 +31,7 @@ class RequestConfig(typing.NamedTuple):
 get_mode_config_processor = ConfigProcessor(current_mode=True)
 set_request_config_processor = ConfigProcessor(current_mode=False, oid_handler=str)
 
+
 # RequestModes: typing.TypeAlias = Literal['get', 'set', 'get_next']
 
 
@@ -42,6 +44,7 @@ class SnmpHosts(Host):
     protocol = FieldsNames.protocol_snmp
     host_properties: T_DataHosts
     states_parser: Any
+    converter_class: Any
 
     def __init__(
             self,
@@ -132,6 +135,18 @@ class SnmpHosts(Host):
             method=self.request_sender.snmp_set,
             oids=oids,
             parser=self.states_parser,
+        )
+
+    # Set command section
+
+    async def set_stage(self, num_stage: int):
+        self.processor_config = set_request_config_processor
+        return await self._make_request_and_build_response(
+            *RequestConfig(
+                method=self.request_sender.snmp_set,
+                oids=self.converter_class.get_varbinds_for_set_stage(num_stage),
+                parser=self.states_parser
+            )
         )
 
 

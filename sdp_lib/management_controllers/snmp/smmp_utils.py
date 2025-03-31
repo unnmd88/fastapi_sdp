@@ -3,7 +3,12 @@ import os
 import typing
 from dataclasses import dataclass
 import dataclasses
+
+from pysnmp.proto.rfc1902 import Unsigned32
+from pysnmp.smi.rfc1902 import ObjectType, ObjectIdentity
+
 from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, AllowedControllers
+from sdp_lib.management_controllers.snmp.oids import Oids
 
 
 class AbstractStcipConverters:
@@ -21,6 +26,16 @@ class SwarcoConverters(AbstractStcipConverters):
         '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0
     }
 
+    payload_for_set_stage = {
+        num_stage: Unsigned32(num_stage + 1) for num_stage in range(1, 8)
+    } | {8: Unsigned32(1), 0: Unsigned32(0)}
+
+    @classmethod
+    def get_varbinds_for_set_stage(cls, num_stage: int):
+        # *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
+        return [
+            ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand), cls.payload_for_set_stage.get(num_stage))
+        ]
 
 class PotokSConverters(AbstractStcipConverters):
     matches_val_from_num_stage_to_oid_vals = {
