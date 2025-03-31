@@ -173,6 +173,7 @@ class AbstractUg405Hosts(SnmpHosts):
     def process_oid(self, oid: str) -> str:
         return str(oid).replace(self.scn_as_ascii_string, '')
 
+
 class AbstractStcipHosts(SnmpHosts):
 
     host_data: host_data.HostStaticData

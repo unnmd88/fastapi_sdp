@@ -48,6 +48,14 @@ class PotokP(AbstractUg405Hosts):
     async def get_states(self):
         return await self.make_get_request_and_parse_response(self.host_properties.oids_get_state, self.states_parser)
 
+    def _get_config_for_curr_state(self):
+        return (
+            self.host_properties.oids_get_state,
+            self.request_sender.snmp_get,
+            self.states_parser,
+            True,
+            'pretty'
+        )
 
 
 async def main():
