@@ -128,18 +128,18 @@ class SnmpHosts(Host):
             *self._get_config_for_curr_state()
         )
 
-    def _get_config_for_set_request(self) -> RequestConfig:
-
-        self.processor_config = set_request_config_processor
-
-        return RequestConfig(
-            method=self.request_sender.snmp_set,
-            oids=self.varbinds_for_get_state,
-            parser=self.states_parser,
-        )
-
     # Set command section
-
+    
+    # def _get_config_for_set_request(self) -> RequestConfig:
+    # 
+    #     self.processor_config = set_request_config_processor
+    # 
+    #     return RequestConfig(
+    #         method=self.request_sender.snmp_set,
+    #         oids=self.varbinds_for_get_state,
+    #         parser=self.states_parser,
+    #     )
+    
     async def set_stage(self, num_stage: int):
         self.processor_config = set_request_config_processor
         return await self._make_request_and_build_response(
