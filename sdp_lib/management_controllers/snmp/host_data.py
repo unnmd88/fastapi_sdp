@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from sdp_lib.management_controllers.constants import AllowedControllers
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.snmp import oids
+from sdp_lib.management_controllers.snmp import oids, snmp_utils
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
@@ -62,6 +62,7 @@ def make_instance_props() -> list[HostStaticData]:
 # swarco_stcip, potok_s, potok_p = make_instance_props()
 
 swarco_stcip = HostStaticData(AllowedControllers.SWARCO, *__stcip, oids.oids_state_swarco)
+# swarco_stcip = HostStaticData(AllowedControllers.SWARCO, *__stcip, snmp_utils.SwarcoConverters.varbinds_get_state)
 potok_s = HostStaticData(AllowedControllers.POTOK_S, *__stcip, oids.oids_state_potok_s)
 potok_p = HostStaticDataWithScn(AllowedControllers.POTOK_P, *__ug405, oids.oids_state_potok_p, oids.oids_scn_required)
 

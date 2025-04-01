@@ -1,4 +1,5 @@
 import typing
+from functools import cached_property
 from typing import Self, TypeVar
 from collections.abc import KeysView, Callable
 
@@ -13,18 +14,19 @@ from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
-from sdp_lib.management_controllers.snmp.smmp_utils import SwarcoConverters
+from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
 
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
 T_Oids = TypeVar('T_Oids', tuple[Oids | str, ...], list[Oids | str])
+T_Varbinds = TypeVar('T_Varbinds', tuple[ObjectType, ...], list[ObjectType])
 T_Parsers = TypeVar('T_Parsers')
 
 
 class RequestConfig(typing.NamedTuple):
     method: Callable
-    oids: T_Oids
+    oids: T_Oids | T_Varbinds
     parser: Any
 
 
@@ -81,14 +83,14 @@ class SnmpHosts(Host):
     async def _make_request_and_build_response(
             self,
             method: Callable,
-            oids: tuple[Oids, ...] | list[Oids],
+            varbinds: list[ObjectType] | tuple[ObjectType, ...],
             parser
     ):
         """
         Осуществляет вызов соответствующего snmp-запроса и передает
         self.__parse_response_all_types_requests полученный ответ для парса response.
         """
-        self.last_response = await method(oids=oids)
+        self.last_response = await method(varbinds=varbinds)
         print(f'self.last_response: {self.last_response}')
         return self.__parse_and_process_response_all_types_requests(parser)
 
@@ -117,23 +119,22 @@ class SnmpHosts(Host):
     def process_oid_val(self, val: Any) -> str | int:
         return val.prettyPrint()
 
+    @abc.abstractmethod
     def _get_config_for_curr_state(self) -> RequestConfig:
+        ...
 
-        self.processor_config = get_mode_config_processor
-
-        return RequestConfig(
-            method=self.request_sender.snmp_get,
-            oids=self.host_properties.oids_get_state,
-            parser=self.states_parser,
+    async def get_states(self):
+        return await self._make_request_and_build_response(
+            *self._get_config_for_curr_state()
         )
 
-    def _get_config_for_set_request(self, oids: T_Oids) -> RequestConfig:
+    def _get_config_for_set_request(self) -> RequestConfig:
 
         self.processor_config = set_request_config_processor
 
         return RequestConfig(
             method=self.request_sender.snmp_set,
-            oids=oids,
+            oids=self.varbinds_for_get_state,
             parser=self.states_parser,
         )
 
@@ -153,6 +154,7 @@ class SnmpHosts(Host):
 class AbstractUg405Hosts(SnmpHosts):
 
     host_data: host_data.HostStaticDataWithScn
+    converter_class: PotokPConverters
 
     def __init__(
             self,
@@ -167,8 +169,18 @@ class AbstractUg405Hosts(SnmpHosts):
         self.scn_as_ascii_string = self.get_scn_as_ascii_from_scn_as_chars_attr()
 
     @abc.abstractmethod
-    def get_method_for_scn(self) -> Callable:
+    def _method_for_get_scn(self) -> Callable:
         ...
+
+    def _get_config_for_curr_state(self) -> RequestConfig:
+
+        self.processor_config = get_mode_config_processor
+
+        return RequestConfig(
+            method=self.request_sender.snmp_get,
+            oids=self.converter_class.state_oids,
+            parser=self.states_parser,
+        )
 
     async def _make_request_and_build_response(
             self,
@@ -176,14 +188,12 @@ class AbstractUg405Hosts(SnmpHosts):
             oids: T_Oids,
             parser: Any,
     ):
-
         if self.scn_as_ascii_string is None:
-            self.last_response = await self.get_method_for_scn()(oids=[Oids.utcReplySiteID])
-
+            self.last_response = await self._method_for_get_scn()(varbinds=[self.converter_class.scn_varbind])
             if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
                 return self
             try:
-                self.set_scn_from_response()
+                self._set_scn_from_response()
             except BadControllerType as e:
                 self.add_data_to_data_response_attrs(e)
         if self.ERRORS:
@@ -191,7 +201,10 @@ class AbstractUg405Hosts(SnmpHosts):
 
         return await super()._make_request_and_build_response(
             method=method,
-            oids=self._add_scn_to_oids(oids=oids),
+            varbinds=self.converter_class.get_varbinds_for_get_state(
+                scn_as_ascii_string=self.scn_as_ascii_string,
+                scn_as_chars_string=self.scn_as_chars
+                ),
             parser=parser
         )
 
@@ -224,7 +237,7 @@ class AbstractUg405Hosts(SnmpHosts):
             for oid in oids
         ]
 
-    def set_scn_from_response(self):
+    def _set_scn_from_response(self):
         raise NotImplementedError()
 
     def process_oid(self, oid: str) -> str:
@@ -235,15 +248,20 @@ class AbstractStcipHosts(SnmpHosts):
 
     host_data: host_data.HostStaticData
     states_parser: Any
-
-    async def get_states(self):
-        return await self._make_request_and_build_response(
-            *self._get_config_for_curr_state()
-        )
+    converter_class: SwarcoConverters | PotokSConverters
 
     def process_oid(self, oid: str) -> str:
         return str(oid)
 
+    def _get_config_for_curr_state(self) -> RequestConfig:
+
+        self.processor_config = get_mode_config_processor
+
+        return RequestConfig(
+            method=self.request_sender.snmp_get,
+            oids=self.converter_class.get_varbinds_for_get_state(),
+            parser=self.states_parser,
+        )
 
 
 

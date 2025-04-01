@@ -9,7 +9,7 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 async def get(
         ip_v4: str,
         community: str,
-        oids: list[str],
+        oids: list[str | Oids] | tuple[str | Oids, ...] | KeysView[str | Oids],
         engine: SnmpEngine,
         timeout: float = 0.2,
         retries: int = 0
@@ -94,7 +94,7 @@ class SnmpRequests:
 
     async def snmp_get(
             self,
-            oids: list[str | Oids] | tuple[str | Oids, ...] | KeysView[str | Oids],
+            varbinds: list[ObjectType] | tuple[ObjectType],
             timeout: float = 1,
             retries: int = 0
     ) -> tuple[errind.ErrorIndication, Integer32 | int, Integer32 | int, tuple[ObjectType, ...]]:
@@ -128,7 +128,7 @@ class SnmpRequests:
             CommunityData(self.community_r),
             await UdpTransportTarget.create((self.ip, 161), timeout=timeout, retries=retries),
             ContextData(),
-            *[ObjectType(ObjectIdentity(oid)) for oid in oids]
+            *varbinds
         )
         # print(f'error_indication: {error_indication}\n'
         #       f'error_status: {error_status}\n'
@@ -137,11 +137,9 @@ class SnmpRequests:
 
         # return self.check_response_and_add_error_if_has(error_indication, error_status, error_index), var_binds
 
-
-
     async def snmp_set(
             self,
-            oids: tuple[ObjectType, ...],
+            varbinds: tuple[ObjectType, ...],
             timeout: float = 1,
             retries: int = 0
     ) -> tuple[errind.ErrorIndication, Integer32 | int, Integer32 | int, tuple[ObjectType, ...]]:
@@ -151,7 +149,7 @@ class SnmpRequests:
             CommunityData(self.community_w),
             await UdpTransportTarget.create((self.ip, 161), timeout=timeout, retries=retries),
             ContextData(),
-            *oids
+            *varbinds
             # *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
             # *[ObjectType(ObjectIdentity('1.3.6.1.4.1.1618.3.7.2.11.1.0'), Unsigned32('2')) for oid, val in oids]
         )

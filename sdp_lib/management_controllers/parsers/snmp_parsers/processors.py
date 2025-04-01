@@ -14,9 +14,9 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import (
 )
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
-from sdp_lib.management_controllers.snmp.smmp_utils import (
+from sdp_lib.management_controllers.snmp.snmp_utils import (
     SwarcoConverters,
-    Ug405Converters, PotokSConverters
+    PotokPConverters, PotokSConverters
 )
 
 
@@ -235,7 +235,7 @@ class PotokPProcessor(AbstractProcessor, Ug405Mixin):
         Oids.utcType2OperationMode: (FieldsNames.operation_mode, self.get_val_as_str),
         Oids.potokP_utcReplyDarkStatus: (FieldsNames.dark, self.get_val_as_str),
         Oids.utcReplyFR: (FieldsNames.flash, self.get_val_as_str),
-        Oids.utcReplyGn: (FieldsNames.curr_stage, Ug405Converters.get_num_stage_from_oid_val),
+        Oids.utcReplyGn: (FieldsNames.curr_stage, PotokPConverters.get_num_stage_from_oid_val),
         Oids.potokP_utcReplyPlanStatus: (FieldsNames.curr_plan, self.get_val_as_str),
         Oids.potokP_utcReplyLocalAdaptiv: (FieldsNames.local_adaptive_status, self.get_val_as_str),
         Oids.utcType2ScootDetectorCount: (FieldsNames.num_detectors, self.get_val_as_str),
