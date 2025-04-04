@@ -2,7 +2,6 @@ import abc
 import typing
 from collections.abc import Callable
 from functools import cached_property
-from typing import Any
 
 from pysnmp.smi.rfc1902 import ObjectType
 
@@ -16,17 +15,17 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.snmp_utils import (
     SwarcoConverters,
-    PotokPConverters, PotokSConverters
+    PotokPConverters, PotokSConverters, PeekConverters
 )
 
 
-class ConfigProcessor(typing.NamedTuple):
+class ConfigsProcessor(typing.NamedTuple):
     current_mode: bool = False
     oid_handler: Callable = None
     val_oid_handler: Callable = None
 
 
-class AbstractProcessor(abc.ABC):
+class AbstractVarbindsProcessors(abc.ABC):
 
     def __init__(
             self,
@@ -38,7 +37,7 @@ class AbstractProcessor(abc.ABC):
         self.host_instance = host_instance
         self.var_binds = var_binds or self.host_instance.last_response[SnmpResponseStructure.VAR_BINDS]
         self.mode_calculation = mode_calculation
-        self._processor_config: ConfigProcessor = self.host_instance.processor_config
+        self._processor_config: ConfigsProcessor = self.host_instance.processor_config
         self._processed_response_data = {}
 
     @property
@@ -85,7 +84,10 @@ class AbstractProcessor(abc.ABC):
                 # oid, val = self.process_oid(oid), self.process_oid_val(val)
                 oid, val = self.host_instance.process_oid(oid), self.host_instance.process_oid_val(val)
                 field_name, cb_fn = self.matches.get(oid)
-                self._processed_response_data[field_name] = cb_fn(val)
+                if field_name is None or cb_fn is None:
+                    self._processed_response_data[oid] = val.prettyPrint()
+                else:
+                    self._processed_response_data[field_name] = cb_fn(val)
                 if self._processor_config.current_mode:
                     for field_name, cb_fn in self.dependent_methods.items():
                         self._processed_response_data[field_name] = cb_fn()
@@ -97,7 +99,7 @@ class AbstractProcessor(abc.ABC):
         return self._processed_response_data
 
 
-class SwarcoProcessor(AbstractProcessor, StcipMixin):
+class SwarcoVarbindsProcessors(AbstractVarbindsProcessors, StcipMixin):
 
     CENTRAL_PLAN              = '16'
     MANUAL_PLAN               = '15'
@@ -157,7 +159,7 @@ class SwarcoProcessor(AbstractProcessor, StcipMixin):
         }
 
 
-class PotokSProcessor(AbstractProcessor, StcipMixin):
+class PotokSVarbindsProcessors(AbstractVarbindsProcessors, StcipMixin):
 
     modes = {
         '8': str(NamesMode.VA),
@@ -186,7 +188,7 @@ class PotokSProcessor(AbstractProcessor, StcipMixin):
     }
 
 
-class PotokPProcessor(AbstractProcessor, Ug405Mixin):
+class PotokPVarbindsProcessors(AbstractVarbindsProcessors, Ug405Mixin):
 
     def get_current_mode(self) -> str | None:
 
@@ -236,6 +238,33 @@ class PotokPProcessor(AbstractProcessor, Ug405Mixin):
         Oids.potokP_utcReplyDarkStatus: (FieldsNames.dark, self.get_val_as_str),
         Oids.utcReplyFR: (FieldsNames.flash, self.get_val_as_str),
         Oids.utcReplyGn: (FieldsNames.curr_stage, PotokPConverters.get_num_stage_from_oid_val),
+        Oids.potokP_utcReplyPlanStatus: (FieldsNames.curr_plan, self.get_val_as_str),
+        Oids.potokP_utcReplyLocalAdaptiv: (FieldsNames.local_adaptive_status, self.get_val_as_str),
+        Oids.utcType2ScootDetectorCount: (FieldsNames.num_detectors, self.get_val_as_str),
+        Oids.utcReplyDF: (FieldsNames.has_det_faults, self.get_val_as_str),
+        Oids.utcReplyMC: (FieldsNames.is_mode_man, self.get_val_as_str),
+    }
+
+
+class PeekPVarbindsProcessors(AbstractVarbindsProcessors, Ug405Mixin):
+
+    def get_current_mode(self) -> str | None:
+
+        return None
+
+    @property
+    def dependent_methods(self) -> dict[str, Callable]:
+        return {
+
+        }
+
+    @cached_property
+    def matches(self):
+        return {
+        Oids.utcType2OperationMode: (FieldsNames.operation_mode, self.get_val_as_str),
+        Oids.potokP_utcReplyDarkStatus: (FieldsNames.dark, self.get_val_as_str),
+        Oids.utcReplyFR: (FieldsNames.flash, self.get_val_as_str),
+        Oids.utcReplyGn: (FieldsNames.curr_stage, PeekConverters.get_num_stage_from_oid_val),
         Oids.potokP_utcReplyPlanStatus: (FieldsNames.curr_plan, self.get_val_as_str),
         Oids.potokP_utcReplyLocalAdaptiv: (FieldsNames.local_adaptive_status, self.get_val_as_str),
         Oids.utcType2ScootDetectorCount: (FieldsNames.num_detectors, self.get_val_as_str),
