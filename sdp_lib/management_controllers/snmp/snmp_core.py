@@ -1,3 +1,4 @@
+import functools
 import typing
 from functools import cached_property
 from typing import Self, TypeVar
@@ -9,11 +10,12 @@ from typing_extensions import Literal
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.processors import ConfigProcessor
+from sdp_lib.management_controllers.parsers.snmp_parsers.processors import ConfigsProcessor
 from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
+from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
 from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 
@@ -30,8 +32,8 @@ class RequestConfig(typing.NamedTuple):
     parser: Any
 
 
-get_mode_config_processor = ConfigProcessor(current_mode=True)
-set_request_config_processor = ConfigProcessor(current_mode=False, oid_handler=str)
+get_mode_config_processor = ConfigsProcessor(current_mode=True)
+set_request_config_processor = ConfigsProcessor(current_mode=False, oid_handler=str)
 
 
 # RequestModes: typing.TypeAlias = Literal['get', 'set', 'get_next']
@@ -58,41 +60,50 @@ class SnmpHosts(Host):
         super().__init__(ip_v4, host_id)
         self._engine = engine or SnmpEngine()
         self.request_sender = SnmpRequests(
-            self.ip_v4, self.host_properties.community_r, self.host_properties.community_w, self._engine
+            self.ip_v4,
+            self.host_properties.community_r,
+            self.host_properties.community_w,
+            self._engine
         )
         self.parser = None
         self.last_response = None
         self._need_mode_calculation = False
         self.processor_config = None
 
-    # async def make_get_request_and_parse_response(
+    # async def _make_request_and_build_response(
     #         self,
-    #         oids: tuple[Oids, ...] | list[Oids],
-    #         parser_config
-    # ) -> Self:
+    #         method: Callable,
+    #         varbinds: list[ObjectType] | tuple[ObjectType, ...],
+    #         parser
+    # ):
     #     """
-    #     Метод обертка для _common_parse_and_response. В данном методе определяется
-    #     параметр method для передачи и вызова _common_parse_and_response.
+    #     Осуществляет вызов соответствующего snmp-запроса и передает
+    #     self.__parse_response_all_types_requests полученный ответ для парса response.
     #     """
-    #     return await self._make_request_and_build_response(
-    #         method=self.request_sender.snmp_get,
-    #         oids=oids,
-    #         parser_config=parser_config
-    #     )
+    #     self.last_response = await method(varbinds=varbinds)
+    #     print(f'self.last_response: {self.last_response}')
+    #     return self.__parse_and_process_response_all_types_requests(parser)
 
     async def _make_request_and_build_response(
             self,
             method: Callable,
-            varbinds: list[ObjectType] | tuple[ObjectType, ...],
+            *,
+            entity,
+            oids: [Oids | str] = None,
+            # varbinds: list[ObjectType] | tuple[ObjectType, ...],
             parser
     ):
         """
         Осуществляет вызов соответствующего snmp-запроса и передает
         self.__parse_response_all_types_requests полученный ответ для парса response.
         """
-        self.last_response = await method(varbinds=varbinds)
-        print(f'self.last_response: {self.last_response}')
-        return self.__parse_and_process_response_all_types_requests(parser)
+        pass
+
+    def __get_varbinds_set_request(self, req_entity: list[tuple[AvailableSetCommands, Any]]):
+        pass
+
+    def __get_varbinds_get_request(self, req_entity: AvailableSetCommands):
+        pass
 
     def __parse_and_process_response_all_types_requests(self, parser) -> Self:
         """
@@ -185,33 +196,87 @@ class AbstractUg405Hosts(SnmpHosts):
     async def _make_request_and_build_response(
             self,
             method: Callable,
+            entity,
+            # varbinds: list[ObjectType] | tuple[ObjectType, ...],
+            parser
+    ):
+        """
+        Осуществляет вызов соответствующего snmp-запроса и передает
+        self.__parse_response_all_types_requests полученный ответ для парса response.
+        """
+        self.converter_class.get_varbinds(entity)
+
+
+        self.last_response = await method(varbinds=varbinds)
+        print(f'self.last_response: {self.last_response}')
+        return self.__parse_and_process_response_all_types_requests(parser)
+
+    async def set_scn_and_add_err_to_data_response_if_has(self):
+
+        self.last_response = await self._method_for_get_scn()(varbinds=[self.converter_class.scn_varbind])
+        # print(f'MY: {self.last_response}')
+        # print(f'MY: {self.last_response[3][0][0]}')
+        # print(f'MY: {str(self.last_response[3][0][0]).replace(Oids.utcReplyGn, "")}')
+
+        if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
+            return
+
+        try:
+            self._set_scn_from_response()
+            print(f'self.scn_as_ascii_string {self.scn_as_ascii_string}')
+            print(f' self.scn_as_chars {self.scn_as_chars}')
+        except BadControllerType as e:
+            self.add_data_to_data_response_attrs(e)
+
+
+    async def _make_request_and_build_response(
+            self,
+            method: Callable,
             oids: T_Oids,
             parser: Any,
     ):
-        if self.scn_as_ascii_string is None:
-            self.last_response = await self._method_for_get_scn()(varbinds=[self.converter_class.scn_varbind])
-            if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
-                return self
-            try:
-                self._set_scn_from_response()
-            except BadControllerType as e:
-                self.add_data_to_data_response_attrs(e)
+        # if self.scn_as_ascii_string is None:
+        #     self.last_response = await self._method_for_get_scn()(varbinds=[self.converter_class.scn_varbind])
+        #     if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
+        #         return self
+        #     try:
+        #         self._set_scn_from_response()
+        #     except BadControllerType as e:
+        #         self.add_data_to_data_response_attrs(e)
+
+        await self.set_scn_and_add_err_to_data_response_if_has()
+
         if self.ERRORS:
             return self
 
         return await super()._make_request_and_build_response(
             method=method,
-            varbinds=self.converter_class.get_varbinds_for_get_state(
+            varbinds=self.converter_class.add_scn_to_oids(
+                oids_without_val=oids,
                 scn_as_ascii_string=self.scn_as_ascii_string,
-                scn_as_chars_string=self.scn_as_chars
+                scn_as_chars_string=self.scn_as_chars,
+                wrap_oid_by_object_identity=True
                 ),
             parser=parser
         )
+
+        # return await super()._make_request_and_build_response(
+        #     method=method,
+        #     varbinds=self.converter_class.get_varbinds_for_get_state(
+        #         scn_as_ascii_string=self.scn_as_ascii_string,
+        #         scn_as_chars_string=self.scn_as_chars
+        #         ),
+        #     parser=parser
+        # )
 
     def get_scn_as_ascii_from_scn_as_chars_attr(self) -> str | None:
         if self.scn_as_chars is not None:
             return self.convert_chars_string_to_ascii_string(self.scn_as_chars)
         return None
+
+    def get_scn_as_chars_from_scn_as_ascii(self) -> str:
+        if self.scn_as_ascii_string is not None:
+            return self.convert_ascii_string_to_chars(self.scn_as_ascii_string)
 
     @staticmethod
     def add_CO_to_scn(scn: str) -> str | None:
@@ -220,13 +285,28 @@ class AbstractUg405Hosts(SnmpHosts):
         return f'CO{scn}'
 
     @staticmethod
-    def convert_chars_string_to_ascii_string(scn: str) -> str:
+    def convert_chars_string_to_ascii_string(scn_as_chars: str) -> str:
         """
         Генерирует SCN
         :param scn -> символы строки, которые необходимо конвертировать в scn
         :return -> возвращет scn
         """
-        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
+        return f'.1.{str(len(scn_as_chars))}.{".".join([str(ord(c)) for c in scn_as_chars])}'
+
+    @staticmethod
+    def convert_ascii_string_to_chars(scn_as_ascii: str) -> str:
+        """
+        Генерирует SCN
+        :param scn -> символы строки, которые необходимо конвертировать в scn
+        :return -> возвращет scn
+        .1.6.67.79.50.48.56.48
+        """
+        splitted = scn_as_ascii.split('.')
+        num_chars = int(splitted[2])
+        scn_as_chars = ''.join([chr(int(c)) for c in splitted[3:]])
+        print(f'scn_as_chars: {scn_as_chars}')
+        assert num_chars == len(scn_as_chars)
+        return scn_as_chars
 
     def _add_scn_to_oids(
             self,
@@ -242,6 +322,37 @@ class AbstractUg405Hosts(SnmpHosts):
 
     def process_oid(self, oid: str) -> str:
         return str(oid).replace(self.scn_as_ascii_string, '')
+
+    async def get_request(self, oids: list[Oids | str]):
+
+        self.processor_config = ConfigsProcessor()
+
+        return await self._make_request_and_build_response(
+            method=self.request_sender.snmp_get,
+            oids=oids,
+            parser=self.states_parser
+        )
+
+    # def async_dependency(self, type_dependency):
+    #     def wrapper(func: Callable) -> Callable:
+    #         @functools.wraps(func)
+    #         async def wrapped(*args, **kwargs):
+    #             print(f'type_dependency: {type_dependency}')
+    #             print(f'args: {args}')
+    #             print(f'kwargs: {kwargs}')
+    #             if type_dependency == 'operation_mode':
+    #                 self.last_response = self.request_sender.snmp_get(
+    #                     [ObjectType(ObjectIdentity(Oids.utcType2OperationMode))]
+    #                 )
+    #                 print(f'self.last_response ?? {self.last_response}')
+    #             else:
+    #                 pass
+    #             self.last_response = await func(*args, **kwargs)
+    #             print(f'self.last_response2: {self.last_response}')
+    #
+    #             return wrapped
+    #
+    #         return wrapper
 
 
 class AbstractStcipHosts(SnmpHosts):

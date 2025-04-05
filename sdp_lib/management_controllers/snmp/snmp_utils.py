@@ -1,16 +1,15 @@
-import abc
+import functools
 import math
-import os
-import typing
-from dataclasses import dataclass
-import dataclasses
+import time
+from typing import Callable, Any
 
-from pysnmp.proto.rfc1902 import Unsigned32
+from pysnmp.proto.rfc1902 import Unsigned32, Integer32
 from pysnmp.smi.rfc1902 import ObjectType, ObjectIdentity
 
 from sdp_lib.management_controllers.snmp import oids
 from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, AllowedControllers
 from sdp_lib.management_controllers.snmp.oids import Oids
+from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
 
 
 class AbstractConverter:
@@ -34,7 +33,10 @@ class AbstractUg405PConverters:
 
     oids_scn_required = oids.oids_scn_required
     state_oids: tuple[Oids | str, ...]
-    scn_varbind = ObjectType(ObjectIdentity(oids.Oids.utcReplySiteID))
+    scn_varbind: ObjectType
+    get_operation_mode_varbind = ObjectType(ObjectIdentity(Oids.utcType2OperationMode))
+    set_operation_mode2_varbind = ObjectType(ObjectIdentity(Oids.utcType2OperationMode, Integer32(2)))
+    set_operation_mode3_varbind = ObjectType(ObjectIdentity(Oids.utcType2OperationMode, Integer32(3)))
 
     @classmethod
     def convert_hex_to_decimal(cls, val: str) -> int | None:
@@ -71,35 +73,73 @@ class AbstractUg405PConverters:
     def get_scn_as_ascii_from_scn_as_chars(cls, scn_as_chars_string: str) -> str | None:
         return cls.convert_chars_string_to_ascii_string(scn_as_chars_string)
 
+    # @classmethod
+    # def add_scn_to_oids(
+    #         cls,
+    #         oids: tuple[Oids, ...] | list[Oids],
+    #         scn_as_chars_string: str = None,
+    #         scn_as_ascii_string: str = None,
+    #         wrap_oid_by_object_identity: bool = False
+    # ) -> list[Oids | str | ObjectType]:
+    #     if scn_as_ascii_string:
+    #         scn = scn_as_ascii_string
+    #     elif scn_as_chars_string:
+    #         scn = cls.get_scn_as_ascii_from_scn_as_chars(
+    #             scn_as_chars_string
+    #         )
+    #     else:
+    #         raise ValueError(
+    #             'Необходимо передать в функию один из аргументов:\n'
+    #             'scn_as_chars_string(Например: CO1111) или scn_as_ascii_string(Например: .1.3.22.22.22)'
+    #         )
+    #     if wrap_oid_by_object_identity:
+    #         return [
+    #             ObjectType(ObjectIdentity(f'{oid}{scn}')) if oid in cls.oids_scn_required
+    #             else ObjectType(ObjectIdentity(oid))
+    #             for oid in oids
+    #         ]
+    #     return [
+    #         f'{oid}{scn}' if oid in cls.oids_scn_required else oid
+    #         for oid in oids
+    #     ]
+
     @classmethod
     def add_scn_to_oids(
             cls,
-            oids: tuple[Oids, ...] | list[Oids],
-            scn_as_chars_string: str = None,
+            oids_without_val: tuple[Oids, ...] | list[Oids],
             scn_as_ascii_string: str = None,
             wrap_oid_by_object_identity: bool = False
     ) -> list[Oids | str | ObjectType]:
-        if scn_as_ascii_string:
-            scn = scn_as_ascii_string
-        elif scn_as_chars_string:
-            scn = cls.get_scn_as_ascii_from_scn_as_chars(
-                scn_as_chars_string
-            )
-        else:
-            raise ValueError(
-                'Необходимо передать в функию один из аргументов:\n'
-                'scn_as_chars_string(Например: CO1111) или scn_as_ascii_string(Например: .1.3.22.22.22)'
-            )
-        if wrap_oid_by_object_identity:
-            return [
-                ObjectType(ObjectIdentity(f'{oid}{scn}')) if oid in cls.oids_scn_required
-                else ObjectType(ObjectIdentity(oid))
-                for oid in oids
-            ]
+
+
+        # if wrap_oid_by_object_identity:
+        #     return [
+        #         ObjectType(ObjectIdentity(f'{oid}{scn_as_ascii_string}')) if oid in cls.oids_scn_required
+        #         else ObjectType(ObjectIdentity(oid))
+        #         for oid in oids_without_val
+        #     ]
+        for oid in oids_without_val:
+            yield f'{oid}{scn_as_ascii_string}' if oid in cls.oids_scn_required else oid
+
+        # return [
+        #     f'{oid}{scn_as_ascii_string}' if oid in cls.oids_scn_required else oid
+        #     for oid in oids_without_val
+        # ]
+
+    @classmethod
+    def wrap_by_object_type_oids_with_val(
+            cls,
+            scn_as_ascii_string,
+            oids_with_val: list[tuple[Oids | str, Any]]
+    ):
+
         return [
-            f'{oid}{scn}' if oid in cls.oids_scn_required else oid
-            for oid in oids
-        ]
+                ObjectType(ObjectIdentity(f'{oid}{scn_as_ascii_string}')) if oid in cls.oids_scn_required
+                else ObjectType(ObjectIdentity(oid))
+                for oid in oids_with_val
+            ]
+
+
 
     @classmethod
     def get_varbinds_for_get_state(
@@ -111,11 +151,15 @@ class AbstractUg405PConverters:
         print(f'scn_as_ascii_string: {scn_as_ascii_string}')
         print(f'scn_as_chars_string: {scn_as_chars_string}')
         return cls.add_scn_to_oids(
-            oids=cls.state_oids,
+            oids_without_val=cls.state_oids,
             scn_as_ascii_string=scn_as_ascii_string,
             scn_as_chars_string=scn_as_chars_string,
             wrap_oid_by_object_identity=True
         )
+
+    @classmethod
+    def get_varbinds(cls):
+        pass
 
 
 class SwarcoConverters(AbstractStcipConverters):
@@ -153,6 +197,86 @@ class PotokSConverters(AbstractStcipConverters):
 class PotokPConverters(AbstractUg405PConverters):
 
     state_oids = oids.oids_state_potok_p
+    scn_varbind = ObjectType(ObjectIdentity(oids.Oids.utcReplySiteID))
+
+    varbinds_for_get_request = {
+        AvailableGetCommands: oids.oids_state_potok_p,
+    }
+
+    def get_varbinds_get_request(
+            cls,
+            scn_as_ascii: str,
+            request_entity,
+    ):
+        return cls.add_scn_to_oids(
+            oids_without_val=cls.varbinds_for_get_request.get(request_entity),
+            scn_as_ascii_string=scn_as_ascii,
+            wrap_oid_by_object_identity=True
+        )
+
+    def get_varbinds_set_request(
+            cls,
+            scn_as_ascii: str,
+            request_entity: list[tuple[AvailableSetCommands, Any]],
+    ):
+
+class PeekConverters(AbstractUg405PConverters):
+
+    scn_varbind = ObjectType(ObjectIdentity(oids.Oids.utcType2Reply))
+
+    matches = {
+        AvailableGetCommands: ...,
+
+    }
+
+    # def get_varbinds(
+    #         cls,
+    #         request_entity = None,
+    #         oids = None
+    # ):
+
+
+
+
+class VarbindsBuilders:
+
+    matches = {
+        AllowedControllers.SWARCO: 0
+    }
+
+    def build_varbinds(
+            self,
+            type_controller: AllowedControllers,
+            request_entity: AvailableGetCommands | AvailableSetCommands,
+            value: int = None
+    ):
+        match (type_controller, request_entity, Any):
+            case (AllowedControllers.POTOK_P, AvailableGetCommands.current_state):
+                pass
+
+
+        if type_controller in {AllowedControllers.POTOK_P, AllowedControllers.PEEK}:
+            pass
+
+
+def async_timed():
+    def wrapper(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapped(*args, **kwargs) -> Any:
+            print(f"starting {func} with args {args} {kwargs}")
+            start = time.time()
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                end = time.time()
+                total = end - start
+                print(f"finished {func} in {total:4f} second(s)")
+
+        return wrapped
+
+    return wrapper
+
+
 
 
 

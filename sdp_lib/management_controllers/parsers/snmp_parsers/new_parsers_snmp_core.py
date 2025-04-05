@@ -2,8 +2,8 @@ import abc
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.parsers_core import Parsers
 from sdp_lib.management_controllers.parsers.snmp_parsers.processors import (
-    SwarcoProcessor,
-    PotokPProcessor, PotokSProcessor
+    SwarcoVarbindsProcessors,
+    PotokPVarbindsProcessors, PotokSVarbindsProcessors, PeekPVarbindsProcessors
 )
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 
@@ -67,7 +67,7 @@ class BaseSnmpParser(Parsers):
 class SwarcoStandardParser(BaseSnmpParser):
 
     def get_processor(self):
-        return SwarcoProcessor(
+        return SwarcoVarbindsProcessors(
             host_instance=self.host_instance
         )
 
@@ -75,7 +75,7 @@ class SwarcoStandardParser(BaseSnmpParser):
 class PotokSStandardParser(BaseSnmpParser):
 
     def get_processor(self):
-        return PotokSProcessor(
+        return PotokSVarbindsProcessors(
             host_instance=self.host_instance
         )
 
@@ -83,6 +83,14 @@ class PotokSStandardParser(BaseSnmpParser):
 class PotokPStandardParser(BaseSnmpParser):
 
     def get_processor(self):
-        return PotokPProcessor(
+        return PotokPVarbindsProcessors(
+            host_instance=self.host_instance
+        )
+
+
+class PeekStandardParser(BaseSnmpParser):
+
+    def get_processor(self):
+        return PeekPVarbindsProcessors(
             host_instance=self.host_instance
         )

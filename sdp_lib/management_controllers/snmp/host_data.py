@@ -65,6 +65,8 @@ swarco_stcip = HostStaticData(AllowedControllers.SWARCO, *__stcip, oids.oids_sta
 # swarco_stcip = HostStaticData(AllowedControllers.SWARCO, *__stcip, snmp_utils.SwarcoConverters.varbinds_get_state)
 potok_s = HostStaticData(AllowedControllers.POTOK_S, *__stcip, oids.oids_state_potok_s)
 potok_p = HostStaticDataWithScn(AllowedControllers.POTOK_P, *__ug405, oids.oids_state_potok_p, oids.oids_scn_required)
+peek_ug405 = HostStaticDataWithScn(AllowedControllers.PEEK, *__ug405, oids.oids_state_potok_p, oids.oids_scn_required)
+
 
 # stage_values_set = {
 #                        stage_num: Unsigned32(stage_num + 1) for stage_num in range(1, 8)
