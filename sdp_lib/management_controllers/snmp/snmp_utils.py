@@ -219,6 +219,7 @@ class PotokPConverters(AbstractUg405PConverters):
             scn_as_ascii: str,
             request_entity: list[tuple[AvailableSetCommands, Any]],
     ):
+        pass
 
 class PeekConverters(AbstractUg405PConverters):
 

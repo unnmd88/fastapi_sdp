@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from sdp_lib.management_controllers.constants import AllowedControllers
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.snmp import oids, snmp_utils
+from sdp_lib.management_controllers.snmp import oids
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
