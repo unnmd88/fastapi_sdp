@@ -22,6 +22,7 @@ from sdp_lib.management_controllers.snmp.snmp_core import (
     AbstractStcipHosts,
     AbstractUg405Hosts, T_Oids
 )
+from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds
 
 
 class SwarcoStcip(AbstractStcipHosts):
@@ -29,6 +30,7 @@ class SwarcoStcip(AbstractStcipHosts):
     host_properties = host_data.swarco_stcip
     states_parser = SwarcoStandardParser
     converter_class = SwarcoConverters
+    varbinds = swarco_sctip_varbinds
 
 
 class PotokS(AbstractStcipHosts):
@@ -140,7 +142,7 @@ async def main():
     # obj = PotokS(ip_v4='10.179.68.177',)
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
 
-    obj = PotokP(ip_v4='10.179.56.105')
+    # obj = PotokP(ip_v4='10.179.56.105')
 
 
     r = await obj.get_states()

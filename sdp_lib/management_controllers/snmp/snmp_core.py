@@ -18,7 +18,8 @@ from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseC
 from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
 from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
-
+from sdp_lib.management_controllers.snmp.varbinds import potok_stcip_varbinds, swarco_sctip_varbinds, VarbindsSwarco, \
+    VarbindsPotokS
 
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
 T_Oids = TypeVar('T_Oids', tuple[Oids | str, ...], list[Oids | str])
@@ -49,6 +50,8 @@ class SnmpHosts(Host):
     host_properties: T_DataHosts
     states_parser: Any
     converter_class: Any
+    varbinds: Any
+
 
     def __init__(
             self,
@@ -86,18 +89,17 @@ class SnmpHosts(Host):
 
     async def _make_request_and_build_response(
             self,
-            method: Callable,
             *,
-            entity,
-            oids: [Oids | str] = None,
-            # varbinds: list[ObjectType] | tuple[ObjectType, ...],
+            method: Callable,
+            varbinds,
             parser
     ):
         """
         Осуществляет вызов соответствующего snmp-запроса и передает
         self.__parse_response_all_types_requests полученный ответ для парса response.
         """
-        pass
+        self.last_response = await method(varbinds=varbinds)
+        return self.__parse_and_processing_response_all_types_requests(parser)
 
     def __get_varbinds_set_request(self, req_entity: list[tuple[AvailableSetCommands, Any]]):
         pass
@@ -105,7 +107,7 @@ class SnmpHosts(Host):
     def __get_varbinds_get_request(self, req_entity: AvailableSetCommands):
         pass
 
-    def __parse_and_process_response_all_types_requests(self, parser) -> Self:
+    def __parse_and_processing_response_all_types_requests(self, parser) -> Self:
         """
         Осуществляет проверку snmp-response и передает его парсеру для формирования
         response из полученных значений оидов.
@@ -134,10 +136,11 @@ class SnmpHosts(Host):
     def _get_config_for_curr_state(self) -> RequestConfig:
         ...
 
-    async def get_states(self):
-        return await self._make_request_and_build_response(
-            *self._get_config_for_curr_state()
-        )
+    # async def get_states(self):
+    #     return await self._make_request_and_build_response(
+    #         *self._get_config_for_curr_state()
+    #     )
+
 
     # Set command section
     
@@ -151,15 +154,15 @@ class SnmpHosts(Host):
     #         parser=self.states_parser,
     #     )
     
-    async def set_stage(self, num_stage: int):
-        self.processor_config = set_request_config_processor
-        return await self._make_request_and_build_response(
-            *RequestConfig(
-                method=self.request_sender.snmp_set,
-                oids=self.converter_class.get_varbinds_for_set_stage(num_stage),
-                parser=self.states_parser
-            )
-        )
+    # async def set_stage(self, num_stage: int):
+    #     self.processor_config = set_request_config_processor
+    #     return await self._make_request_and_build_response(
+    #         *RequestConfig(
+    #             method=self.request_sender.snmp_set,
+    #             oids=self.converter_class.get_varbinds_for_set_stage(num_stage),
+    #             parser=self.states_parser
+    #         )
+    #     )
 
 
 class AbstractUg405Hosts(SnmpHosts):
@@ -209,7 +212,7 @@ class AbstractUg405Hosts(SnmpHosts):
 
         self.last_response = await method(varbinds=varbinds)
         print(f'self.last_response: {self.last_response}')
-        return self.__parse_and_process_response_all_types_requests(parser)
+        return self.__parse_and_processing_response_all_types_requests(parser)
 
     async def set_scn_and_add_err_to_data_response_if_has(self):
 
@@ -360,6 +363,7 @@ class AbstractStcipHosts(SnmpHosts):
     host_data: host_data.HostStaticData
     states_parser: Any
     converter_class: SwarcoConverters | PotokSConverters
+    varbinds: VarbindsSwarco | VarbindsPotokS
 
     def process_oid(self, oid: str) -> str:
         return str(oid)
@@ -374,7 +378,12 @@ class AbstractStcipHosts(SnmpHosts):
             parser=self.states_parser,
         )
 
-
+    async def get_states(self):
+        return await self._make_request_and_build_response(
+            method=self.request_sender.snmp_get,
+            varbinds=self.varbinds.get_varbinds_current_states(),
+            parser=self.states_parser
+        )
 
 
 

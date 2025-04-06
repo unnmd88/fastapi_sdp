@@ -13,7 +13,6 @@ from pysnmp.smi.rfc1902 import ObjectType, ObjectIdentity
 
 from sdp_lib.management_controllers.snmp import oids, snmp_requests, host_data
 from sdp_lib.management_controllers.snmp.oids import oids_scn_required
-
 from sdp_lib.management_controllers.snmp.oids import Oids
 
 
