@@ -12,6 +12,26 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
 
 
+def async_timed():
+    def wrapper(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapped(*args, **kwargs) -> Any:
+            print(f"starting {func} with args {args} {kwargs}")
+            start = time.time()
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                end = time.time()
+                total = end - start
+                print(f"finished {func} in {total:4f} second(s)")
+
+        return wrapped
+
+    return wrapper
+
+
+
+
 class AbstractConverter:
 
     state_oids: tuple[ObjectType, ...]

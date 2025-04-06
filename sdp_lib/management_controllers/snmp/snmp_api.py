@@ -22,7 +22,7 @@ from sdp_lib.management_controllers.snmp.snmp_core import (
     AbstractStcipHosts,
     AbstractUg405Hosts, T_Oids
 )
-from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds
+from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds, potok_ug405_varbinds
 
 
 class SwarcoStcip(AbstractStcipHosts):
@@ -45,6 +45,8 @@ class PotokP(AbstractUg405Hosts):
     states_parser = PotokPStandardParser
     host_properties = host_data.potok_p
     converter_class = PotokPConverters
+    varbinds = potok_ug405_varbinds
+
 
     def _method_for_get_scn(self) -> Callable:
         return self.request_sender.snmp_get
@@ -138,25 +140,26 @@ async def main():
     # obj = SwarcoStcip(ip_v4='10.179.20.129')
     # obj = SwarcoStcip(ip_v4='10.179.68.105')
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
-    obj = SwarcoStcip(ip_v4='10.179.61.33', host_id='3205')
+    # obj = SwarcoStcip(ip_v4='10.179.61.33', host_id='3205')
     # obj = PotokS(ip_v4='10.179.68.177',)
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
 
-    # obj = PotokP(ip_v4='10.179.56.105')
+    obj = PotokP(ip_v4='10.179.56.105')
 
+    start_time = time.time()
 
     r = await obj.get_states()
     print(obj.response_as_dict)
     print(r.response)
+    print(f'время составло: {time.time() - start_time}')
+
     return obj.response
 
-    pass
+
 
 
 
 if __name__ == '__main__':
-    start_time = time.time()
 
     asyncio.run(main())
 
-    print(f'время составло: {time.time() - start_time}')
