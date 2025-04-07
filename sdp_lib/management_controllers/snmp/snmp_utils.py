@@ -241,6 +241,7 @@ class PotokPConverters(AbstractUg405PConverters):
     ):
         pass
 
+
 class PeekConverters(AbstractUg405PConverters):
 
     scn_varbind = ObjectType(ObjectIdentity(oids.Oids.utcType2Reply))
@@ -257,49 +258,50 @@ class PeekConverters(AbstractUg405PConverters):
     # ):
 
 
+class ScnConverterMixin:
 
+    @classmethod
+    def get_scn_as_ascii_from_scn_as_chars(cls, scn_as_chars_string: str) -> str | None:
+        return cls.convert_chars_string_to_ascii_string(scn_as_chars_string)
 
-class VarbindsBuilders:
+    @classmethod
+    def convert_ascii_string_to_chars(cls, scn_as_ascii: str) -> str:
+        """
+        Генерирует SCN
+        :param scn -> символы строки, которые необходимо конвертировать в scn
+        :return -> возвращет scn
+        .1.6.67.79.50.48.56.48
+        """
+        splitted = scn_as_ascii.split('.')
+        num_chars = int(splitted[2])
+        scn_as_chars = ''.join([chr(int(c)) for c in splitted[3:]])
+        print(f'scn_as_chars: {scn_as_chars}')
+        assert num_chars == len(scn_as_chars)
+        return scn_as_chars
 
-    matches = {
-        AllowedControllers.SWARCO: 0
-    }
+    @classmethod
+    def convert_chars_string_to_ascii_string(cls, scn: str) -> str:
+        """
+        Генерирует SCN
+        :param scn -> символы строки, которые необходимо конвертировать в scn
+        :return -> возвращет scn
+        """
+        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
 
-    def build_varbinds(
-            self,
-            type_controller: AllowedControllers,
-            request_entity: AvailableGetCommands | AvailableSetCommands,
-            value: int = None
-    ):
-        match (type_controller, request_entity, Any):
-            case (AllowedControllers.POTOK_P, AvailableGetCommands.current_state):
-                pass
+    @classmethod
+    def add_CO_to_scn(cls, scn: str) -> str | None:
+        if not isinstance(scn, str) or not scn.isdigit():
+            return None
+        return f'CO{scn}'
 
+    def get_scn_as_ascii_from_scn_as_chars_attr(self, scn_as_chars) -> str | None:
+        if scn_as_chars is not None:
+            return self.convert_chars_string_to_ascii_string(scn_as_chars)
+        return None
 
-        if type_controller in {AllowedControllers.POTOK_P, AllowedControllers.PEEK}:
-            pass
-
-
-def async_timed():
-    def wrapper(func: Callable) -> Callable:
-        @functools.wraps(func)
-        async def wrapped(*args, **kwargs) -> Any:
-            print(f"starting {func} with args {args} {kwargs}")
-            start = time.time()
-            try:
-                return await func(*args, **kwargs)
-            finally:
-                end = time.time()
-                total = end - start
-                print(f"finished {func} in {total:4f} second(s)")
-
-        return wrapped
-
-    return wrapper
-
-
-
-
+    def get_scn_as_chars_from_scn_as_ascii(self, scn_as_ascii_string) -> str:
+        if scn_as_ascii_string is not None:
+            return self.convert_ascii_string_to_chars(scn_as_ascii_string)
 
 
 # print(x)

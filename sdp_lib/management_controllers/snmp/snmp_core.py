@@ -16,7 +16,8 @@ from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
 from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
-from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters
+from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters, \
+    ScnConverterMixin
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 from sdp_lib.management_controllers.snmp.varbinds import potok_stcip_varbinds, swarco_sctip_varbinds, VarbindsSwarco, \
     VarbindsPotokS, WrappersVarbindsByScnPotokP
@@ -44,7 +45,7 @@ def ug405_dependency(type_controller):
         @functools.wraps(func)
         async def wrapped(instance, value=None, *args, **kwargs):
             if instance.scn_as_ascii_string is None:
-                instance.last_response = await instance._method_for_get_scn()(varbinds=[instance.converter_class.scn_varbind])
+                instance.last_response = await instance.method_for_get_scn(varbinds=[instance.converter_class.scn_varbind])
                 if ErrorResponseCheckers(instance).check_response_errors_and_add_to_host_data_if_has():
                     return instance
                 try:
@@ -109,7 +110,6 @@ class SnmpHosts(Host):
     def processor_config(self):
         return self._processor_config
 
-
     async def _make_request_and_build_response(
             self,
             *,
@@ -133,7 +133,6 @@ class SnmpHosts(Host):
         if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
             return self
 
-        # self.parser_class = parser(self) # Think about refactoring
         self._parser.parse()
 
         if not self._parser.data_for_response:
@@ -143,9 +142,8 @@ class SnmpHosts(Host):
         self.add_data_to_data_response_attrs(data=self._parser.data_for_response)
         return self
 
-    @abc.abstractmethod
     def process_oid(self, oid: str) -> str:
-        ...
+        return str(oid)
 
     def process_oid_val(self, val: Any) -> str | int:
         return val.prettyPrint()
@@ -183,7 +181,7 @@ class SnmpHosts(Host):
     #     )
 
 
-class AbstractUg405Hosts(SnmpHosts):
+class AbstractUg405Hosts(SnmpHosts, ScnConverterMixin):
 
     host_data: host_data.HostStaticDataWithScn
     converter_class: PotokPConverters
@@ -198,10 +196,11 @@ class AbstractUg405Hosts(SnmpHosts):
     ):
         super().__init__(ip_v4=ip_v4, engine=engine, host_id=host_id)
         self.scn_as_chars = scn
-        self.scn_as_ascii_string = self.get_scn_as_ascii_from_scn_as_chars_attr()
+        self.scn_as_ascii_string = self._get_scn_as_ascii_from_scn_as_chars_attr()
 
+    @property
     @abc.abstractmethod
-    def _method_for_get_scn(self) -> Callable:
+    def method_for_get_scn(self) -> Callable:
         ...
 
     async def set_scn_and_add_err_to_data_response_if_has(self):
@@ -221,99 +220,17 @@ class AbstractUg405Hosts(SnmpHosts):
         except BadControllerType as e:
             self.add_data_to_data_response_attrs(e)
 
-    def get_scn_as_ascii_from_scn_as_chars_attr(self) -> str | None:
-        if self.scn_as_chars is not None:
-            return self.convert_chars_string_to_ascii_string(self.scn_as_chars)
-        return None
+    def _get_scn_as_ascii_from_scn_as_chars_attr(self) -> str | None:
+        return self.get_scn_as_ascii_from_scn_as_chars_attr(self.scn_as_chars)
 
-    def get_scn_as_chars_from_scn_as_ascii(self) -> str:
-        if self.scn_as_ascii_string is not None:
-            return self.convert_ascii_string_to_chars(self.scn_as_ascii_string)
-
-    @staticmethod
-    def add_CO_to_scn(scn: str) -> str | None:
-        if not isinstance(scn, str) or not scn.isdigit():
-            return None
-        return f'CO{scn}'
-
-    @staticmethod
-    def convert_chars_string_to_ascii_string(scn_as_chars: str) -> str:
-        """
-        Генерирует SCN
-        :param scn -> символы строки, которые необходимо конвертировать в scn
-        :return -> возвращет scn
-        """
-        return f'.1.{str(len(scn_as_chars))}.{".".join([str(ord(c)) for c in scn_as_chars])}'
-
-    @staticmethod
-    def convert_ascii_string_to_chars(scn_as_ascii: str) -> str:
-        """
-        Генерирует SCN
-        :param scn -> символы строки, которые необходимо конвертировать в scn
-        :return -> возвращет scn
-        .1.6.67.79.50.48.56.48
-        """
-        splitted = scn_as_ascii.split('.')
-        num_chars = int(splitted[2])
-        scn_as_chars = ''.join([chr(int(c)) for c in splitted[3:]])
-        print(f'scn_as_chars: {scn_as_chars}')
-        assert num_chars == len(scn_as_chars)
-        return scn_as_chars
-
-    def _add_scn_to_oids(
-            self,
-            oids: tuple[Oids, ...] | list[Oids]
-    ) -> list[Oids]:
-        return [
-            f'{oid}{self.scn_as_ascii_string}' if oid in self.host_properties.oids_scn_required else oid
-            for oid in oids
-        ]
+    def _get_scn_as_chars_from_scn_as_ascii(self) -> str:
+        return self.get_scn_as_ascii_from_scn_as_chars_attr(self.scn_as_ascii_string)
 
     def _set_scn_from_response(self):
         raise NotImplementedError()
 
     def process_oid(self, oid: str) -> str:
         return str(oid).replace(self.scn_as_ascii_string, '')
-
-    @ug405_dependency('potok__ug405')
-    async def get_states(self):
-        self._processor_config = pretty_processing_config_processor
-        return await self._make_request_and_build_response(
-            method=self._request_sender.snmp_get,
-            varbinds=self._varbinds_for_request,
-            parser=self.parser_class
-        )
-
-    # async def get_request(self, oids: list[Oids | str]):
-    #
-    #     self.processor_config = ConfigsProcessor()
-    #
-    #     return await self._make_request_and_build_response(
-    #         method=self.request_sender.snmp_get,
-    #         oids=oids,
-    #         parser=self.states_parser
-    #     )
-
-    # def async_dependency(self, type_dependency):
-    #     def wrapper(func: Callable) -> Callable:
-    #         @functools.wraps(func)
-    #         async def wrapped(*args, **kwargs):
-    #             print(f'type_dependency: {type_dependency}')
-    #             print(f'args: {args}')
-    #             print(f'kwargs: {kwargs}')
-    #             if type_dependency == 'operation_mode':
-    #                 self.last_response = self.request_sender.snmp_get(
-    #                     [ObjectType(ObjectIdentity(Oids.utcType2OperationMode))]
-    #                 )
-    #                 print(f'self.last_response ?? {self.last_response}')
-    #             else:
-    #                 pass
-    #             self.last_response = await func(*args, **kwargs)
-    #             print(f'self.last_response2: {self.last_response}')
-    #
-    #             return wrapped
-    #
-    #         return wrapper
 
 
 class AbstractStcipHosts(SnmpHosts):
@@ -322,9 +239,6 @@ class AbstractStcipHosts(SnmpHosts):
     parser_class: Any
     converter_class: SwarcoConverters | PotokSConverters
     varbinds: VarbindsSwarco | VarbindsPotokS
-
-    def process_oid(self, oid: str) -> str:
-        return str(oid)
 
     async def get_states(self):
         self._processor_config = pretty_processing_config_processor

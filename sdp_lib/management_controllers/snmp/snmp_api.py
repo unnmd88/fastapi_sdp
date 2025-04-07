@@ -22,7 +22,7 @@ from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, Pot
     PeekConverters
 from sdp_lib.management_controllers.snmp.snmp_core import (
     AbstractStcipHosts,
-    AbstractUg405Hosts, T_Oids
+    AbstractUg405Hosts, T_Oids, ug405_dependency, pretty_processing_config_processor
 )
 from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds, potok_ug405_varbinds
 
@@ -49,17 +49,25 @@ class PotokP(AbstractUg405Hosts):
     converter_class = PotokPConverters
     varbinds = potok_ug405_varbinds
 
-
-    def _method_for_get_scn(self) -> Callable:
+    @property
+    def method_for_get_scn(self) -> Callable:
         return self._request_sender.snmp_get
 
     def _set_scn_from_response(self) -> None | BadControllerType:
         try:
             self.scn_as_chars = str(self.last_response[SnmpResponseStructure.VAR_BINDS][0][1])
-            self.scn_as_ascii_string = self.get_scn_as_ascii_from_scn_as_chars_attr()
+            self.scn_as_ascii_string = self._get_scn_as_ascii_from_scn_as_chars_attr()
         except IndexError:
             raise  BadControllerType()
         return None
+
+    @ug405_dependency('potok__ug405')
+    async def get_states(self):
+        self._processor_config = pretty_processing_config_processor
+        return await self._make_request_and_build_response(
+            method=self._request_sender.snmp_get,
+            varbinds=self._varbinds_for_request,
+        )
 
 
 class PeekUg405(AbstractUg405Hosts):
@@ -146,8 +154,9 @@ async def main():
     # obj = PotokS(ip_v4='10.179.68.177',)
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
 
-    # obj = PotokP()
-    obj = SwarcoStcip(ip_v4='10.179.20.129')
+    # obj = PotokP(ip_v4='10.179.69.65', host_id='2600')
+    obj = PotokP(ip_v4='10.179.56.105', host_id='155')
+    # obj = SwarcoStcip(ip_v4='10.179.20.129')
 
     # obj.ip_v4 = '10.179.20.129'
     # obj.set_engine(SnmpEngine())
