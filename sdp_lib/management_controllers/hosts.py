@@ -1,7 +1,10 @@
 import abc
 from typing import Any
 
+from pysnmp.proto.errind import requestTimedOut
+
 from sdp_lib.management_controllers.fields_names import FieldsNames
+from sdp_lib.management_controllers.response import Response
 from sdp_lib.utils_common import check_is_ipv4
 
 
@@ -10,26 +13,33 @@ class Host:
     Базовый класс хоста.
     """
 
-    ERROR        = 0
-    RESPONSE     = 1
-    RAW_RESPONSE = 2
+    ERRORS        = 0
+    RESPONSE      = 1
+    RAW_RESPONSE  = 2
 
     protocol: str
 
-    def __init__(self, ip_v4: str, host_id=None):
+    def __init__(
+            self,
+            *,
+            ip_v4: str = None,
+            host_id: str | int = None
+    ):
         self.ip_v4 = ip_v4
         self.host_id = host_id
-        self.ERRORS = []
-        self.DATA_RESPONSE = {}
-        self.RAW_RESPONSE = tuple()
-        self.response: list = [self.ERRORS, self.DATA_RESPONSE, self.RAW_RESPONSE]
+        self.last_response = None
+        self._response = Response(self.protocol)
+        # self.ERRORS = []
+        # self.DATA_RESPONSE = {}
+        # self.RAW_RESPONSE = tuple()
+        # self.response: list = [self.ERRORS, self.DATA_RESPONSE, self.RAW_RESPONSE]
 
     def __repr__(self):
         return self.__dict__
 
     def __setattr__(self, key, value):
         if key == 'ip_v4':
-            if check_is_ipv4(value):
+            if value is None or check_is_ipv4(value):
                 self.__dict__[key] = value
             else:
                 raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {value}')
@@ -43,56 +53,38 @@ class Host:
             self.__dict__[key] = value
 
     # @property
-    # @abc.abstractmethod
-    # def protocol(self):
-    #     ...
+    # def ip_v4(self):
+    #     return self._ip_v4
+    #
+    # @ip_v4.setter
+    # def ip_v4(self, value):
+    #     if check_is_ipv4(value):
+    #         self._ip_v4 = value
+    #     else:
+    #         raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {value}')
+
+    @property
+    def response(self):
+        return self._response
+
+    @property
+    def response_errors(self) -> list:
+        return self._response.errors
+
+    @property
+    def response_data(self) -> dict:
+        return self._response.data
 
     @property
     def response_as_dict(self):
-        """
-        Формирует словарь их self.response.
-        После запроса, self.response принимает кортеж из 2 элементов:
-        i[0] -> Строка с сообщением об ошибке, если в процессе запроса было возбуждено исключение, иначе None
-        i[1] -> Словарь с распарсенными данными из ответа.
-        :return: Словарь вида:
-                 Если self.response[0] -> None(Нет ошибки):
-                     "response": {
-                          "protocol": "snmp",
-                          "ip_address": "10.179.122.113",
-                          "error": None,
-                          "fixed_time_status": "0",
-                          "plan_source": "7",
-                          "current_status": "3_light",
-                          "current_stage": 1,
-                          "current_plan": "2",
-                          "num_detectors": "5",
-                          "status_soft_flag180_181": "00",
-                          "current_mode": "VA"
-                     }
-                 Если self.response[0] -> "No SNMP response received before timeout"(Есть ошибка):
-                     "response": {
-                          "protocol": "snmp",
-                          "ip_address": "10.45.154.16",
-                          "error": "No SNMP response received before timeout"
-                     }
-
-        """
-        return {
-            str(FieldsNames.protocol): self.protocol,
-            str(FieldsNames.ipv4_address): self.ip_v4,
-            str(FieldsNames.errors): [str(e) for e in self.ERRORS],
-            str(FieldsNames.data): self.DATA_RESPONSE
-        }
+        return self._response.bild_as_dict(self.ip_v4)
 
     def add_data_to_data_response_attrs(
             self,
             error: Exception | str = None,
             data: dict[str, Any] = None
     ):
-        if isinstance(data, dict):
-            self.DATA_RESPONSE |= data
-        if isinstance(error, (Exception, str)):
-            self.ERRORS.append(error)
+        self._response.add_data_to_attrs(error, data)
 
 
 

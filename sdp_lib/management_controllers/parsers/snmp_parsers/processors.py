@@ -3,6 +3,7 @@ import typing
 from collections.abc import Callable
 from functools import cached_property
 
+from mypyc.ir.ops import TypeVar
 from pysnmp.smi.rfc1902 import ObjectType
 
 from sdp_lib.management_controllers.controller_modes import NamesMode
@@ -19,25 +20,19 @@ from sdp_lib.management_controllers.snmp.snmp_utils import (
 )
 
 
+T_Varbinds = tuple[ObjectType, ...]
+
+
 class ConfigsProcessor(typing.NamedTuple):
-    current_mode: bool = False
+    # current_mode: bool = False
     oid_handler: Callable = None
     val_oid_handler: Callable = None
 
 
 class AbstractVarbindsProcessors(abc.ABC):
 
-    def __init__(
-            self,
-            *,
-            host_instance,
-            var_binds: tuple[ObjectType, ...] = None,
-            mode_calculation=True
-    ):
+    def __init__(self, host_instance):
         self.host_instance = host_instance
-        self.var_binds = var_binds or self.host_instance.last_response[SnmpResponseStructure.VAR_BINDS]
-        self.mode_calculation = mode_calculation
-        self._processor_config: ConfigsProcessor = self.host_instance.processor_config
         self._processed_response_data = {}
 
     @property
@@ -61,25 +56,30 @@ class AbstractVarbindsProcessors(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def dependent_methods(self) -> dict[str, Callable]:
+    def extras_methods(self) -> dict[str, Callable]:
         ...
+
+    def get_varbinds(self) -> T_Varbinds:
+        return self.host_instance.last_response[SnmpResponseStructure.VAR_BINDS]
 
     def custom_parse_varbinds(
             self,
+            *,
+            varbinds,
             oid_handler: Callable = None,
-            val_oid_handler: Callable = None
+            val_oid_handler: Callable = None,
     ):
         oid_handler = oid_handler or str
         val_oid_handler = val_oid_handler or self.get_oid_val_as_pretty_print
-        for oid, val in self.var_binds:
+        for oid, val in varbinds:
             oid, val = oid_handler(oid), val_oid_handler(val)
             print(f'oid: {oid}  >>>> val: {val}')
             print(f'oid: {oid}  >>>> type(val): {type(val)}')
             self._processed_response_data[oid] = val
 
-    def process_varbinds(self) -> dict[str, str | None]:
-        if self._processor_config.oid_handler is None and self._processor_config.val_oid_handler is None:
-            for oid, val in self.var_binds:
+    def process_varbinds(self, varbinds: T_Varbinds = None) -> dict[str, str | None]:
+        if self.host_instance.processor_config.oid_handler is None and self.host_instance.processor_config.val_oid_handler is None:
+            for oid, val in (varbinds or self.get_varbinds()):
                 print(f'oid: {str(oid)}::: val: {str(val)}')
                 # oid, val = self.process_oid(oid), self.process_oid_val(val)
                 oid, val = self.host_instance.process_oid(oid), self.host_instance.process_oid_val(val)
@@ -88,13 +88,15 @@ class AbstractVarbindsProcessors(abc.ABC):
                     self._processed_response_data[oid] = val.prettyPrint()
                 else:
                     self._processed_response_data[field_name] = cb_fn(val)
-                if self._processor_config.current_mode:
-                    for field_name, cb_fn in self.dependent_methods.items():
-                        self._processed_response_data[field_name] = cb_fn()
+
+                for field_name, cb_fn in self.extras_methods.items():
+                    self._processed_response_data[field_name] = cb_fn()
+
         else:
             self.custom_parse_varbinds(
-                oid_handler=self._processor_config.oid_handler,
-                val_oid_handler=self._processor_config.val_oid_handler
+                varbinds=varbinds,
+                oid_handler=self.host_instance.processor_config.oid_handler,
+                val_oid_handler=self.host_instance.processor_config.val_oid_handler
             )
         return self._processed_response_data
 
@@ -140,7 +142,7 @@ class SwarcoVarbindsProcessors(AbstractVarbindsProcessors, StcipMixin):
         return None
 
     @property
-    def dependent_methods(self) -> dict[str, Callable]:
+    def extras_methods(self) -> dict[str, Callable]:
         return {FieldsNames.curr_mode: self.get_current_mode}
 
     @cached_property
@@ -174,7 +176,7 @@ class PotokSVarbindsProcessors(AbstractVarbindsProcessors, StcipMixin):
         )
 
     @property
-    def dependent_methods(self) -> dict[str, Callable]:
+    def extras_methods(self) -> dict[str, Callable]:
         return {FieldsNames.curr_mode: self.get_current_mode}
 
     @cached_property
@@ -225,7 +227,7 @@ class PotokPVarbindsProcessors(AbstractVarbindsProcessors, Ug405Mixin):
         return None
 
     @property
-    def dependent_methods(self) -> dict[str, Callable]:
+    def extras_methods(self) -> dict[str, Callable]:
         return {
             FieldsNames.curr_status_mode: self.get_current_status_mode,
             FieldsNames.curr_mode: self.get_current_mode
@@ -253,7 +255,7 @@ class PeekPVarbindsProcessors(AbstractVarbindsProcessors, Ug405Mixin):
         return None
 
     @property
-    def dependent_methods(self) -> dict[str, Callable]:
+    def extras_methods(self) -> dict[str, Callable]:
         return {
 
         }

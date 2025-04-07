@@ -4,6 +4,8 @@ import typing
 from functools import cached_property
 from typing import Callable
 
+from pysnmp.entity.engine import SnmpEngine
+
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import SwarcoStandardParser, \
     PotokPStandardParser, PotokSStandardParser, PeekStandardParser
@@ -28,7 +30,7 @@ from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds, 
 class SwarcoStcip(AbstractStcipHosts):
 
     host_properties = host_data.swarco_stcip
-    states_parser = SwarcoStandardParser
+    parser_class = SwarcoStandardParser
     converter_class = SwarcoConverters
     varbinds = swarco_sctip_varbinds
 
@@ -37,19 +39,19 @@ class PotokS(AbstractStcipHosts):
 
     host_properties = host_data.potok_s
     converter_class = PotokSConverters
-    states_parser = PotokSStandardParser
+    parser_class = PotokSStandardParser
 
 
 class PotokP(AbstractUg405Hosts):
 
-    states_parser = PotokPStandardParser
+    parser_class = PotokPStandardParser
     host_properties = host_data.potok_p
     converter_class = PotokPConverters
     varbinds = potok_ug405_varbinds
 
 
     def _method_for_get_scn(self) -> Callable:
-        return self.request_sender.snmp_get
+        return self._request_sender.snmp_get
 
     def _set_scn_from_response(self) -> None | BadControllerType:
         try:
@@ -62,20 +64,20 @@ class PotokP(AbstractUg405Hosts):
 
 class PeekUg405(AbstractUg405Hosts):
 
-    states_parser = PeekStandardParser
+    parser_class = PeekStandardParser
     host_properties = host_data.potok_p
     converter_class = PeekConverters
 
 
     async def _set_operation_mode(self):
-        self.response = await self.request_sender.snmp_get(self.converter_class.get_operation_mode_varbind)
+        self.response = await self._request_sender.snmp_get(self.converter_class.get_operation_mode_varbind)
         if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
             return
         if str(self.response[SnmpResponseStructure.VAR_BINDS][0][1]) == '1':
-            await self.request_sender.snmp_set(self.converter_class.set_operation_mode2_varbind)
+            await self._request_sender.snmp_set(self.converter_class.set_operation_mode2_varbind)
             if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
                 return
-        await self.request_sender.snmp_set(self.converter_class.set_operation_mode3_varbind)
+        await self._request_sender.snmp_set(self.converter_class.set_operation_mode3_varbind)
         ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has()
 
     async def _make_request_and_build_response(
@@ -129,7 +131,7 @@ class PeekUg405(AbstractUg405Hosts):
 
 
     def _method_for_get_scn(self) -> Callable:
-        return self.request_sender.snmp_get_next
+        return self._request_sender.snmp_get_next
 
 
 
@@ -144,7 +146,11 @@ async def main():
     # obj = PotokS(ip_v4='10.179.68.177',)
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
 
-    obj = PotokP(ip_v4='10.179.56.105')
+    # obj = PotokP()
+    obj = SwarcoStcip(ip_v4='10.179.20.129')
+
+    # obj.ip_v4 = '10.179.20.129'
+    # obj.set_engine(SnmpEngine())
 
     start_time = time.time()
 

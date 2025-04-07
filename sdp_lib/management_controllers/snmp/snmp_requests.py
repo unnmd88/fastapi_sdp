@@ -1,4 +1,4 @@
-from typing import KeysView, Any
+from typing import KeysView, Any, TypeVar
 
 from pysnmp.hlapi.v3arch.asyncio import *
 from pysnmp.proto import errind, rfc1905
@@ -84,13 +84,17 @@ async def snmp_set(
     return error_indication, error_status, error_index, var_binds
 
 
+# T_instance_host = TypeVar('T_instance_host', bound=SnmpHosts)
+
 class SnmpRequests:
 
-    def __init__(self, ip, community_r, community_w, engine):
-        self.ip = ip
-        self.community_r = community_r
-        self.community_w = community_w
-        self.engine = engine
+    # def __init__(self, ip, community_r, community_w, engine):
+    def __init__(self, instance):
+        self._instance_host = instance
+        self.ip = instance.ip_v4
+        self.community_r = instance.host_properties.community_r
+        self.community_w = instance.host_properties.community_w
+        self.engine = instance._engine
 
     async def snmp_get(
             self,
@@ -123,10 +127,12 @@ class SnmpRequests:
         ******************************
         """
         # print(f'oids: {oids}')
+        print(f'ip: {self.ip}')
+        print(f'ip: {self.community_w}')
         return await get_cmd(
-            self.engine,
+            self._instance_host._engine,
             CommunityData(self.community_r),
-            await UdpTransportTarget.create((self.ip, 161), timeout=timeout, retries=retries),
+            await UdpTransportTarget.create((self._instance_host.ip_v4, 161), timeout=timeout, retries=retries),
             ContextData(),
             *varbinds
         )
