@@ -10,11 +10,14 @@ from typing_extensions import Literal
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
+from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import pretty_processing_stcip, \
+    BaseSnmpParser, ConfigsParser
 from sdp_lib.management_controllers.parsers.snmp_parsers.processors import ConfigsProcessor
 from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
+from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
 from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters, \
     ScnConverterMixin
@@ -53,7 +56,7 @@ def ug405_dependency(type_controller):
                 except BadControllerType as e:
                     instance.add_data_to_data_response_attrs(e)
 
-                if instance.ERRORS:
+                if instance.response_errors:
                     return instance
 
             instance._varbinds_for_request = WrappersVarbindsByScnPotokP.get_varbinds_current_states_by_scn(instance.scn_as_ascii_string)
@@ -91,8 +94,9 @@ class SnmpHosts(Host):
         super().__init__(ip_v4=ip_v4, host_id=host_id)
         self._engine = engine or SnmpEngine()
         self._request_sender = SnmpRequests(self)
+        self._parse_method_config = None
         self._processor_config = default_config_processor
-        self._parser = self._get_parser(self)
+        self._parser: BaseSnmpParser = self._get_parser()
         self._varbinds_for_request = None
 
     def set_engine(self, engine: SnmpEngine):
@@ -133,7 +137,10 @@ class SnmpHosts(Host):
         if ErrorResponseCheckers(self).check_response_errors_and_add_to_host_data_if_has():
             return self
 
-        self._parser.parse()
+        self._parser.parse(
+            varbinds=self.last_response[SnmpResponseStructure.VAR_BINDS],
+            config=self._parse_method_config
+        )
 
         if not self._parser.data_for_response:
             self.add_data_to_data_response_attrs(BadControllerType())
@@ -229,8 +236,14 @@ class AbstractUg405Hosts(SnmpHosts, ScnConverterMixin):
     def _set_scn_from_response(self):
         raise NotImplementedError()
 
-    def process_oid(self, oid: str) -> str:
-        return str(oid).replace(self.scn_as_ascii_string, '')
+    def _get_pretty_processed_config(self):
+        return ConfigsParser(
+            extras=True,
+            scn=self.scn_as_ascii_string
+        )
+
+    # def process_oid(self, oid: str) -> str:
+    #     return str(oid).replace(self.scn_as_ascii_string, '')
 
 
 class AbstractStcipHosts(SnmpHosts):
@@ -241,7 +254,7 @@ class AbstractStcipHosts(SnmpHosts):
     varbinds: VarbindsSwarco | VarbindsPotokS
 
     async def get_states(self):
-        self._processor_config = pretty_processing_config_processor
+        self._parse_method_config = pretty_processing_stcip
         return await self._make_request_and_build_response(
             method=self._request_sender.snmp_get,
             varbinds=self.varbinds.get_varbinds_current_states(),

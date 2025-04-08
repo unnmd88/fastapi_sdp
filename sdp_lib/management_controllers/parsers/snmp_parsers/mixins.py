@@ -11,6 +11,7 @@ class StcipMixin:
         '4': str(FieldsNames.flash),
         '6': str(FieldsNames.all_red),
     }
+
     plan_source = {
         '1': 'trafficActuatedPlanSelectionCommand',
         '2': 'currentTrafficSituationCentral',
@@ -30,7 +31,11 @@ class StcipMixin:
     def get_status(cls, value: str) -> str | None:
         return cls.status_equipment.get(value)
 
+    @classmethod
+    def get_name_plan_source_from_value(cls, plan_source_val: str) -> str | None:
+        return cls.plan_source.get(plan_source_val)
 
 class Ug405Mixin:
+
     UTC_OPERATION_MODE = '3'
 

@@ -11,7 +11,7 @@ class Parsers(metaclass=abc.ABCMeta):
         self.extras_data = {}
 
     @abc.abstractmethod
-    def parse(self) -> dict[str, Any]:
+    def parse(self, *args, **kwargs) -> dict[str, Any]:
         ...
 
 

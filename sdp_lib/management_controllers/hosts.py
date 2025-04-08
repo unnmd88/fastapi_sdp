@@ -4,7 +4,7 @@ from typing import Any
 from pysnmp.proto.errind import requestTimedOut
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.response import Response
+from sdp_lib.management_controllers.response import Responses
 from sdp_lib.utils_common import check_is_ipv4
 
 
@@ -12,10 +12,6 @@ class Host:
     """
     Базовый класс хоста.
     """
-
-    ERRORS        = 0
-    RESPONSE      = 1
-    RAW_RESPONSE  = 2
 
     protocol: str
 
@@ -28,7 +24,7 @@ class Host:
         self.ip_v4 = ip_v4
         self.host_id = host_id
         self.last_response = None
-        self._response = Response(self.protocol)
+        self._response = Responses(self.protocol)
         # self.ERRORS = []
         # self.DATA_RESPONSE = {}
         # self.RAW_RESPONSE = tuple()
@@ -77,7 +73,7 @@ class Host:
 
     @property
     def response_as_dict(self):
-        return self._response.bild_as_dict(self.ip_v4)
+        return self._response.build_as_dict(self.ip_v4)
 
     def add_data_to_data_response_attrs(
             self,

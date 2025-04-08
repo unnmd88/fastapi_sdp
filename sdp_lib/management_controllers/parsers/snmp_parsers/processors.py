@@ -3,7 +3,6 @@ import typing
 from collections.abc import Callable
 from functools import cached_property
 
-from mypyc.ir.ops import TypeVar
 from pysnmp.smi.rfc1902 import ObjectType
 
 from sdp_lib.management_controllers.controller_modes import NamesMode
@@ -25,19 +24,24 @@ T_Varbinds = tuple[ObjectType, ...]
 
 class ConfigsProcessor(typing.NamedTuple):
     # current_mode: bool = False
+    extras: bool = False
     oid_handler: Callable = None
     val_oid_handler: Callable = None
+
+
+default_processing = ConfigsProcessor(oid_handler=str)
+pretty_processing = ConfigsProcessor(extras=True)
 
 
 class AbstractVarbindsProcessors(abc.ABC):
 
     def __init__(self, host_instance):
         self.host_instance = host_instance
-        self._processed_response_data = {}
+        self._processed_varbinds_as_dict = {}
 
     @property
-    def processed_response_data(self):
-        return self._processed_response_data
+    def processed_varbinds_as_dict(self):
+        return self._processed_varbinds_as_dict
 
     @property
     @abc.abstractmethod
@@ -59,10 +63,7 @@ class AbstractVarbindsProcessors(abc.ABC):
     def extras_methods(self) -> dict[str, Callable]:
         ...
 
-    def get_varbinds(self) -> T_Varbinds:
-        return self.host_instance.last_response[SnmpResponseStructure.VAR_BINDS]
-
-    def custom_parse_varbinds(
+    def _custom_parse_varbinds_and_add_to_processed_response(
             self,
             *,
             varbinds,
@@ -75,30 +76,61 @@ class AbstractVarbindsProcessors(abc.ABC):
             oid, val = oid_handler(oid), val_oid_handler(val)
             print(f'oid: {oid}  >>>> val: {val}')
             print(f'oid: {oid}  >>>> type(val): {type(val)}')
-            self._processed_response_data[oid] = val
+            self._processed_varbinds_as_dict[oid] = val
 
-    def process_varbinds(self, varbinds: T_Varbinds = None) -> dict[str, str | None]:
-        if self.host_instance.processor_config.oid_handler is None and self.host_instance.processor_config.val_oid_handler is None:
-            for oid, val in (varbinds or self.get_varbinds()):
+    # def process_varbinds(
+    #         self,
+    #         varbinds: T_Varbinds = None,
+    # ) -> dict[str, str | None]:
+    #     if self.host_instance.processor_config.oid_handler is None and self.host_instance.processor_config.val_oid_handler is None:
+    #         for oid, val in (varbinds or self.get_raw_varbinds()):
+    #             print(f'oid: {str(oid)}::: val: {str(val)}')
+    #             # oid, val = self.process_oid(oid), self.process_oid_val(val)
+    #             oid, val = self.host_instance.process_oid(oid), self.host_instance.process_oid_val(val)
+    #             field_name, cb_fn = self.matches.get(oid)
+    #             if field_name is None or cb_fn is None:
+    #                 self._processed_response_data[oid] = val.prettyPrint()
+    #             else:
+    #                 self._processed_response_data[field_name] = cb_fn(val)
+    #
+    #             for field_name, cb_fn in self.extras_methods.items():
+    #                 self._processed_response_data[field_name] = cb_fn()
+    #
+    #     else:
+    #         self._custom_parse_varbinds_and_add_to_processed_response(
+    #             varbinds=varbinds,
+    #             oid_handler=self.host_instance.processor_config.oid_handler,
+    #             val_oid_handler=self.host_instance.processor_config.val_oid_handler
+    #         )
+    #     return self._processed_response_data
+
+    def process_varbinds(
+            self,
+            varbinds: T_Varbinds,
+            config: ConfigsProcessor = default_processing,
+    ) -> dict[str, str | None]:
+        if config.oid_handler is None and config.val_oid_handler is None:
+            for oid, val in varbinds:
                 print(f'oid: {str(oid)}::: val: {str(val)}')
                 # oid, val = self.process_oid(oid), self.process_oid_val(val)
                 oid, val = self.host_instance.process_oid(oid), self.host_instance.process_oid_val(val)
                 field_name, cb_fn = self.matches.get(oid)
                 if field_name is None or cb_fn is None:
-                    self._processed_response_data[oid] = val.prettyPrint()
+                    self._processed_varbinds_as_dict[oid] = val.prettyPrint()
                 else:
-                    self._processed_response_data[field_name] = cb_fn(val)
+                    self._processed_varbinds_as_dict[field_name] = cb_fn(val)
 
-                for field_name, cb_fn in self.extras_methods.items():
-                    self._processed_response_data[field_name] = cb_fn()
+                if config.extras:
+                    for field_name, cb_fn in self.extras_methods.items():
+                        self._processed_varbinds_as_dict[field_name] = cb_fn()
 
         else:
-            self.custom_parse_varbinds(
+            self._custom_parse_varbinds_and_add_to_processed_response(
                 varbinds=varbinds,
-                oid_handler=self.host_instance.processor_config.oid_handler,
-                val_oid_handler=self.host_instance.processor_config.val_oid_handler
+                oid_handler=config.oid_handler,
+                val_oid_handler=config.val_oid_handler
             )
-        return self._processed_response_data
+        return self._processed_varbinds_as_dict
 
 
 class SwarcoVarbindsProcessors(AbstractVarbindsProcessors, StcipMixin):
@@ -118,11 +150,11 @@ class SwarcoVarbindsProcessors(AbstractVarbindsProcessors, StcipMixin):
     def get_current_mode(self) -> str | None:
 
         match (
-            self._processed_response_data.get(FieldsNames.curr_plan),
-            self._processed_response_data.get(FieldsNames.plan_source),
-            self._processed_response_data.get(FieldsNames.fixed_time_status),
-            self._processed_response_data.get(FieldsNames.status_soft_flag180_181, ''),
-            int(self._processed_response_data.get(FieldsNames.num_detectors, '0'))
+            self._processed_varbinds_as_dict.get(FieldsNames.curr_plan),
+            self._processed_varbinds_as_dict.get(FieldsNames.plan_source),
+            self._processed_varbinds_as_dict.get(FieldsNames.fixed_time_status),
+            self._processed_varbinds_as_dict.get(FieldsNames.status_soft_flag180_181, ''),
+            int(self._processed_varbinds_as_dict.get(FieldsNames.num_detectors, '0'))
 
         ):
             case [self.CENTRAL_PLAN, self.CONTROL_BLOCK_SOURCE, *rest]:
@@ -172,7 +204,7 @@ class PotokSVarbindsProcessors(AbstractVarbindsProcessors, StcipMixin):
 
     def get_current_mode(self) -> str | None:
         return self.modes.get(
-            self._processed_response_data.get(FieldsNames.curr_status_mode)
+            self._processed_varbinds_as_dict.get(FieldsNames.curr_status_mode)
         )
 
     @property
@@ -195,11 +227,11 @@ class PotokPVarbindsProcessors(AbstractVarbindsProcessors, Ug405Mixin):
     def get_current_mode(self) -> str | None:
 
         match (
-            self._processed_response_data.get(FieldsNames.operation_mode),
-            self._processed_response_data.get(FieldsNames.local_adaptive_status),
-            self._processed_response_data.get(FieldsNames.num_detectors),
-            self._processed_response_data.get(FieldsNames.has_det_faults),
-            self._processed_response_data.get(FieldsNames.is_mode_man),
+            self._processed_varbinds_as_dict.get(FieldsNames.operation_mode),
+            self._processed_varbinds_as_dict.get(FieldsNames.local_adaptive_status),
+            self._processed_varbinds_as_dict.get(FieldsNames.num_detectors),
+            self._processed_varbinds_as_dict.get(FieldsNames.has_det_faults),
+            self._processed_varbinds_as_dict.get(FieldsNames.is_mode_man),
         ):
             case ['1', '1', num_det, '0', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
                 return str(NamesMode.VA)
@@ -215,8 +247,8 @@ class PotokPVarbindsProcessors(AbstractVarbindsProcessors, Ug405Mixin):
 
     def get_current_status_mode(self) -> str | None:
         dark, flash = (
-            self._processed_response_data.get(FieldsNames.dark),
-            self._processed_response_data.get(FieldsNames.flash)
+            self._processed_varbinds_as_dict.get(FieldsNames.dark),
+            self._processed_varbinds_as_dict.get(FieldsNames.flash)
         )
         if dark == '0' and flash == '0':
             return str(FieldsNames.three_light)

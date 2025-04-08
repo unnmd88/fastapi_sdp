@@ -20,4 +20,4 @@ class ErrorResponseCheckers:
             or self.host_instance.last_response[SnmpResponseStructure.ERROR_INDEX]
         ):
             self.host_instance.add_data_to_data_response_attrs(BadControllerType())
-        return bool(self.host_instance.ERRORS)
+        return bool(self.host_instance.response_errors)

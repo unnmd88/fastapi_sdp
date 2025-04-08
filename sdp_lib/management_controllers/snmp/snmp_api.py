@@ -7,8 +7,8 @@ from typing import Callable
 from pysnmp.entity.engine import SnmpEngine
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
-from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import SwarcoStandardParser, \
-    PotokPStandardParser, PotokSStandardParser, PeekStandardParser
+from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import StandartVarbindsParsersSwarco, \
+    PotokPStandardParser, PeekStandardParser, StandardVarbindsParserPotokS, pretty_processing_ug405
 from sdp_lib.management_controllers.parsers.snmp_parsers.processors import PotokPVarbindsProcessors
 from sdp_lib.management_controllers.parsers.snmp_parsers.stcip_parsers import (
     SwarcoStcipMonitoringParser,
@@ -24,13 +24,14 @@ from sdp_lib.management_controllers.snmp.snmp_core import (
     AbstractStcipHosts,
     AbstractUg405Hosts, T_Oids, ug405_dependency, pretty_processing_config_processor
 )
-from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds, potok_ug405_varbinds
+from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds, potok_ug405_varbinds, \
+    potok_stcip_varbinds
 
 
 class SwarcoStcip(AbstractStcipHosts):
 
     host_properties = host_data.swarco_stcip
-    parser_class = SwarcoStandardParser
+    parser_class = StandartVarbindsParsersSwarco
     converter_class = SwarcoConverters
     varbinds = swarco_sctip_varbinds
 
@@ -38,8 +39,10 @@ class SwarcoStcip(AbstractStcipHosts):
 class PotokS(AbstractStcipHosts):
 
     host_properties = host_data.potok_s
+    parser_class = StandardVarbindsParserPotokS
     converter_class = PotokSConverters
-    parser_class = PotokSStandardParser
+    varbinds = potok_stcip_varbinds
+
 
 
 class PotokP(AbstractUg405Hosts):
@@ -63,7 +66,7 @@ class PotokP(AbstractUg405Hosts):
 
     @ug405_dependency('potok__ug405')
     async def get_states(self):
-        self._processor_config = pretty_processing_config_processor
+        self._parse_method_config = self._get_pretty_processed_config()
         return await self._make_request_and_build_response(
             method=self._request_sender.snmp_get,
             varbinds=self._varbinds_for_request,
@@ -146,13 +149,13 @@ class PeekUg405(AbstractUg405Hosts):
 
 async def main():
 
-    # obj = PotokS(ip_v4='10.179.68.177',)
+    obj = PotokS(ip_v4='10.179.68.177',)
     # obj = SwarcoStcip(ip_v4='10.179.20.129')
     # obj = SwarcoStcip(ip_v4='10.179.68.105')
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
     # obj = SwarcoStcip(ip_v4='10.179.61.33', host_id='3205')
     # obj = PotokS(ip_v4='10.179.68.177',)
-    # obj = SwarcoStcip(ip_v4='10.179.57.1')
+    obj = SwarcoStcip(ip_v4='10.179.57.1')
 
     # obj = PotokP(ip_v4='10.179.69.65', host_id='2600')
     obj = PotokP(ip_v4='10.179.56.105', host_id='155')

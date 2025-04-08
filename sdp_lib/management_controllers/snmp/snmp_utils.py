@@ -12,6 +12,8 @@ from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
 
 
+
+
 def async_timed():
     def wrapper(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -30,9 +32,20 @@ def async_timed():
     return wrapper
 
 
+T_Varbinds = tuple[ObjectType, ...]
 
 
-class AbstractConverter:
+def process_varbinds_as_dict(varbinds: T_Varbinds) -> dict[str, str]:
+    return {str(oid): val.prettyPrint() for oid, val in varbinds}
+
+
+def remove_scn_from_oid(oid: str, scn_as_ascii_string) -> str:
+    return oid.replace(scn_as_ascii_string, '')
+
+
+
+
+class AbstractConverters:
 
     state_oids: tuple[ObjectType, ...]
 

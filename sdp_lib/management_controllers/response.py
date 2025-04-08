@@ -1,13 +1,10 @@
 from typing import Any
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
-
-ERRORS        = 0
-DATA_RESPONSE = 1
-RAW_RESPONSE  = 2
+from sdp_lib.management_controllers.snmp.response_structure import HostResponseStructure
 
 
-class Response:
+class Responses:
 
     def __init__(self, protocol: str):
         self._protocol = protocol
@@ -26,13 +23,13 @@ class Response:
 
     @property
     def errors(self) -> list:
-        return self._response[ERRORS]
+        return self._response[HostResponseStructure.ERRORS]
 
     @property
     def data(self) -> dict:
-        return self._response[DATA_RESPONSE]
+        return self._response[HostResponseStructure.DATA_RESPONSE]
 
-    def bild_as_dict(self, ip_v4: str):
+    def build_as_dict(self, ip_v4: str):
         """
         Формирует словарь их self.response.
         После запроса, self.response принимает кортеж из 2 элементов:
