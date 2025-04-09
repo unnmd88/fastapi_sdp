@@ -50,35 +50,6 @@ default_config_processor = ConfigsProcessor(oid_handler=str)
 RequestModes: typing.TypeAlias = Literal['get', 'set', 'get_next']
 
 
-# def ug405_dependency(type_controller):
-#     def wrapper(func: Callable):
-#         @functools.wraps(func)
-#         async def wrapped(instance, value=None, *args, **kwargs):
-#             if instance.scn_as_ascii_string is None:
-#                 instance.last_response = await instance.method_for_get_scn(varbinds=[instance.converter_class.scn_varbind])
-#                 if ErrorResponseCheckers(instance).check_response_errors_and_add_to_host_data_if_has():
-#                     return instance
-#                 try:
-#                     instance._set_scn_from_response()
-#                 except BadControllerType as e:
-#                     instance.add_data_to_data_response_attrs(e)
-#
-#                 if instance.response_errors:
-#                     return instance
-#
-#             instance._varbinds_for_request = WrappersVarbindsByScnPotokP.get_varbinds_current_states_by_scn(instance.scn_as_ascii_string)
-#
-#             print(f'param: {type_controller}')
-#             print(f'value: {value}')
-#             print(f'func_name: {func.__name__}')
-#             print(f'args: {args}, kwargs: {kwargs}')
-#             # print(f'instanse: {instance}')
-#
-#             return await func(instance)
-#         return wrapped
-#     return wrapper
-
-
 def ug405_dependency(
         type_request_entity: SnmpEntity,
         varbinds_builder_method: Callable
@@ -341,15 +312,6 @@ class AbstractUg405Hosts(SnmpHosts, ScnConverterMixin):
             scn=self.scn_as_ascii_string
         )
 
-    # @ug405_dependency(SnmpEntity.snmp_set, potok_ug405_varbinds.get_varbinds_set_stage)
-    # async def set_stage(self, value: int):
-    #     print(f'value from : {value}')
-    #     self._parse_method_config = self._get_default_processed_config_with_scn()
-    #     return await self._make_request_and_build_response(
-    #         method=self._request_sender.snmp_set,
-    #         varbinds=self._varbinds_for_request,
-    #     )
-
 
 class AbstractStcipHosts(SnmpHosts):
 
@@ -420,23 +382,6 @@ class PotokP(AbstractUg405Hosts):
         except BadControllerType as e:
             self.add_data_to_data_response_attrs(e)
 
-    # @ug405_dependency(SnmpEntity.snmp_get, potok_ug405_varbinds.get_varbinds_current_states)
-    # async def get_states(self):
-    #     self._parse_method_config = self._get_pretty_processed_config_with_scn()
-    #     return await self._make_request_and_build_response(
-    #         method=self._request_sender.snmp_get,
-    #         varbinds=self._varbinds_for_request,
-    #     )
-
-    # @ug405_dependency(SnmpEntity.snmp_set, potok_ug405_varbinds.get_varbinds_set_stage)
-    # async def set_stage(self, value: int):
-    #     print(f'value from : {value}')
-    #     self._parse_method_config = self._get_default_processed_config_with_scn()
-    #     return await self._make_request_and_build_response(
-    #         method=self._request_sender.snmp_set,
-    #         varbinds=self._varbinds_for_request,
-    #     )
-
 
 class PeekUg405(AbstractUg405Hosts):
 
@@ -448,8 +393,6 @@ class PeekUg405(AbstractUg405Hosts):
 
     def _method_for_get_scn(self) -> Callable:
         return self._request_sender.snmp_get_next
-
-
 
 
 async def main():
