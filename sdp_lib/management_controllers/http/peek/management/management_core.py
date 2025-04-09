@@ -33,7 +33,7 @@ class SetData(PeekWeb):
 
     def __init__(self, ip_v4: str, session: aiohttp.ClientSession):
         super().__init__(ip_v4=ip_v4, session=session)
-        self.web_page_obj: T = self.web_page_class(self.ip_v4, self.session)
+        self.web_page_obj: T = self.web_page_class(self.ip_v4, self._session)
         self.method = self.post
         self.data_for_set_to_web = None
 

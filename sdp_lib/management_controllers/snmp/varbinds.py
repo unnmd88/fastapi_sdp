@@ -57,11 +57,11 @@ class Varbinds(abc.ABC):
     def get_varbinds_current_states(self, *args, **kwargs):
         ...
 
-    @classmethod
-    def parse_response(cls, varbinds):
-        for oid, val in varbinds:
-            print(f'oid: {oid.prettyPrint()} || val: {val.prettyPrint()}')
-            print(f'oid as str: {str(oid)} || val: {val.prettyPrint()}')
+    # @classmethod
+    # def parse_response(cls, varbinds):
+    #     for oid, val in varbinds:
+    #         print(f'oid: {oid.prettyPrint()} || val: {val.prettyPrint()}')
+    #         print(f'oid as str: {str(oid)} || val: {val.prettyPrint()}')
 
 
 class VarbindsStcip(Varbinds):
@@ -197,6 +197,7 @@ class VarbindsPotokP(VarbindsUg405):
 potok_ug405_varbinds = VarbindsPotokP()
 potok_stcip_varbinds = VarbindsPotokS()
 swarco_sctip_varbinds = VarbindsSwarco()
+# peek_ug405_varbinds = VarbindsUg405()
 
 
 class AbstractVarbindsWrappersByScn:
