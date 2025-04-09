@@ -48,21 +48,20 @@ async def get(
 
 
 async def snmp_get_next(
-        ipv4: str,
+        ip_v4: str,
         community: str,
         oids: list[str | Oids] | KeysView[str | Oids],
         engine: SnmpEngine,
         timeout: float = 0.2,
         retries: int = 0
 ):
-    error_indication, error_status, error_index, var_binds = await next_cmd(
+    return await next_cmd(
         engine,
         CommunityData(community),
-        await UdpTransportTarget.create((ipv4, 161), timeout=timeout, retries=retries),
+        await UdpTransportTarget.create((ip_v4, 161), timeout=timeout, retries=retries),
         ContextData(),
         *[ObjectType(ObjectIdentity(oid)) for oid in oids]
     )
-    return error_indication, var_binds
 
 
 async def snmp_set(
@@ -145,7 +144,7 @@ class SnmpRequests:
 
     async def snmp_set(
             self,
-            varbinds: tuple[ObjectType, ...],
+            varbinds: tuple[ObjectType, ...] | list[ObjectType],
             timeout: float = 1,
             retries: int = 0
     ) -> tuple[errind.ErrorIndication, Integer32 | int, Integer32 | int, tuple[ObjectType, ...]]:

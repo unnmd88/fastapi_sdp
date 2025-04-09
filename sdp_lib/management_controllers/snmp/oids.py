@@ -36,6 +36,7 @@ class Oids(StrEnum):
 
     """ UG405 """
     # -- Control Bits --#
+    utcType2Control = os.getenv('utcType2Control')
     utcControlLO = os.getenv('utcControlLO')
     utcControlFF = os.getenv('utcControlFF')
     utcControlTO = os.getenv('utcControlTO')

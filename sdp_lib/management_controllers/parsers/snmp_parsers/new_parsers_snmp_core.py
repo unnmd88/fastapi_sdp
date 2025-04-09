@@ -100,7 +100,7 @@ class BaseSnmpParser(Parsers):
         else:
             raise ValueError
 
-    def remove_scn_from_oid(self, oid: str) -> str:
+    def remove_scn_from_oid(self, oid) -> str:
         return str(oid).replace(self._scn_as_ascii_string, '')
 
     def add_fields_to_response(self, **kwargs):

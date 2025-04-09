@@ -1,7 +1,7 @@
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 
-
+# Deprecated
 class ErrorResponseCheckers:
 
     def __init__(self, host_instance):

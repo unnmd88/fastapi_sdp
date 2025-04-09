@@ -113,9 +113,12 @@ class VarbindsUg405(Varbinds):
     max_scn = 9999
     num_CO_prefix = 'CO'
 
+    operation_mode_varbind = wrap_oid_by_object_type(Oids.utcType2OperationMode)
     operation_mode1_varbind = wrap_oid_by_object_type(Oids.utcType2OperationMode, Integer32(1))
     operation_mode2_varbind = wrap_oid_by_object_type(Oids.utcType2OperationMode, Integer32(2))
     operation_mode3_varbind = wrap_oid_by_object_type(Oids.utcType2OperationMode, Integer32(3))
+
+    site_id_varbind = wrap_oid_by_object_type(Oids.utcReplySiteID)
 
     hex_vals128 = {i: OctetString(hexValue=ug405_stage_values.get(str(i))) for i in range(1, 129)}
 
@@ -123,6 +126,7 @@ class VarbindsUg405(Varbinds):
     integer32_val1 = Integer32(1)
     integer32_val2 = Integer32(2)
     integer32_val3 = Integer32(3)
+
 
     def add_scn_to_oids(
             self,
@@ -176,10 +180,18 @@ class VarbindsUg405(Varbinds):
             )
         return (self.operation_mode1_varbind, )
 
+    @classmethod
+    def get_operation_mode_varbinds(cls, op_mode_val: int) -> ObjectType:
+        if op_mode_val == 3:
+            return cls.operation_mode3_varbind
+        if op_mode_val == 2:
+            return cls.operation_mode2_varbind
+        return cls.operation_mode1_varbind
 
 class VarbindsPotokP(VarbindsUg405):
 
     oids_state = oids.oids_state_potok_p
+    # scn_varbinds = ObjectType(ObjectIdentity(oids.Oids.utcReplySiteID))
 
 # Singleton instances
 potok_ug405_varbinds = VarbindsPotokP()
@@ -233,7 +245,7 @@ class AbstractVarbindsWrappersByScn:
         self._scn_as_ascii = value
 
 
-class WrappersVarbindsByScnPotokP(AbstractVarbindsWrappersByScn):
+class WrapperVarbindsByScnPotokP(AbstractVarbindsWrappersByScn):
 
     _ug405_varbinds = potok_ug405_varbinds
 

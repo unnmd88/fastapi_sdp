@@ -23,6 +23,7 @@ class HostStaticData:
     oids_get_state: tuple
 
 
+
 @dataclass(frozen=True)
 class HostStaticDataWithScn(HostStaticData):
     oids_scn_required: set[Oids]

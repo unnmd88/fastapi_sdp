@@ -24,7 +24,7 @@ from api_v1.controller_management.sorters.sorters import (
     HostSorterManagement
 )
 
-from sdp_lib.management_controllers.snmp import snmp_api
+# from sdp_lib.management_controllers.snmp import snmp_api, snmp_core
 from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
 from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
 from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
@@ -36,10 +36,10 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar(
     'T',
-    snmp_api.SwarcoStcip,
-    snmp_api.PotokP,
-    snmp_api.PotokS,
-    peek_MainPage
+    # snmp_core.SwarcoStcip,
+    # snmp_core.PotokP,
+    # snmp_core.PotokS,
+    # peek_MainPage
 )
 S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
