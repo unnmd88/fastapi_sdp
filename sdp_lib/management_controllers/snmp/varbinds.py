@@ -46,6 +46,7 @@ class Varbinds(abc.ABC):
 
     oids_state = T_OidsContainer
 
+
     def __init__(self):
         self._varbinds_get_state = self._build_varbinds_for_get_state()
 
@@ -56,6 +57,8 @@ class Varbinds(abc.ABC):
     @abc.abstractmethod
     def get_varbinds_current_states(self, *args, **kwargs):
         ...
+
+
 
     # @classmethod
     # def parse_response(cls, varbinds):
@@ -163,8 +166,17 @@ class VarbindsUg405(Varbinds):
         print(f'FinS: {time.time() - start_time}')
         return result
 
+    def _build_varbinds_for_get_state_and_add_to_varbinds_attr(self, scn_as_ascii):
+        curr_states_varbinds = self.add_scn_to_oids_and_wrap_by_object_identity(
+            scn_as_ascii, self.oids_state
+        )
+        self._varbinds_get_state[scn_as_ascii] = curr_states_varbinds
+        return curr_states_varbinds
+
     def get_varbinds_current_states(self, scn_as_ascii: str) -> T_ObjectTypeContainer:
-        return self._varbinds_get_state.get(scn_as_ascii)
+        return (self._varbinds_get_state.get(scn_as_ascii)
+                or self._build_varbinds_for_get_state_and_add_to_varbinds_attr(scn_as_ascii)
+            )
 
     def get_varbinds_set_stage(
             self,
@@ -188,10 +200,15 @@ class VarbindsUg405(Varbinds):
             return cls.operation_mode2_varbind
         return cls.operation_mode1_varbind
 
+
+
+
 class VarbindsPotokP(VarbindsUg405):
 
     oids_state = oids.oids_state_potok_p
     # scn_varbinds = ObjectType(ObjectIdentity(oids.Oids.utcReplySiteID))
+
+
 
 # Singleton instances
 potok_ug405_varbinds = VarbindsPotokP()
