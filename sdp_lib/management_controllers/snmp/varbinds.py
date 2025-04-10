@@ -270,8 +270,6 @@ class WrapperVarbindsByScnPotokP(AbstractVarbindsWrappersByScn):
     _ug405_varbinds = potok_ug405_varbinds
 
 
-
-
 def build_test_obj():
     p = VarbindsPotokP()
     scn155 = convert_chars_string_to_ascii_string('CO155')
@@ -281,13 +279,6 @@ def build_test_obj():
     print(f'Volume: {sys.getsizeof(p._varbinds_get_state)}')
     print(f'Volume 2 : {sys.getsizeof(list(p._varbinds_get_state.values()))}')
     print(f'Volume 1 el: {sys.getsizeof(p._varbinds_get_state.get(scn155))}')
-
-
-
-
-
-
-
 
 
 async def main():
