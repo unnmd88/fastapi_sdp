@@ -1,4 +1,5 @@
 import abc
+import json
 from typing import Any
 
 from pysnmp.proto.errind import requestTimedOut
@@ -31,7 +32,12 @@ class Host:
         # self.response: list = [self.ERRORS, self.DATA_RESPONSE, self.RAW_RESPONSE]
 
     def __repr__(self):
-        return self.__dict__
+        return (f'Host ipv4: {self.ip_v4}\nHost id: {self.host_id}\n'
+                f'Errors: {self._response.errors}\n'
+                f'Data: {self._response.data}\n'
+                f'Response data as json:\n'
+                f'{json.dumps(self.response_as_dict, indent=4)}')
+
 
     def __setattr__(self, key, value):
         if key == 'ip_v4':

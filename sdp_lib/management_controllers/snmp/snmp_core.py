@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import json
 import time
 import typing
 from functools import cached_property
@@ -416,8 +417,9 @@ async def main():
     start_time = time.time()
 
     r = await obj.get_states()
-    print(obj.response_as_dict)
-    print(r.response)
+    # print(obj.response_as_dict)
+    # print(json.dumps(obj.response_as_dict, indent=4))
+    print(r)
     print(f'время составло: {time.time() - start_time}')
 
     """set command test"""
