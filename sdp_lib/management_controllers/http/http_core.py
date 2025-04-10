@@ -17,7 +17,7 @@ class HttpHost(Host):
             session: aiohttp.ClientSession = None
     ):
         super().__init__(ip_v4=ip_v4)
-        self._base_url = f'http://{self.ip_v4}'
+        self._base_url = f'http://{self._ipv4}'
         self._session = session
         # self.full_url = f'{self.base_url}{self.main_route}'
         self.method = None
@@ -28,8 +28,8 @@ class HttpHost(Host):
             self._session = session
 
     def set_base_url(self):
-        if isinstance(self.ip_v4, str):
-            self._base_url = f'http://{self.ip_v4}'
+        if isinstance(self._ipv4, str):
+            self._base_url = f'http://{self._ipv4}'
 
     @property
     def base_url(self):

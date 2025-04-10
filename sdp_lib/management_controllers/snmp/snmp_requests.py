@@ -74,7 +74,7 @@ async def snmp_set(
     error_indication, error_status, error_index, var_binds = await set_cmd(
         SnmpEngine() or engine,
         CommunityData(self.community_w),
-        await UdpTransportTarget.create((self.ip_v4, 161), timeout=timeout, retries=retries),
+        await UdpTransportTarget.create((self._ipv4, 161), timeout=timeout, retries=retries),
         ContextData(),
         *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
         # *[ObjectType(ObjectIdentity('1.3.6.1.4.1.1618.3.7.2.11.1.0'), Unsigned32('2')) for oid, val in oids]
@@ -87,7 +87,7 @@ class SnmpRequests:
 
     def __init__(self, instance):
         self._instance_host = instance
-        self.ip = instance.ip_v4
+        self.ip = instance._ipv4
         self.community_r = instance.host_properties.community_r
         self.community_w = instance.host_properties.community_w
         self.engine = instance._engine
@@ -128,7 +128,7 @@ class SnmpRequests:
         return await get_cmd(
             self._instance_host._engine,
             CommunityData(self.community_r),
-            await UdpTransportTarget.create((self._instance_host.ip_v4, 161), timeout=timeout, retries=retries),
+            await UdpTransportTarget.create((self._instance_host._ipv4, 161), timeout=timeout, retries=retries),
             ContextData(),
             *varbinds
         )

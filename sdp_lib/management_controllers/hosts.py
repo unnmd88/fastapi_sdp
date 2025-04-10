@@ -18,7 +18,7 @@ class Host:
             ip_v4: str = None,
             host_id: str | int = None
     ):
-        self.ip_v4 = ip_v4
+        self._ipv4 = ip_v4
         self.host_id = host_id
         self.last_response = None
         self._response = Responses(self.protocol)
@@ -28,12 +28,11 @@ class Host:
         # self.response: list = [self.ERRORS, self.DATA_RESPONSE, self.RAW_RESPONSE]
 
     def __repr__(self):
-        return (f'Host ipv4: {self.ip_v4}\nHost id: {self.host_id}\n'
+        return (f'Host ipv4: {self._ipv4}\nHost id: {self.host_id}\n'
                 f'Errors: {self._response.errors}\n'
                 f'Data: {self._response.data}\n'
                 f'Response data as json:\n'
                 f'{json.dumps(self.response_as_dict, indent=4)}')
-
 
     def __setattr__(self, key, value):
         if key == 'ip_v4':
@@ -75,7 +74,7 @@ class Host:
 
     @property
     def response_as_dict(self):
-        return self._response.build_as_dict(self.ip_v4)
+        return self._response.build_as_dict(self._ipv4)
 
     def add_data_to_data_response_attrs(
             self,

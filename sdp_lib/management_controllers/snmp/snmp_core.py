@@ -50,7 +50,6 @@ from sdp_lib.management_controllers.snmp._types import (
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
 
 
-
 def ug405_dependency(
         type_request_entity: SnmpEntity,
         varbinds_builder_method: Callable
@@ -109,11 +108,10 @@ class SnmpHosts(Host):
             engine: SnmpEngine = None
     ):
         super().__init__(ip_v4=ip_v4, host_id=host_id)
-        self._engine = engine or SnmpEngine()
+        self._engine = engine
         self._request_sender = SnmpRequests(self)
         self._request_method: Callable | None = None
         self._parse_method_config = None
-        # self._processor_config = default_config_processor
         self._parser: BaseSnmpParser = self._get_parser()
         self._varbinds_for_request = None
 

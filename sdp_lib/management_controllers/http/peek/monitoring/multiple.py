@@ -43,13 +43,13 @@ class MultipleData(PeekWeb):
         match [main_page, inputs_page]:
             case [True, True]:
                 return [
-                    MainPage(self.ip_v4, self._session).get_and_parse(),
-                    InputsPage(self.ip_v4, self._session).get_and_parse()
+                    MainPage(self._ipv4, self._session).get_and_parse(),
+                    InputsPage(self._ipv4, self._session).get_and_parse()
                 ]
             case [True, False]:
-                return [MainPage(self.ip_v4, self._session).get_and_parse()]
+                return [MainPage(self._ipv4, self._session).get_and_parse()]
             case [False, True]:
-                return [InputsPage(self.ip_v4, self._session).get_and_parse()]
+                return [InputsPage(self._ipv4, self._session).get_and_parse()]
             case _:
                 raise ValueError('Не предоставлено данных')
 
