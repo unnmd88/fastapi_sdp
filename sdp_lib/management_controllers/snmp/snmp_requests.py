@@ -83,11 +83,8 @@ async def snmp_set(
     return error_indication, error_status, error_index, var_binds
 
 
-# T_instance_host = TypeVar('T_instance_host', bound=SnmpHosts)
-
 class SnmpRequests:
 
-    # def __init__(self, ip, community_r, community_w, engine):
     def __init__(self, instance):
         self._instance_host = instance
         self.ip = instance.ip_v4
