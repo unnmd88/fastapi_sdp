@@ -18,14 +18,15 @@ class HttpHost(Host):
     ):
         super().__init__(ipv4=ipv4)
         self._base_url = f'http://{self._ipv4}'
-        self._session = session
+        self._driver = session
+        self.set_driver(session)
         # self.full_url = f'{self.base_url}{self.main_route}'
         self.method = None
         self.parser = None
 
-    def set_session(self, session: aiohttp.ClientSession):
-        if isinstance(session, aiohttp.ClientSession):
-            self._session = session
+    # def set_session(self, session: aiohttp.ClientSession):
+    #     if isinstance(session, aiohttp.ClientSession):
+    #         self._session = session
 
     def set_base_url(self):
         if isinstance(self._ipv4, str):

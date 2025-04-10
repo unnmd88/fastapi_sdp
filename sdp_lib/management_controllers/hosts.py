@@ -66,6 +66,10 @@ class Host:
         else:
             raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {ipv4}')
 
+    @property
+    def driver(self) -> SnmpEngine | aiohttp.ClientSession:
+        return self._driver
+
     def set_driver(self, driver: SnmpEngine | aiohttp.ClientSession):
         if driver is None:
             return
@@ -74,6 +78,8 @@ class Host:
         elif self.protocol == FieldsNames.protocol_http and not isinstance(driver, aiohttp.ClientSession):
             raise TypeError(f'driver должен быть типа "aiohttp.ClientSession", передан: {type(driver)}')
         self._driver = driver
+
+
 
     #
     # @ip_v4.setter

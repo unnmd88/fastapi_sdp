@@ -60,7 +60,7 @@ class PeekWeb(HttpHost):
         try:
             content = await self.method(
                 url=self.full_url,
-                session=self._session,
+                session=self._driver,
                 timeout=timeout,
                 **kwargs
             )
