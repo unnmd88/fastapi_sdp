@@ -90,7 +90,7 @@ class SnmpRequests:
         self.ip = instance._ipv4
         self.community_r = instance.host_properties.community_r
         self.community_w = instance.host_properties.community_w
-        self.engine = instance._engine
+        self.engine = instance._driver
 
     async def snmp_get(
             self,
@@ -126,7 +126,7 @@ class SnmpRequests:
         print(f'ip: {self.ip}')
         print(f'ip: {self.community_w}')
         return await get_cmd(
-            self._instance_host._engine,
+            self._instance_host._driver,
             CommunityData(self.community_r),
             await UdpTransportTarget.create((self._instance_host._ipv4, 161), timeout=timeout, retries=retries),
             ContextData(),

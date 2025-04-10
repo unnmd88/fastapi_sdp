@@ -157,22 +157,22 @@ class StatesMonitoring(Controllers):
             case (AllowedControllers.SWARCO, None):
                 # return stcip_monitoring.CurrentStatesSwarco(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
                 # return snmp_core.SwarcoStcip(ip_v4=ip, engine=self.snmp_engine).get_states()
-                return snmp_api.SwarcoStcip(ip_v4=ip, engine=self.snmp_engine).get_states()
+                return snmp_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_S, None):
                 # return snmp_core.PotokS(ip_v4=ip, engine=self.snmp_engine).get_states()
-                return snmp_api.PotokS(ip_v4=ip, engine=self.snmp_engine).get_states()
+                return snmp_api.PotokS(ipv4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_P, None):
                 scn = snmp_core.PotokP.add_CO_to_scn(data_host.number)
                 # scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
                 # return ug405_monitoring.MonitoringPotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
                 # return snmp_core.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
-                return snmp_api.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
+                return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine, scn=scn).get_states()
             case(AllowedControllers.PEEK, None):
-                return peek_MainPage(ip_v4=ip, session=self._session).get_and_parse()
+                return peek_MainPage(ipv4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse()
+                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
+                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse(main_page=False)
         raise TypeError('DEBUG')
 
 
@@ -198,9 +198,9 @@ class Management(Controllers):
                 # return ug405.PotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
                 pass
             case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
-                return peek_SetStage(ip_v4=ip, session=self._session).set_entity(value)
+                return peek_SetStage(ipv4=ip, session=self._session).set_entity(value)
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse()
+                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_MultipleData(ip_v4=ip, session=self._session).get_and_parse(main_page=False)
+                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse(main_page=False)
         raise TypeError('DEBUG')

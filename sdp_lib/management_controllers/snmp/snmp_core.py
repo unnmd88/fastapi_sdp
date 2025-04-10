@@ -103,23 +103,23 @@ class SnmpHosts(Host):
     def __init__(
             self,
             *,
-            ip_v4: str = None,
+            ipv4: str = None,
             host_id: str = None,
             engine: SnmpEngine = None
     ):
-        super().__init__(ip_v4=ip_v4, host_id=host_id)
-        self._engine = engine
+        super().__init__(ipv4=ipv4, host_id=host_id)
+        self.set_driver(engine)
         self._request_sender = SnmpRequests(self)
         self._request_method: Callable | None = None
         self._parse_method_config = None
         self._parser: BaseSnmpParser = self._get_parser()
         self._varbinds_for_request = None
 
-    def set_engine(self, engine: SnmpEngine):
-        if isinstance(engine, SnmpEngine):
-            self._engine = engine
-        else:
-            raise TypeError(f'engine должен быть типа "SnmpEngine", передан: {type(engine)}')
+    # def set_driver(self, engine: SnmpEngine):
+    #     if isinstance(engine, SnmpEngine):
+    #         self._engine = engine
+    #     else:
+    #         raise TypeError(f'engine должен быть типа "SnmpEngine", передан: {type(engine)}')
 
     @classmethod
     def _get_parser(cls, *args, **kwargs):
@@ -205,12 +205,12 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
     def __init__(
             self,
             *,
-            ip_v4: str = None,
+            ipv4: str = None,
             engine=None,
             host_id=None,
             scn=None
     ):
-        super().__init__(ip_v4=ip_v4, engine=engine, host_id=host_id)
+        super().__init__(ipv4=ipv4, engine=engine, host_id=host_id)
         self._curr_operation_mode = None
         self.scn_as_chars = scn
         self.scn_as_ascii_string = self._get_scn_as_ascii_from_scn_as_chars_attr()
@@ -393,17 +393,18 @@ class PeekUg405(Ug405Hosts):
 
 async def main():
 
-    obj = PotokS(ip_v4='10.179.68.177',)
+    obj = PotokS(ipv4='10.179.68.177', )
     # obj = SwarcoStcip(ip_v4='10.179.20.129')
     # obj = SwarcoStcip(ip_v4='10.179.68.105')
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
     # obj = SwarcoStcip(ip_v4='10.179.61.33', host_id='3205')
     # obj = PotokS(ip_v4='10.179.68.177',)
-    obj = SwarcoStcip(ip_v4='10.179.57.1')
+    obj = SwarcoStcip(ipv4='10.179.57.1')
 
     # obj = PotokP(ip_v4='10.179.69.65', host_id='2600')
     # obj = PotokP(ip_v4='10.179.56.105', host_id='155')
-    obj = PotokP(ip_v4='10.179.108.129', host_id='2822')
+    # obj = PotokP(ipv4='10.179.108.129', host_id='2822')
+    obj.set_driver(SnmpEngine())
     # obj = SwarcoStcip(ip_v4='10.179.20.129')
 
     # obj.ip_v4 = '10.179.20.129'

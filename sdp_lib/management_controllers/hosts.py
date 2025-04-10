@@ -1,6 +1,11 @@
+import abc
 import json
 from typing import Any
 
+import aiohttp
+from pysnmp.entity.engine import SnmpEngine
+
+from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.response import Responses
 from sdp_lib.utils_common import check_is_ipv4
 
@@ -15,10 +20,12 @@ class Host:
     def __init__(
             self,
             *,
-            ip_v4: str = None,
-            host_id: str | int = None
+            ipv4: str = None,
+            host_id: str | int = None,
+            driver: SnmpEngine | aiohttp.ClientSession = None
     ):
-        self._ipv4 = ip_v4
+        self._ipv4 = ipv4
+        self._driver = driver
         self.host_id = host_id
         self.last_response = None
         self._response = Responses(self.protocol)
@@ -34,24 +41,40 @@ class Host:
                 f'Response data as json:\n'
                 f'{json.dumps(self.response_as_dict, indent=4)}')
 
-    def __setattr__(self, key, value):
-        if key == 'ip_v4':
-            if value is None or check_is_ipv4(value):
-                self.__dict__[key] = value
-            else:
-                raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {value}')
+    # def __setattr__(self, key, value):
+    #     if key == 'ip_v4':
+    #         if value is None or check_is_ipv4(value):
+    #             self.__dict__[key] = value
+    #         else:
+    #             raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {value}')
+    #
+    #     elif key == 'scn':
+    #         if value is None or len(value) <= 10:
+    #             self.__dict__[key] = value
+    #         else:
+    #             raise ValueError('Значение < self.scn > не должно превышать 10 символов ')
+    #     else:
+    #         self.__dict__[key] = value
 
-        elif key == 'scn':
-            if value is None or len(value) <= 10:
-                self.__dict__[key] = value
-            else:
-                raise ValueError('Значение < self.scn > не должно превышать 10 символов ')
+    @property
+    def ip_v4(self):
+        return self._ipv4
+
+    def set_ipv4(self, ipv4: str):
+        if ipv4 is None or check_is_ipv4(ipv4):
+            self._ipv4 = ipv4
         else:
-            self.__dict__[key] = value
+            raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {ipv4}')
 
-    # @property
-    # def ip_v4(self):
-    #     return self._ip_v4
+    def set_driver(self, driver: SnmpEngine | aiohttp.ClientSession):
+        if driver is None:
+            return
+        if  self.protocol == FieldsNames.protocol_snmp and  not isinstance(driver, SnmpEngine):
+            raise TypeError(f'driver должен быть типа "SnmpEngine", передан: {type(driver)}')
+        elif self.protocol == FieldsNames.protocol_http and not isinstance(driver, aiohttp.ClientSession):
+            raise TypeError(f'driver должен быть типа "aiohttp.ClientSession", передан: {type(driver)}')
+        self._driver = driver
+
     #
     # @ip_v4.setter
     # def ip_v4(self, value):

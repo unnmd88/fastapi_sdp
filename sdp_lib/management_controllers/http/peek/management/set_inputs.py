@@ -103,8 +103,8 @@ class SetFlash(SetInputsDataClass):
 
 async def main():
     async with aiohttp.ClientSession() as sess:
-        obj = SetStage(ip_v4='10.179.112.241', session=sess)
-        obj = SetStage(ip_v4='10.179.107.129', session=sess)
+        obj = SetStage(ipv4='10.179.112.241', session=sess)
+        obj = SetStage(ipv4='10.179.107.129', session=sess)
         # obj = SetInputs(ip_v4='10.45.154.19')
         # obj = SetInputs(ip_v4='10.179.20.9')
 

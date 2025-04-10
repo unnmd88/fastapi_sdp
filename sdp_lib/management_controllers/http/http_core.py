@@ -13,10 +13,10 @@ class HttpHost(Host):
     def __init__(
             self,
             *,
-            ip_v4: str = None,
+            ipv4: str = None,
             session: aiohttp.ClientSession = None
     ):
-        super().__init__(ip_v4=ip_v4)
+        super().__init__(ipv4=ipv4)
         self._base_url = f'http://{self._ipv4}'
         self._session = session
         # self.full_url = f'{self.base_url}{self.main_route}'
