@@ -21,8 +21,8 @@ from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseS
 from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters, \
     PeekConverters
 from sdp_lib.management_controllers.snmp.snmp_core import (
-    AbstractStcipHosts,
-    AbstractUg405Hosts, T_Oids, ug405_dependency, pretty_processing_config_processor
+    StcipHosts,
+    Ug405Hosts, T_Oids, ug405_dependency, pretty_processing_config_processor
 )
 from sdp_lib.management_controllers.snmp.varbinds import swarco_sctip_varbinds, potok_ug405_varbinds, \
     potok_stcip_varbinds

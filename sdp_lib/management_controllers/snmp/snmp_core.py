@@ -9,45 +9,47 @@ from collections.abc import KeysView, Callable
 
 from pysnmp.hlapi.v3arch.asyncio import *
 from typing_extensions import Literal
-from watchfiles import awatch
 
 from api_v1.controller_management.schemas import AllowedControllers
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import pretty_processing_stcip, \
-    BaseSnmpParser, ConfigsParser, StandartVarbindsParsersSwarco, StandardVarbindsParserPotokS, PotokPStandardParser, \
+from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import (
+    pretty_processing_stcip,
+    BaseSnmpParser,
+    ConfigsParser,
+    StandartVarbindsParsersSwarco,
+    StandardVarbindsParserPotokS,
+    PotokPStandardParser,
     PeekStandardParser
-from sdp_lib.management_controllers.parsers.snmp_parsers.processors import ConfigsProcessor
+)
 from sdp_lib.management_controllers.snmp.host_data import HostStaticData
-from sdp_lib.management_controllers.snmp import host_data, oids
+from sdp_lib.management_controllers.snmp import host_data
 from sdp_lib.management_controllers.snmp.oids import Oids
-from sdp_lib.management_controllers.snmp.response_checkers import ErrorResponseCheckers
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
-from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands, SnmpEntity
-from sdp_lib.management_controllers.snmp.snmp_utils import SwarcoConverters, PotokSConverters, PotokPConverters, \
-    ScnConverterMixin, PeekConverters
+from sdp_lib.management_controllers.snmp.set_commands import SnmpEntity
+from sdp_lib.management_controllers.snmp.snmp_utils import (
+    SwarcoConverters,
+    PotokSConverters,
+    PotokPConverters,
+    ScnConverterMixin,
+    PeekConverters
+)
 from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
-from sdp_lib.management_controllers.snmp.varbinds import VarbindsSwarco, \
-    VarbindsPotokS, WrapperVarbindsByScnPotokP, swarco_sctip_varbinds, potok_stcip_varbinds, potok_ug405_varbinds, \
-    VarbindsPotokP, VarbindsUg405
+from sdp_lib.management_controllers.snmp.varbinds import (
+    VarbindsSwarco,
+    VarbindsPotokS,
+    swarco_sctip_varbinds,
+    potok_stcip_varbinds,
+    potok_ug405_varbinds,
+    VarbindsUg405
+)
+
 
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
 T_Oids = TypeVar('T_Oids', tuple[Oids | str, ...], list[Oids | str])
 T_Varbinds = TypeVar('T_Varbinds', tuple[ObjectType, ...], list[ObjectType])
 T_Parsers = TypeVar('T_Parsers')
-
-
-class RequestConfig(typing.NamedTuple):
-    method: Callable
-    oids: T_Oids | T_Varbinds
-    parser: Any
-
-
-pretty_processing_config_processor = ConfigsProcessor()
-default_config_processor = ConfigsProcessor(oid_handler=str)
-
-
 RequestModes: typing.TypeAlias = Literal['get', 'set', 'get_next']
 
 
@@ -200,7 +202,7 @@ class SnmpHosts(Host):
 
 
 
-class AbstractUg405Hosts(SnmpHosts, ScnConverterMixin):
+class Ug405Hosts(SnmpHosts, ScnConverterMixin):
 
     host_data: host_data.HostStaticDataWithScn
     converter_class: PotokPConverters
@@ -314,7 +316,7 @@ class AbstractUg405Hosts(SnmpHosts, ScnConverterMixin):
         )
 
 
-class AbstractStcipHosts(SnmpHosts):
+class StcipHosts(SnmpHosts):
 
     host_data: host_data.HostStaticData
     parser_class: Any
@@ -330,8 +332,7 @@ class AbstractStcipHosts(SnmpHosts):
         return await self._make_request_and_build_response()
 
 
-
-class SwarcoStcip(AbstractStcipHosts):
+class SwarcoStcip(StcipHosts):
 
     host_properties = host_data.swarco_stcip
     parser_class = StandartVarbindsParsersSwarco
@@ -339,7 +340,7 @@ class SwarcoStcip(AbstractStcipHosts):
     varbinds = swarco_sctip_varbinds
 
 
-class PotokS(AbstractStcipHosts):
+class PotokS(StcipHosts):
 
     host_properties = host_data.potok_s
     parser_class = StandardVarbindsParserPotokS
@@ -347,7 +348,7 @@ class PotokS(AbstractStcipHosts):
     varbinds = potok_stcip_varbinds
 
 
-class PotokP(AbstractUg405Hosts):
+class PotokP(Ug405Hosts):
 
     parser_class = PotokPStandardParser
     host_properties = host_data.potok_p
@@ -384,7 +385,7 @@ class PotokP(AbstractUg405Hosts):
             self.add_data_to_data_response_attrs(e)
 
 
-class PeekUg405(AbstractUg405Hosts):
+class PeekUg405(Ug405Hosts):
 
     parser_class = PeekStandardParser
     host_properties = host_data.potok_p
