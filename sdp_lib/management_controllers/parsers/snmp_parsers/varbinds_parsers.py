@@ -271,7 +271,8 @@ class PotokPStandardParser(BaseSnmpParser, Ug405Mixin):
                 return str(NamesMode.VA)
             case ['1', '0', '0', _, _]:
                 return str(NamesMode.FT)
-            case ['1', '0', num_det, '1', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+            # case ['1', '0', num_det, '1', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+            case ['1', '0', num_det, _, _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
                 return str(NamesMode.FT)
             case [self.UTC_OPERATION_MODE, *rest]:
                 return str(NamesMode.CENTRAL)
