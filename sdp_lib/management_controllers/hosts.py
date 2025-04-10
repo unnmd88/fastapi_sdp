@@ -1,10 +1,6 @@
-import abc
 import json
 from typing import Any
 
-from pysnmp.proto.errind import requestTimedOut
-
-from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.response import Responses
 from sdp_lib.utils_common import check_is_ipv4
 

@@ -201,7 +201,6 @@ class SnmpHosts(Host):
         return self
 
 
-
 class Ug405Hosts(SnmpHosts, ScnConverterMixin):
 
     host_data: host_data.HostStaticDataWithScn
@@ -391,7 +390,6 @@ class PeekUg405(Ug405Hosts):
     host_properties = host_data.potok_p
     converter_class = PeekConverters
     # varbinds = peek_ug405_varbinds
-
 
     def _method_for_get_scn(self) -> Callable:
         return self._request_sender.snmp_get_next
