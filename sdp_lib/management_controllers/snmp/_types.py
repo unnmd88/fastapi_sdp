@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import TypeVar, Literal, TypeAlias
 
 from pysnmp.smi.rfc1902 import ObjectType
 
@@ -9,3 +9,4 @@ T_Oids = TypeVar('T_Oids', tuple[Oids | str, ...], list[Oids | str])
 T_Varbinds = TypeVar('T_Varbinds', tuple[ObjectType, ...], list[ObjectType])
 T_Parsers = TypeVar('T_Parsers')
 
+RequestModes: TypeAlias = Literal['get', 'set', 'get_next']

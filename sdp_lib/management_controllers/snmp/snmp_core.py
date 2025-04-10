@@ -1,17 +1,13 @@
 import abc
 import asyncio
 import functools
-import json
 import time
-import typing
 from functools import cached_property
 from typing import Self, TypeVar
 from collections.abc import KeysView, Callable
 
 from pysnmp.hlapi.v3arch.asyncio import *
-from typing_extensions import Literal
 
-from api_v1.controller_management.schemas import AllowedControllers
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
@@ -26,7 +22,6 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.varbinds_parsers import
 )
 from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
-from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.set_commands import SnmpEntity
 from sdp_lib.management_controllers.snmp.snmp_utils import (
@@ -54,7 +49,6 @@ from sdp_lib.management_controllers.snmp._types import (
 
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
 
-RequestModes: typing.TypeAlias = Literal['get', 'set', 'get_next']
 
 
 def ug405_dependency(
