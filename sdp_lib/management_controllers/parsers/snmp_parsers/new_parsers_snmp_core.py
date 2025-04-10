@@ -9,10 +9,7 @@ from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.parsers_core import Parsers
 from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import StcipMixin, Ug405Mixin
-from sdp_lib.management_controllers.parsers.snmp_parsers.processors import (
-    SwarcoVarbindsProcessors,
-    PotokPVarbindsProcessors, PotokSVarbindsProcessors, PeekPVarbindsProcessors
-)
+
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.snmp_utils import remove_scn_from_oid, SwarcoConverters, PotokSConverters, \
@@ -318,10 +315,7 @@ class PotokPStandardParser(BaseSnmpParser, Ug405Mixin):
 
 class PeekStandardParser(BaseSnmpParser):
 
-    def get_processor(self):
-        return PeekPVarbindsProcessors(
-            host_instance=self.host_instance
-        )
+    pass
 
 
 """ Archive """
