@@ -3,7 +3,8 @@ import math
 import time
 from typing import Callable, Any
 
-from pysnmp.proto.rfc1902 import Unsigned32, Integer32
+from pysnmp.proto import rfc1905
+from pysnmp.proto.rfc1902 import Unsigned32, Integer32, Integer, OctetString
 from pysnmp.smi.rfc1902 import ObjectType, ObjectIdentity
 
 from sdp_lib.management_controllers.snmp import oids
@@ -271,6 +272,25 @@ class PeekConverters(AbstractUg405PConverters):
     # ):
 
 
+def convert_chars_string_to_ascii_string(scn_as_chars: str) -> str:
+    """
+    Генерирует SCN
+    :param scn -> символы строки, которые необходимо конвертировать в scn
+    :return -> возвращет scn
+    """
+    return f'.1.{str(len(scn_as_chars))}.{".".join([str(ord(c)) for c in scn_as_chars])}'
+
+
+def convert_val_to_num_stage_set_req_ug405(max_stage: int) -> dict:
+
+    stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
+    return {str(k): v for k, v in enumerate((f'{i}{j * "00"}' for j in range(max_stage//8) for i in stg_mask), 1)}
+
+
+def wrap_oid_by_object_type(oid, val: Unsigned32 | Integer | OctetString = None):
+    return ObjectType(ObjectIdentity(oid), val or rfc1905.unSpecified)
+
+
 class ScnConverterMixin:
 
     @classmethod
@@ -299,7 +319,7 @@ class ScnConverterMixin:
         :param scn -> символы строки, которые необходимо конвертировать в scn
         :return -> возвращет scn
         """
-        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
+        return convert_chars_string_to_ascii_string(scn)
 
     @classmethod
     def add_CO_to_scn(cls, scn: str) -> str | None:

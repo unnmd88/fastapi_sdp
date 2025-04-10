@@ -125,6 +125,7 @@ class SnmpRequests:
         # print(f'oids: {oids}')
         print(f'ip: {self.ip}')
         print(f'ip: {self.community_w}')
+        print(f'varbinds: {varbinds}')
         return await get_cmd(
             self._instance_host._driver,
             CommunityData(self.community_r),

@@ -35,6 +35,7 @@ class StcipMixin:
     def get_name_plan_source_from_value(cls, plan_source_val: str) -> str | None:
         return cls.plan_source.get(plan_source_val)
 
+
 class Ug405Mixin:
 
     UTC_OPERATION_MODE = '3'

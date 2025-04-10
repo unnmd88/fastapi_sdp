@@ -35,7 +35,7 @@ from sdp_lib.management_controllers.snmp.snmp_requests import SnmpRequests
 from sdp_lib.management_controllers.snmp.varbinds import (
     VarbindsSwarco,
     VarbindsPotokS,
-    swarco_sctip_varbinds,
+    swarco_stcip_varbinds,
     potok_stcip_varbinds,
     potok_ug405_varbinds,
     VarbindsUg405
@@ -332,7 +332,7 @@ class SwarcoStcip(StcipHosts):
     host_properties = host_data.swarco_stcip
     parser_class = StandartVarbindsParsersSwarco
     converter_class = SwarcoConverters
-    varbinds = swarco_sctip_varbinds
+    varbinds = swarco_stcip_varbinds
 
 
 class PotokS(StcipHosts):
