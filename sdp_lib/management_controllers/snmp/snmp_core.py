@@ -1,3 +1,4 @@
+import abc
 import asyncio
 import functools
 import json
@@ -14,7 +15,7 @@ from api_v1.controller_management.schemas import AllowedControllers
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.snmp_parsers.new_parsers_snmp_core import (
+from sdp_lib.management_controllers.parsers.snmp_parsers.varbinds_parsers import (
     pretty_processing_stcip,
     BaseSnmpParser,
     ConfigsParser,
