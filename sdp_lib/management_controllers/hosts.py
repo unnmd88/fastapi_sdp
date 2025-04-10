@@ -1,5 +1,6 @@
 import abc
 import json
+from pickle import FALSE
 from typing import Any
 
 import aiohttp
@@ -39,7 +40,7 @@ class Host:
                 f'Errors: {self._response.errors}\n'
                 f'Data: {self._response.data}\n'
                 f'Response data as json:\n'
-                f'{json.dumps(self.response_as_dict, indent=4)}')
+                f'{json.dumps(self.response_as_dict, indent=4, ensure_ascii=False)}')
 
     # def __setattr__(self, key, value):
     #     if key == 'ip_v4':

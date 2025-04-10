@@ -13,6 +13,7 @@ from sdp_lib.management_controllers.hosts import *
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.varbinds_parsers import (
     pretty_processing_stcip,
+    default_processing,
     BaseSnmpParser,
     ConfigsParser,
     StandartVarbindsParsersSwarco,
@@ -43,7 +44,7 @@ from sdp_lib.management_controllers.snmp.varbinds import (
 from sdp_lib.management_controllers.snmp._types import (
     T_Oids,
     T_Varbinds,
-    T_Parsers
+    T_Parsers, ParserMethodType
 )
 
 
@@ -233,7 +234,8 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
             *,
             method: Callable,
             varbinds_generate_method: Callable,
-            value: int | str = None
+            value: int | str = None,
+            parse_method: Callable = None
     ):
         """
         Осуществляет вызов соответствующего snmp-запроса и передает
@@ -259,7 +261,11 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
         else:
             raise TypeError
 
-        self._parse_method_config = self._get_pretty_processed_config_with_scn()
+        if callable(parse_method):
+            self._parse_method_config = parse_method()
+        else:
+            self._parse_method_config = self._get_default_processed_config_with_scn()
+        # self._parse_method_config = parse_method or self._get_pretty_processed_config_with_scn()
 
         return await self._make_request_and_build_response()
 
@@ -272,7 +278,16 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
         return await self._collect_data_and_send_snmp_request_ug405(
             method=self._request_sender.snmp_get,
             varbinds_generate_method=self.varbinds.get_varbinds_current_states,
-            value=None
+            value=None,
+            parse_method=self._get_pretty_processed_config_with_scn
+        )
+
+    async def set_stage(self, value: int):
+        return await self._collect_data_and_send_snmp_request_ug405(
+            method=self._request_sender.snmp_set,
+            varbinds_generate_method=self.varbinds.get_varbinds_set_stage,
+            value=value,
+            parse_method=self._get_default_processed_config_with_scn
         )
 
     async def set_operation_mode(self, value: int):
@@ -326,6 +341,13 @@ class StcipHosts(SnmpHosts):
         )
         return await self._make_request_and_build_response()
 
+    async def set_stage(self, value: int):
+        self._parse_method_config = default_processing
+        self.set_varbinds_and_method_for_request(
+            varbinds=self.varbinds.get_varbinds_set_stage(value),
+            method=self._request_sender.snmp_set
+        )
+        return await self._make_request_and_build_response()
 
 class SwarcoStcip(StcipHosts):
 
@@ -380,6 +402,7 @@ class PotokP(Ug405Hosts):
             self.add_data_to_data_response_attrs(e)
 
 
+
 class PeekUg405(Ug405Hosts):
 
     parser_class = PeekStandardParser
@@ -399,30 +422,34 @@ async def main():
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
     # obj = SwarcoStcip(ip_v4='10.179.61.33', host_id='3205')
     # obj = PotokS(ip_v4='10.179.68.177',)
-    obj = SwarcoStcip(ipv4='10.179.57.1')
+    # obj = SwarcoStcip(ipv4='10.179.108.177', host_id='2851', engine=SnmpEngine())
 
     # obj = PotokP(ip_v4='10.179.69.65', host_id='2600')
     # obj = PotokP(ip_v4='10.179.56.105', host_id='155')
     # obj = PotokP(ipv4='10.179.108.129', host_id='2822')
-    obj.set_driver(SnmpEngine())
+    obj = PotokP(ipv4='10.179.86.217', host_id='4815')
+    # obj.set_driver()
     # obj = SwarcoStcip(ip_v4='10.179.20.129')
 
     # obj.ip_v4 = '10.179.20.129'
-    # obj.set_engine(SnmpEngine())
+    obj.set_driver(SnmpEngine())
+    print(obj.driver)
 
     start_time = time.time()
 
-    r = await obj.get_states()
+    # res = await obj.get_states()
     # print(obj.response_as_dict)
     # print(json.dumps(obj.response_as_dict, indent=4))
-    print(r)
-    print(f'время составло: {time.time() - start_time}')
+
 
     """set command test"""
 
-    # res = await obj.set_stage(0)
+    res = await obj.set_stage(0)
 
     # print(res.response_as_dict)
+
+    print(res)
+    print(f'время составло: {time.time() - start_time}')
 
     return obj.response
 

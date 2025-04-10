@@ -1,5 +1,6 @@
 import abc
 import asyncio
+import pprint
 import sys
 import time
 
@@ -40,8 +41,8 @@ ug405_stage_values = convert_val_to_num_stage_set_req_ug405(128)
 swarco_stcip_set_stage_varbinds = {
     num_stage: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(num_stage + 1))
     for num_stage in range(1, 8)
-} | {8: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, 1),
-     0: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, 0)}
+} | {8: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(1)),
+     0: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(0))}
 
 potok_stcip_set_stage_varbinds = {
     num_stage: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(num_stage + 1))

@@ -10,3 +10,4 @@ T_Varbinds = TypeVar('T_Varbinds', tuple[ObjectType, ...], list[ObjectType])
 T_Parsers = TypeVar('T_Parsers')
 
 RequestModes: TypeAlias = Literal['get', 'set', 'get_next']
+ParserMethodType: TypeAlias = Literal['pretty', 'default']

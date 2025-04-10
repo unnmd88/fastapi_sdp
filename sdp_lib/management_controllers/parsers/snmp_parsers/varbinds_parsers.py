@@ -9,7 +9,7 @@ from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.parsers_core import Parsers
 from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import StcipMixin, Ug405Mixin
-
+from sdp_lib.management_controllers.snmp._types import T_Varbinds
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.snmp_utils import (
     SwarcoConverters,
@@ -29,8 +29,6 @@ class ConfigsParser(typing.NamedTuple):
 default_processing = ConfigsParser(oid_handler=str)
 pretty_processing_stcip = ConfigsParser(extras=True, host_protocol=FieldsNames.protocol_stcip)
 pretty_processing_ug405 = ConfigsParser(extras=True, host_protocol=FieldsNames.protocol_ug405)
-
-T_Varbinds = tuple[ObjectType, ...]
 
 
 class BaseSnmpParser(Parsers):
@@ -316,9 +314,6 @@ class PotokPStandardParser(BaseSnmpParser, Ug405Mixin):
 
 
 class PeekStandardParser(BaseSnmpParser):
-
     pass
 
-
-""" Archive """
 

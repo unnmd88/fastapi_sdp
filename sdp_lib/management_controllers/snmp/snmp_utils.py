@@ -288,7 +288,7 @@ def convert_val_to_num_stage_set_req_ug405(max_stage: int) -> dict:
 
 
 def wrap_oid_by_object_type(oid, val: Unsigned32 | Integer | OctetString = None):
-    return ObjectType(ObjectIdentity(oid), val or rfc1905.unSpecified)
+    return ObjectType(ObjectIdentity(oid), val if val is not None else rfc1905.unSpecified)
 
 
 class ScnConverterMixin:
