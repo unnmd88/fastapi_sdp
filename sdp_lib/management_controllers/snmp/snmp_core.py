@@ -45,12 +45,15 @@ from sdp_lib.management_controllers.snmp.varbinds import (
     potok_ug405_varbinds,
     VarbindsUg405
 )
+from sdp_lib.management_controllers.snmp._types import (
+    T_Oids,
+    T_Varbinds,
+    T_Parsers
+)
 
 
 T_DataHosts = TypeVar('T_DataHosts', bound=HostStaticData)
-T_Oids = TypeVar('T_Oids', tuple[Oids | str, ...], list[Oids | str])
-T_Varbinds = TypeVar('T_Varbinds', tuple[ObjectType, ...], list[ObjectType])
-T_Parsers = TypeVar('T_Parsers')
+
 RequestModes: typing.TypeAlias = Literal['get', 'set', 'get_next']
 
 
