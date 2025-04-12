@@ -42,6 +42,7 @@ class SetData(PeekWeb):
             data_to_set: dict[str, str | int],
             start_by_getting_data_from_web_page=False
     ):
+        print(f'start_by_getting_data_from_web_page: {start_by_getting_data_from_web_page}')
         if start_by_getting_data_from_web_page:
             result = await self.get_data_from_web_page_and_set_response_if_has_err()
             if not result:
@@ -59,7 +60,8 @@ class SetData(PeekWeb):
 
         await self.web_page_obj.get_and_parse()
         # self.response = self.web_page_obj.response
-        self.add_data_to_data_response_attrs(*self.web_page_obj.response)
+        print(f'self.web_page_obj.response>: {self.web_page_obj._response}')
+        self.add_data_to_data_response_attrs(*self.web_page_obj._response)
         self.add_data_to_data_response_attrs(data={str(FieldsNames.sent_data): self.data_for_set_to_web})
         print(f'self.data_for_set_to_web: {self.data_for_set_to_web}')
 
@@ -68,8 +70,8 @@ class SetData(PeekWeb):
 
     async def get_data_from_web_page_and_set_response_if_has_err(self) -> bool:
         await self.web_page_obj.get_and_parse()
-        print(f'self.web_page_obj.ERRORS: {self.web_page_obj.ERRORS}')
-        if self.web_page_obj.ERRORS:
+        print(f'self.web_page_obj.response_errors: {self.web_page_obj.response_errors}')
+        if self.web_page_obj.response_errors:
             self.add_data_to_data_response_attrs(*self.web_page_obj.response)
             return False
         return True

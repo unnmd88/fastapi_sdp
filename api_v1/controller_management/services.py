@@ -55,7 +55,8 @@ class Controllers(metaclass=abc.ABCMeta):
             self,
             *,
             income_data,
-            search_in_db: bool
+            search_in_db: bool,
+            session: aiohttp.ClientSession = None
     ):
 
         self.income_data = income_data
@@ -63,7 +64,7 @@ class Controllers(metaclass=abc.ABCMeta):
         self.allowed_to_request_hosts: dict | None = None
         self.bad_hosts: list | None = None
         self.result_tasks = None
-        self._session = None
+        self._session = session
 
     @classmethod
     def _get_sorter_class(cls) -> Type[S]:
@@ -77,10 +78,31 @@ class Controllers(metaclass=abc.ABCMeta):
     def get_coro(self, ip_v4: str, data_host: dict) -> Coroutine:
         ...
 
+    # async def _make_request(self):
+    #
+    #     self.result_tasks = []
+        #     async with aiohttp.ClientSession() as self._session:
+    #         async with TaskGroup() as tg:
+    #             for ip_v4, data_host in self.allowed_to_request_hosts.items():
+    #                 self.result_tasks.append(tg.create_task(
+    #                     self.get_coro(ip_v4, data_host),
+    #                     name=ip_v4
+    #                 ))
+    #     return self.result_tasks
+
+
     async def _make_request(self):
 
         self.result_tasks = []
-        async with aiohttp.ClientSession() as self._session:
+        if self._session is None:
+            async with aiohttp.ClientSession() as self._session:
+                async with TaskGroup() as tg:
+                    for ip_v4, data_host in self.allowed_to_request_hosts.items():
+                        self.result_tasks.append(tg.create_task(
+                            self.get_coro(ip_v4, data_host),
+                            name=ip_v4
+                        ))
+        else:
             async with TaskGroup() as tg:
                 for ip_v4, data_host in self.allowed_to_request_hosts.items():
                     self.result_tasks.append(tg.create_task(
@@ -89,27 +111,6 @@ class Controllers(metaclass=abc.ABCMeta):
                     ))
         return self.result_tasks
 
-    # async def compose_request(self):
-    #
-    #     start_time = time.time()
-    #     if self.search_in_db:
-    #         hosts_from_db = await search_hosts_from_db_for_monitoring_and_management(self.income_data)
-    #         data_hosts = self.get_sorter_class()(
-    #             hosts_from_db.hosts_data
-    #         )
-    #     else:
-    #         data_hosts = self.get_sorter_class()(self.income_data.hosts)
-    #
-    #     data_hosts.sort()
-    #
-    #     self.allowed_to_request_hosts = data_hosts.hosts_without_errors
-    #     self.bad_hosts = data_hosts.hosts_with_errors
-    #
-    #     await self._make_request()
-    #     self.add_response_to_data_hosts()
-    #     for t in self.result_tasks:
-    #         print(f't: {t.result().response_as_dict}')
-    #     return {'Время составило': time.time() - start_time} | self.get_all_hosts_as_dict()
 
     async def compose_request(self):
 
@@ -146,7 +147,6 @@ class StatesMonitoring(Controllers):
     sorter = sorters.HostSorterMonitoring
     processor = MonitoringProcessors
 
-
     def get_coro(
             self, ip: str,
             data_host: HostBodyMonitoringMixin
@@ -162,7 +162,7 @@ class StatesMonitoring(Controllers):
                 # return snmp_core.PotokS(ip_v4=ip, engine=self.snmp_engine).get_states()
                 return snmp_api.PotokS(ipv4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_P, None):
-                scn = snmp_core.PotokP.add_CO_to_scn(data_host.number)
+                scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
                 # scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
                 # return ug405_monitoring.MonitoringPotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
                 # return snmp_core.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
@@ -189,18 +189,14 @@ class Management(Controllers):
         command = data_host.command
         value = data_host.value
         match (type_controller, command):
-            case (AllowedControllers.SWARCO, None):
-                return stcip.SwarcoSTCIP(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
-            case (AllowedControllers.POTOK_S, None):
-                return stcip.PotokS(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
-            case (AllowedControllers.POTOK_P, None):
-                scn = data_host.number
-                # return ug405.PotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
-                pass
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.SET_STAGE):
+                return snmp_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).set_stage(value)
+            case (AllowedControllers.POTOK_S, AllowedManagementEntity.SET_STAGE):
+                return snmp_api.PotokS(ipv4=ip, engine=self.snmp_engine).set_stage(value)
+            case (AllowedControllers.POTOK_P, AllowedManagementEntity.SET_STAGE):
+                scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
+                return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
+                print('fFF')
                 return peek_SetStage(ipv4=ip, session=self._session).set_entity(value)
-            case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
-            case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse(main_page=False)
         raise TypeError('DEBUG')

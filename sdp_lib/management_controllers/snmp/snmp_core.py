@@ -349,6 +349,7 @@ class StcipHosts(SnmpHosts):
         )
         return await self._make_request_and_build_response()
 
+
 class SwarcoStcip(StcipHosts):
 
     host_properties = host_data.swarco_stcip
@@ -402,7 +403,6 @@ class PotokP(Ug405Hosts):
             self.add_data_to_data_response_attrs(e)
 
 
-
 class PeekUg405(Ug405Hosts):
 
     parser_class = PeekStandardParser
@@ -416,7 +416,7 @@ class PeekUg405(Ug405Hosts):
 
 async def main():
 
-    obj = PotokS(ipv4='10.179.68.177', )
+    obj = PotokS(ipv4='10.179.88.113', host_id='3281')
     # obj = SwarcoStcip(ip_v4='10.179.20.129')
     # obj = SwarcoStcip(ip_v4='10.179.68.105')
     # obj = SwarcoStcip(ip_v4='10.179.57.1')
@@ -427,9 +427,9 @@ async def main():
     # obj = PotokP(ip_v4='10.179.69.65', host_id='2600')
     # obj = PotokP(ip_v4='10.179.56.105', host_id='155')
     # obj = PotokP(ipv4='10.179.108.129', host_id='2822')
-    obj = PotokP(ipv4='10.179.86.217', host_id='4815')
+    # obj = PotokP(ipv4='10.179.69.129', host_id='2954')
     # obj.set_driver()
-    # obj = SwarcoStcip(ip_v4='10.179.20.129')
+    # obj = SwarcoStcip(ipv4='10.179.89.225', host_id='3584')
 
     # obj.ip_v4 = '10.179.20.129'
     obj.set_driver(SnmpEngine())

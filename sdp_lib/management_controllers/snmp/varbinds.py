@@ -47,7 +47,7 @@ swarco_stcip_set_stage_varbinds = {
 potok_stcip_set_stage_varbinds = {
     num_stage: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(num_stage + 1))
     for num_stage in range(1, 129)
-} | {0: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, 0)}
+} | {0: wrap_oid_by_object_type(Oids.swarcoUTCTrafftechPhaseCommand, Unsigned32(0))}
 
 
 class Varbinds:

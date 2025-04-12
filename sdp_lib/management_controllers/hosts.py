@@ -80,16 +80,6 @@ class Host:
             raise TypeError(f'driver должен быть типа "aiohttp.ClientSession", передан: {type(driver)}')
         self._driver = driver
 
-
-
-    #
-    # @ip_v4.setter
-    # def ip_v4(self, value):
-    #     if check_is_ipv4(value):
-    #         self._ip_v4 = value
-    #     else:
-    #         raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {value}')
-
     @property
     def response(self):
         return self._response

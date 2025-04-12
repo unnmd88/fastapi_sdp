@@ -3,6 +3,7 @@ import time
 
 from fastapi import APIRouter
 
+
 from core.settings import settings
 from api_v1.controller_management import services
 from api_v1.controller_management.crud.crud import HostPropertiesProcessors
@@ -17,7 +18,9 @@ import logging_config
 
 logger = logging.getLogger(__name__)
 
+
 router = APIRouter()
+
 
 
 # @router.post('/get-hosts-test/{test_val}')
@@ -26,6 +29,7 @@ router = APIRouter()
 #     logger.debug(data)
 #     logger.debug(data.model_json_schema())
 #     return data
+
 
 
 @router.post('/properties', tags=[settings.traffic_lights_tag_static_properties])
