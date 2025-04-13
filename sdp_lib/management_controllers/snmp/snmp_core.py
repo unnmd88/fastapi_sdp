@@ -1,12 +1,8 @@
-import abc
 import asyncio
 import functools
 import time
-from functools import cached_property
 from typing import Self, TypeVar
-from collections.abc import KeysView, Callable
-
-from pysnmp.hlapi.v3arch.asyncio import *
+from collections.abc import Callable
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts import *
@@ -23,7 +19,7 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.varbinds_parsers import
 )
 from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
-from sdp_lib.management_controllers.snmp.response_structure import SnmpResponseStructure
+from sdp_lib.management_controllers.response_structure import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.set_commands import SnmpEntity
 from sdp_lib.management_controllers.snmp.snmp_utils import (
     SwarcoConverters,
@@ -42,9 +38,7 @@ from sdp_lib.management_controllers.snmp.varbinds import (
     VarbindsUg405
 )
 from sdp_lib.management_controllers.snmp._types import (
-    T_Oids,
-    T_Varbinds,
-    T_Parsers, ParserMethodType
+    T_Varbinds
 )
 
 

@@ -103,6 +103,10 @@ class Host:
     ):
         self._response.add_data_to_attrs(error, data)
 
+    def remove_data_from_response(self):
+        self._response.remove_data_from_data_response()
 
+    def remove_errors_from_response(self):
+        self._response.remove_errors_from_errors()
 
 
