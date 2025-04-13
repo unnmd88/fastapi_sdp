@@ -22,7 +22,7 @@ class AvailableDataFromWeb(IntEnum):
     inputs_page_get   = 2
 
 
-class PeekWeb(HttpHosts):
+class PeekWebHosts(HttpHosts):
 
     @cached_property
     def matches(self) -> dict[AvailableDataFromWeb, tuple[str, Callable, Type[T_Parsers]]]:
@@ -72,10 +72,12 @@ class PeekWeb(HttpHosts):
     async def get_inputs(self):
         return await self.request_all_types(AvailableDataFromWeb.inputs_page_get)
 
+
+
 async def main():
     try:
         sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(1))
-        obj = PeekWeb('10.179.107.129', host_id='2406', session=sess)
+        obj = PeekWebHosts('10.179.107.129', host_id='2406', session=sess)
         # await obj.get_states()
         await obj.request_all_types(AvailableDataFromWeb.main_page_get)
         # await obj.get_states()

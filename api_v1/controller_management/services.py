@@ -172,14 +172,14 @@ class StatesMonitoring(Controllers):
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine, scn=scn).get_states()
             case(AllowedControllers.PEEK, None):
                 # return peek_MainPage(ipv4=ip, session=self._session).get_and_parse()
-                return peek_http.PeekWeb(ipv4=ip, session=self._session).get_states()
+                return peek_http.PeekWebHosts(ipv4=ip, session=self._session).get_states()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
                 # return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
-                return peek_http.PeekWeb(ipv4=ip, session=self._session).request_all_types(
+                return peek_http.PeekWebHosts(ipv4=ip, session=self._session).request_all_types(
                     AvailableDataFromWeb.main_page_get, AvailableDataFromWeb.inputs_page_get,
                 )
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_http.PeekWeb(ipv4=ip, session=self._session).get_inputs()
+                return peek_http.PeekWebHosts(ipv4=ip, session=self._session).get_inputs()
         raise TypeError('DEBUG')
 
 

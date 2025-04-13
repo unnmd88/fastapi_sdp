@@ -1,4 +1,3 @@
-import abc
 from typing import Callable
 
 import aiohttp
@@ -9,48 +8,6 @@ from sdp_lib.management_controllers.hosts import Host
 from sdp_lib.management_controllers.http.request_sender import AsyncHttpRequests
 from sdp_lib.management_controllers.response_structure import HttpResponseStructure
 from sdp_lib.utils_common import check_is_ipv4
-
-
-# class HttpHost(Host):
-#
-#     route: str
-#
-#     def __init__(
-#             self,
-#             *,
-#             ipv4: str = None,
-#             session: aiohttp.ClientSession = None
-#     ):
-#         super().__init__(ipv4=ipv4)
-#         self._base_url = f'{Names.http_prefix}{self._ipv4}' if ipv4 is not None else ''
-#         self._driver = session
-#         self.set_driver(session)
-#         # self.full_url = f'{self.base_url}{self.main_route}'
-#         self.method = None
-#         self.parser = None
-#
-#     # def set_session(self, session: aiohttp.ClientSession):
-#     #     if isinstance(session, aiohttp.ClientSession):
-#     #         self._session = session
-#
-#     def set_base_url(self):
-#         if check_is_ipv4(self._ipv4):
-#             self._base_url = f'{Names.http_prefix}{self._ipv4}'
-#         else:
-#             self._base_url = ''
-#
-#     @property
-#     def base_url(self):
-#         return self._base_url
-#
-#     @property
-#     def full_url(self) -> str:
-#         if isinstance(self._base_url, str) and isinstance(self.route, str):
-#             return f'{self._base_url}{self.route}'
-#
-#     @property
-#     def protocol(self):
-#         return str(FieldsNames.protocol_http)
 
 
 class HttpHosts(Host):
