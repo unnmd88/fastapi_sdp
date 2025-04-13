@@ -175,7 +175,7 @@ class StatesMonitoring(Controllers):
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).get_states()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
                 # return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
-                return peek_http.PeekWebHosts(ipv4=ip, session=self._session).request_all_types(
+                return peek_http.PeekWebHosts(ipv4=ip, session=self._session).fetch_all_pages(
                     AvailableDataFromWeb.main_page_get, AvailableDataFromWeb.inputs_page_get,
                 )
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):

@@ -23,6 +23,26 @@ class AsyncHttpRequests:
             assert response.status == 200
             return await response.text()
 
+    async def post_request(
+            self,
+            url: str,
+            timeout: float = .8,
+            **kwargs
+    ) -> int:
+        async with self._instance_host.driver.post(
+                url,
+                timeout=aiohttp.ClientTimeout(connect=timeout),
+                **kwargs
+        ) as response:
+            assert response.status == 200
+            print(f'response.status == {response.status}')
+            return response.status
+            print(f'response.status == {response.status}')
+            print(f'response.host == {response.host}')
+            print(f'response.ok == {response.ok}')
+            print(f'response.ok == {response.history}')
+            return await response.text()
+
     async def http_request_to_host(
             self,
             *,
