@@ -25,11 +25,14 @@ from api_v1.controller_management.sorters.sorters import (
 )
 
 # from sdp_lib.management_controllers.snmp import snmp_api, snmp_core
-from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
-from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
-from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
+# from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
+# from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
+# from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
+from sdp_lib.management_controllers.http.peek import peek_http
+
 
 import logging_config
+from sdp_lib.management_controllers.http.peek.peek_http import AvailableDataFromWeb
 from sdp_lib.management_controllers.snmp import snmp_core, snmp_api
 
 logger = logging.getLogger(__name__)
@@ -168,11 +171,15 @@ class StatesMonitoring(Controllers):
                 # return snmp_core.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine, scn=scn).get_states()
             case(AllowedControllers.PEEK, None):
-                return peek_MainPage(ipv4=ip, session=self._session).get_and_parse()
+                # return peek_MainPage(ipv4=ip, session=self._session).get_and_parse()
+                return peek_http.PeekWeb(ipv4=ip, session=self._session).get_states()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
+                # return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
+                return peek_http.PeekWeb(ipv4=ip, session=self._session).request_all_types(
+                    AvailableDataFromWeb.main_page_get, AvailableDataFromWeb.inputs_page_get,
+                )
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
-                return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse(main_page=False)
+                return peek_http.PeekWeb(ipv4=ip, session=self._session).get_inputs()
         raise TypeError('DEBUG')
 
 
