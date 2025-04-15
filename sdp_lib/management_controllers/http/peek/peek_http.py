@@ -1,28 +1,32 @@
 import asyncio
 from enum import IntEnum, StrEnum
 from functools import cached_property
-from typing import Callable, Type
+from typing import Callable, Type, TypeVar
 
 import aiohttp
-from aiohttp import FormData
-from mypyc.ir.ops import TypeVar
-from sqlalchemy.util import await_only
-from watchfiles import awatch
 
-from sdp_lib.management_controllers.exceptions import BadControllerType, BadValueToSet
+from sdp_lib.management_controllers.exceptions import (
+    BadControllerType,
+    BadValueToSet
+)
 from sdp_lib.management_controllers.http.http_core import HttpHosts
-from sdp_lib.management_controllers.http.peek import routes, static_data
-from sdp_lib.management_controllers.http.peek.static_data import cookies
+from sdp_lib.management_controllers.http.peek import (
+    routes,
+    static_data
+)
 from sdp_lib.management_controllers.http.peek.varbinds import InputsVarbinds
-from sdp_lib.management_controllers.parsers.parsers_peek_http_new import MainPageParser, InputsPageParser, \
+from sdp_lib.management_controllers.parsers.parsers_peek_http_new import (
+    MainPageParser,
+    InputsPageParser,
     InputsPageParserSet
-from sdp_lib.management_controllers.response_structure import HttpResponseStructure
+)
+from sdp_lib.management_controllers.structures import HttpResponseStructure
 
 
 T_Parsers = TypeVar('T_Parsers', MainPageParser, InputsPageParser)
 
 
-class AvailableDataFromWeb(IntEnum):
+class DataFromWeb(IntEnum):
 
     main_page_get     = 1
     inputs_page_get   = 2
@@ -30,26 +34,16 @@ class AvailableDataFromWeb(IntEnum):
 
 
 
-class ActuatorAsChar(StrEnum):
-    VF     = '-'
-    OFF    = 'ВЫКЛ'
-    ON     = 'ВКЛ'
-
-
-class ActuatorAsValue(StrEnum):
-    VF     = '0'
-    OFF    = '1'
-    ON     = '2'
 
 
 class PeekWebHosts(HttpHosts):
 
     @cached_property
-    def matches(self) -> dict[AvailableDataFromWeb, tuple[str, Callable, Type[T_Parsers]]]:
+    def matches(self) -> dict[DataFromWeb, tuple[str, Callable, Type[T_Parsers]]]:
         return {
-            AvailableDataFromWeb.main_page_get: (routes.main_page, self._request_sender.fetch, MainPageParser),
-            AvailableDataFromWeb.inputs_page_get: (routes.get_inputs, self._request_sender.fetch, InputsPageParser),
-            AvailableDataFromWeb.inputs_page_set: (routes.set_inputs, self._request_sender.post_request, InputsPageParserSet),
+            DataFromWeb.main_page_get: (routes.main_page, self._request_sender.fetch, MainPageParser),
+            DataFromWeb.inputs_page_get: (routes.get_inputs, self._request_sender.fetch, InputsPageParser),
+            DataFromWeb.inputs_page_set: (routes.set_inputs, self._request_sender.post_request, InputsPageParserSet),
         }
 
     async def _single_common_request(
@@ -94,10 +88,10 @@ class PeekWebHosts(HttpHosts):
         return self
 
     async def get_states(self):
-        return await self.fetch_all_pages(AvailableDataFromWeb.main_page_get)
+        return await self.fetch_all_pages(DataFromWeb.main_page_get)
 
     async def get_inputs(self):
-        return await self.fetch_all_pages(AvailableDataFromWeb.inputs_page_get)
+        return await self.fetch_all_pages(DataFromWeb.inputs_page_get)
 
     """ Management """
 
@@ -143,7 +137,7 @@ class PeekWebHosts(HttpHosts):
 
         print(f'payloads: {payloads}')
         await self.post_all_pages(
-            AvailableDataFromWeb.inputs_page_set,
+            DataFromWeb.inputs_page_set,
             payload_data=payloads
         )
         await self.get_inputs()

@@ -1,21 +1,10 @@
-import collections
 import os
-import pprint
-from enum import IntEnum, StrEnum
-from functools import cached_property
 
-
-
-"""
-ALL_MPP_INPUTS=MPP_MAN MPP_FL MPP_OFF MPP_PH1 MPP_PH2 MPP_PH3 MPP_PH4 MPP_PH5 MPP_PH6 MPP_PH7 MPP_PH8
-MPP_STAGES_INPUTS=MPP_PH1 MPP_PH2 MPP_PH3 MPP_PH4 MPP_PH5 MPP_PH6 MPP_PH7 MPP_PH8
-START_NAME_MAN=MPP_
-PREFIX_MAN_STAGE_PEEK=MPP_PH
-MPP_MANUAL=MPP_MAN
-MPP_FLASH=MPP_FL
-MPP_DARK=MPP_OFF
-"""
-
+from sdp_lib.management_controllers.http.peek.static_data import (
+    ActuatorAsChar,
+    ActuatorAsValue, matches_actuators
+)
+from sdp_lib.management_controllers.structures import InputsStructure
 
 
 all_mpp_inputs = set(os.getenv('ALL_MPP_INPUTS').split())
@@ -29,37 +18,6 @@ val_payload = 'par_value'
 inputs_prefix = os.getenv('INPUT_PREFIX_FOR_SET_VAL')
 
 
-class ActuatorAsChar(StrEnum):
-    VF     = '-'
-    OFF    = 'ВЫКЛ'
-    ON     = 'ВКЛ'
-
-
-class ActuatorAsValue(StrEnum):
-    VF     = '0'
-    OFF    = '1'
-    ON     = '2'
-
-
-matches_actuators = {
-    ActuatorAsChar.VF: ActuatorAsValue.VF,
-    ActuatorAsChar.OFF: ActuatorAsValue.OFF,
-    ActuatorAsChar.ON: ActuatorAsValue.ON,
-    ActuatorAsValue.VF: ActuatorAsChar.VF,
-    ActuatorAsValue.OFF: ActuatorAsChar.OFF,
-    ActuatorAsValue.ON: ActuatorAsChar.ON
-}
-
-def convert_actuator_val_to_actuator_char(val):
-    pass
-
-def convert_actuator_char_to_actuator_val(char):
-    try:
-        ActuatorAsChar(char)
-        return
-    except ValueError:
-        return None
-
 def get_actuator_val_for_payload(value):
     if value in [el for el in ActuatorAsValue]:
         return value
@@ -67,17 +25,6 @@ def get_actuator_val_for_payload(value):
         return matches_actuators.get(value)
     else:
         raise ValueError(f'Некорректное значение актуатора: {value!r}')
-
-
-
-class InputsStructure(IntEnum):
-
-    INDEX     = 0
-    NUM       = 1
-    NAME      = 2
-    STATE     = 3
-    TIME      = 4
-    ACTUATOR  = 5
 
 
 T_inp_props = tuple[str, str, str, str, str]
@@ -93,17 +40,17 @@ class InputsVarbinds:
         self._mpp_man_actuator = None
         self.set_inputs_from_web_data(inputs_from_web)
 
-    def set_inputs_from_web_data(self, inputs_from_web):
+    def set_inputs_from_web_data(self, inputs_from_web) -> None:
         self._inputs_from_web = inputs_from_web
         if self._inputs_from_web is not None:
             self._mpp_man_index = self._inputs_from_web[MPP_MAN][InputsStructure.INDEX]
             self._mpp_man_state = self._inputs_from_web[MPP_MAN][InputsStructure.STATE]
             self._mpp_man_actuator = self._inputs_from_web[MPP_MAN][InputsStructure.ACTUATOR]
 
-    def get_varbinds_as_from_name(
-            self,
-            data: T_inps_container
-    ):
+    def refresh_inputs_from_web_data(self, inputs_from_web):
+        self.set_inputs_from_web_data(inputs_from_web)
+
+    def get_varbinds_as_from_name(self, data: T_inps_container) -> list:
 
         payloads = []
 
@@ -119,17 +66,15 @@ class InputsVarbinds:
                 )
         return payloads
 
-    def get_varbinds_set_stage(self, stage: int = 0):
-
-        # self._payloads_deque = collections.deque()
+    def get_varbinds_set_stage(self, stage: int = 0) -> list:
 
         if stage == 0:
             return self.get_varbinds_reset_man()
         elif stage in range(1, 9):
             return self._get_varbinds_set_stage(stage)
 
-    def _get_varbinds_set_stage(self, stage: int):
-        payloads = collections.deque()
+    def _get_varbinds_set_stage(self, stage: int) -> list:
+        payloads = []
         if self._mpp_man_state == '0' or self._mpp_man_actuator in (ActuatorAsChar.VF, ActuatorAsChar.OFF):
             payloads.append(
                 self.create_payload(self._mpp_man_index, ActuatorAsValue.ON)
@@ -150,8 +95,8 @@ class InputsVarbinds:
             )
         return payloads
 
-    def get_varbinds_reset_man(self):
-        payloads = collections.deque()
+    def get_varbinds_reset_man(self) -> list:
+        payloads = []
         if (self._inputs_from_web[MPP_MAN][InputsStructure.STATE] == '1'
             or self._inputs_from_web[MPP_MAN][InputsStructure.ACTUATOR] == ActuatorAsChar.ON
         ):

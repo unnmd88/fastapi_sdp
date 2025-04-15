@@ -20,3 +20,12 @@ class HttpResponseStructure(IntEnum):
     ERROR    = 0
     CONTENT  = 1
 
+
+class InputsStructure(IntEnum):
+
+    INDEX     = 0
+    NUM       = 1
+    NAME      = 2
+    STATE     = 3
+    TIME      = 4
+    ACTUATOR  = 5

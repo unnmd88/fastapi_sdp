@@ -19,7 +19,7 @@ from sdp_lib.management_controllers.parsers.snmp_parsers.varbinds_parsers import
 )
 from sdp_lib.management_controllers.snmp.host_data import HostStaticData
 from sdp_lib.management_controllers.snmp import host_data
-from sdp_lib.management_controllers.response_structure import SnmpResponseStructure
+from sdp_lib.management_controllers.structures import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.set_commands import SnmpEntity
 from sdp_lib.management_controllers.snmp.snmp_utils import (
     SwarcoConverters,
@@ -163,7 +163,7 @@ class SnmpHosts(Host):
         """
 
         self.last_response = await self._request_method(varbinds=self._varbinds_for_request)
-        print(f'self.last_response: {self.last_response}')
+        # print(f'self.last_response: {self.last_response}')
         return self.__parse_and_processing_response_all_types_requests()
 
     def __parse_and_processing_response_all_types_requests(self) -> Self:
@@ -391,8 +391,8 @@ class PotokP(Ug405Hosts):
 
         try:
             self._set_scn_from_response()
-            print(f'self.scn_as_ascii_string {self.scn_as_ascii_string}')
-            print(f' self.scn_as_chars {self.scn_as_chars}')
+            # print(f'self.scn_as_ascii_string {self.scn_as_ascii_string}')
+            # print(f' self.scn_as_chars {self.scn_as_chars}')
         except BadControllerType as e:
             self.add_data_to_data_response_attrs(e)
 

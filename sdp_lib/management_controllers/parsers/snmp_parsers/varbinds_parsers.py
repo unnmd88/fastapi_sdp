@@ -137,7 +137,7 @@ class BaseSnmpParser(Parsers):
         try:
             if config.oid_handler is None and config.val_oid_handler is None:
                 for oid, val in varbinds:
-                    print(f'oid: {str(oid)}::: val: {str(val)}')
+                    # print(f'oid: {str(oid)}::: val: {str(val)}')
                     oid, val = self._processing_oid_method(oid), self._processing_val_oid_method(val)
                     field_name, cb_fn = self.matches.get(oid)
                     if field_name is None or cb_fn is None:
@@ -157,7 +157,7 @@ class BaseSnmpParser(Parsers):
         except IndexError as err:
             print(f'except TypeError:: {err}')
             return self.parsed_content_as_dict
-        print(f' | resp: {self.parsed_content_as_dict}')
+        # print(f' | resp: {self.parsed_content_as_dict}')
         self.add_host_protocol_to_response(config.host_protocol)
         self.data_for_response = self.parsed_content_as_dict
         return self.data_for_response
@@ -219,9 +219,6 @@ class StandartVarbindsParsersSwarco(BaseSnmpParser, StcipMixin):
             Oids.swarcoUTCTrafftechPlanCurrent: (FieldsNames.curr_plan, self.get_val_as_str),
             Oids.swarcoUTCDetectorQty: (FieldsNames.num_detectors, self.get_val_as_str),
             Oids.swarcoSoftIOStatus: (FieldsNames.status_soft_flag180_181, self.get_soft_flags_180_181_status),
-            Oids.swarcoUTCTrafftechPhaseCommand:
-                (Oids.swarcoUTCTrafftechPhaseCommand,
-                 lambda val: [val, self.stage_values_get.get(val)])
         }
 
 

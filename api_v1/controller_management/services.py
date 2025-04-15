@@ -32,7 +32,7 @@ from sdp_lib.management_controllers.http.peek import peek_http
 
 
 import logging_config
-from sdp_lib.management_controllers.http.peek.peek_http import AvailableDataFromWeb
+from sdp_lib.management_controllers.http.peek.peek_http import DataFromWeb
 from sdp_lib.management_controllers.snmp import snmp_core, snmp_api
 
 logger = logging.getLogger(__name__)
@@ -119,8 +119,8 @@ class Controllers(metaclass=abc.ABCMeta):
 
         await self._make_request()
         self.add_response_to_data_hosts()
-        for t in self.result_tasks:
-            print(f't: {t.result().response_as_dict}')
+        # for t in self.result_tasks:
+        #     print(f't: {t.result().response_as_dict}')
         return {'Время составило': time.time() - start_time} | self.get_all_hosts_as_dict()
 
     def get_all_hosts_as_dict(self):
@@ -163,7 +163,7 @@ class StatesMonitoring(Controllers):
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
                 # return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).fetch_all_pages(
-                    AvailableDataFromWeb.main_page_get, AvailableDataFromWeb.inputs_page_get,
+                    DataFromWeb.main_page_get, DataFromWeb.inputs_page_get,
                 )
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.INPUTS):
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).get_inputs()
@@ -191,6 +191,6 @@ class Management(Controllers):
                 scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
-                print('fFF')
+                # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
         raise TypeError('DEBUG')

@@ -35,13 +35,8 @@ class AsyncHttpRequests:
                 **kwargs
         ) as response:
             assert response.status == 200
-            print(f'response.status == {response.status}')
+            # print(f'response.status == {response.status}')
             return response.status
-            print(f'response.status == {response.status}')
-            print(f'response.host == {response.host}')
-            print(f'response.ok == {response.ok}')
-            print(f'response.ok == {response.history}')
-            return await response.text()
 
     async def http_request_to_host(
             self,

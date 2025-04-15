@@ -1,7 +1,7 @@
 from typing import Any
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.response_structure import HostResponseStructure
+from sdp_lib.management_controllers.structures import HostResponseStructure
 
 
 class Responses:
