@@ -1,5 +1,5 @@
 import asyncio
-from enum import IntEnum, StrEnum
+from enum import IntEnum
 from functools import cached_property
 from typing import Callable, Type, TypeVar
 
