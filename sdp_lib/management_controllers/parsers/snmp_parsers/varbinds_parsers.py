@@ -3,8 +3,6 @@ import typing
 from collections.abc import Callable
 from functools import cached_property
 
-from pysnmp.smi.rfc1902 import ObjectType
-
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.parsers_core import Parsers
