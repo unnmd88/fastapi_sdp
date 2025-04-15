@@ -81,19 +81,6 @@ class Controllers(metaclass=abc.ABCMeta):
     def get_coro(self, ip_v4: str, data_host: dict) -> Coroutine:
         ...
 
-    # async def _make_request(self):
-    #
-    #     self.result_tasks = []
-        #     async with aiohttp.ClientSession() as self._session:
-    #         async with TaskGroup() as tg:
-    #             for ip_v4, data_host in self.allowed_to_request_hosts.items():
-    #                 self.result_tasks.append(tg.create_task(
-    #                     self.get_coro(ip_v4, data_host),
-    #                     name=ip_v4
-    #                 ))
-    #     return self.result_tasks
-
-
     async def _make_request(self):
 
         self.result_tasks = []
@@ -205,5 +192,5 @@ class Management(Controllers):
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
                 print('fFF')
-                return peek_SetStage(ipv4=ip, session=self._session).set_entity(value)
+                return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
         raise TypeError('DEBUG')

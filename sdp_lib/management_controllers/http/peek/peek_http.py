@@ -4,9 +4,12 @@ from functools import cached_property
 from typing import Callable, Type
 
 import aiohttp
+from aiohttp import FormData
 from mypyc.ir.ops import TypeVar
+from sqlalchemy.util import await_only
+from watchfiles import awatch
 
-from sdp_lib.management_controllers.exceptions import BadControllerType
+from sdp_lib.management_controllers.exceptions import BadControllerType, BadValueToSet
 from sdp_lib.management_controllers.http.http_core import HttpHosts
 from sdp_lib.management_controllers.http.peek import routes, static_data
 from sdp_lib.management_controllers.http.peek.static_data import cookies
@@ -74,6 +77,8 @@ class PeekWebHosts(HttpHosts):
             )
         return self
 
+    """ Monitoring """
+
     async def fetch_all_pages(self, *args, **kwargs):
         async with asyncio.TaskGroup() as tg:
             for page in args:
@@ -94,48 +99,75 @@ class PeekWebHosts(HttpHosts):
     async def get_inputs(self):
         return await self.fetch_all_pages(AvailableDataFromWeb.inputs_page_get)
 
-    async def post_all_pages(self, page, payload_data: tuple[dict, ...]):
+    """ Management """
+
+    async def post_all_pages(self, page, payload_data: list[tuple]):
         async with asyncio.TaskGroup() as tg:
+            results = []
             route, method, parser_class = self.matches.get(page)
-            for payload in payload_data:
-                tg.create_task(
-                    self._single_common_request(
-                        self._base_url + route, method, parser_class(),
-                        cookies=static_data.cookies,
-                        data=payload
+            max_concurrent_tasks = 5
+            for num_task, payload in enumerate(payload_data, 1):
+                if num_task % max_concurrent_tasks == 0:
+                    print(f'DEBUG len(payload_data) : {len(payload_data)}')
+                    await asyncio.sleep(1) # Peek сбрасывает при коннект при большом количестве запросов
+                results.append(
+                    tg.create_task(
+                        self._single_common_request(
+                            self._base_url + route, method, parser_class(),
+                            cookies=static_data.cookies,
+                            data=payload
+                        )
                     )
                 )
 
+        # print(f'results_results: + {results}')
         if self.response_errors:
             self.remove_data_from_response()
         return self
 
-
-
-    async def set_inputs_to_web(self, *args, **kwargs):
-
-        # Метод, котрый из аргуметов собирает payloads
+    async def set_inputs_to_web(
+            self,
+            *,
+            inps_name_and_vals: dict | tuple = None,
+            stage: int = None,
+    ):
         await self.get_inputs()
         if self.response_errors:
             return self
         _inputs = self.response_as_dict['data']['inputs']
-        # print(f'self.response_as_dict: {self.response_as_dict['data']['inputs']}')
-        # print(f'INPMS: {_inputs}')
-        # payloads = ({'par_name': f'XIN.R20/12', 'par_value': '1'},
-        #             {'par_name': f'XIN.R20/16', 'par_value': '1'}
-        #             )
 
-        await self.post_all_pages(AvailableDataFromWeb.inputs_page_set,
-                                  payload_data=InputsVarbinds.get_set_stage_varbinds(_inputs, 1))
+        if stage is not None:
+            payloads = InputsVarbinds(_inputs).get_varbinds_set_stage(stage)
+        else:
+            payloads = InputsVarbinds(_inputs).get_varbinds_as_from_name(inps_name_and_vals)
+
+        print(f'payloads: {payloads}')
+        await self.post_all_pages(
+            AvailableDataFromWeb.inputs_page_set,
+            payload_data=payloads
+        )
+        await self.get_inputs()
+        return self
+
+    async def set_stage(self, stage: int):
+
+        if stage not in range(9):
+            self.add_data_to_data_response_attrs(BadValueToSet(value=stage, expected=(0, 8)))
+            return self
+        return await self.set_inputs_to_web(stage=stage)
 
 
 async def main():
+
     try:
         sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(1))
         obj = PeekWebHosts('10.179.107.129', host_id='2406', session=sess)
         # await obj.get_states()
         # await obj.request_all_types(AvailableDataFromWeb.main_page_get)
-        await obj.set_inputs_to_web()
+        await obj.set_inputs_to_web(inps_name_and_vals=(('MPP_PH2', '-'),
+                                                        ('MPP_PH3', 'ВКЛ'),
+                                                        ('MPP_PH4', '0')))
+
         # await obj.get_states()
     finally:
         await sess.close()
