@@ -1,7 +1,11 @@
 import asyncio
 from enum import IntEnum
 from functools import cached_property
-from typing import Callable, Type, TypeVar
+from typing import (
+    Callable,
+    Type,
+    TypeVar
+)
 
 import aiohttp
 
@@ -31,9 +35,6 @@ class DataFromWeb(IntEnum):
     main_page_get     = 1
     inputs_page_get   = 2
     inputs_page_set   = 3
-
-
-
 
 
 class PeekWebHosts(HttpHosts):
