@@ -152,8 +152,13 @@ class PeekWebHosts(HttpHosts):
         return await self.set_inputs_to_web(stage=stage)
 
 
-async def main():
 
+""" Tests """
+
+async def main():
+    """
+    Тестовая функция.
+    """
     try:
         sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(1))
         obj = PeekWebHosts('10.179.107.129', host_id='2406', session=sess)
