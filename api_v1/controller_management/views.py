@@ -3,8 +3,8 @@ import time
 
 from fastapi import APIRouter
 
-
 from core.settings import settings
+from core.shared import HTTP_CLIENT_SESSIONS
 from api_v1.controller_management import services
 from api_v1.controller_management.crud.crud import HostPropertiesProcessors
 from api_v1.controller_management.schemas import (
@@ -17,11 +17,7 @@ import logging_config
 
 
 logger = logging.getLogger(__name__)
-
-
 router = APIRouter()
-
-
 
 # @router.post('/get-hosts-test/{test_val}')
 # async def get_hosts_test(test_val: str, data: T1):
@@ -44,21 +40,21 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
 @router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
 async def search_and_get_state(data: NumbersOrIpv4) -> ResponseGetState:
-    states = services.StatesMonitoring(income_data=data, search_in_db=True)
+    states = services.StatesMonitoring(income_data=data, search_in_db=True, session=HTTP_CLIENT_SESSIONS[0].session)
     return await states.compose_request()
 
 
 @router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
 async def get_state(data: FastMonitoring) -> ResponseGetState:
     # print(f'data: \n {data}')
-    states = services.StatesMonitoring(income_data=data, search_in_db=False)
+    states = services.StatesMonitoring(income_data=data, search_in_db=False, session=HTTP_CLIENT_SESSIONS[0].session)
     return await states.compose_request()
 
 
 @router.post('/set-command', tags=[settings.traffic_lights_tag_management])
 async def set_command(data: FastManagement):
 
-    result_set_command = services.Management(income_data=data, search_in_db=False)
+    result_set_command = services.Management(income_data=data, search_in_db=False, session=HTTP_CLIENT_SESSIONS[0].session)
     return await result_set_command.compose_request()
 
 """ Примеры тела запроса """
