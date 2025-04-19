@@ -4,6 +4,7 @@ from pickle import FALSE
 from typing import Any
 
 import aiohttp
+from asyncssh import SSHClientConnection
 from pysnmp.entity.engine import SnmpEngine
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
@@ -68,16 +69,18 @@ class Host:
             raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {ipv4}')
 
     @property
-    def driver(self) -> SnmpEngine | aiohttp.ClientSession:
+    def driver(self) -> SnmpEngine | aiohttp.ClientSession | SSHClientConnection:
         return self._driver
 
-    def set_driver(self, driver: SnmpEngine | aiohttp.ClientSession):
+    def set_driver(self, driver: SnmpEngine | aiohttp.ClientSession | SSHClientConnection):
         if driver is None:
             return
         if  self.protocol == FieldsNames.protocol_snmp and  not isinstance(driver, SnmpEngine):
             raise TypeError(f'driver должен быть типа "SnmpEngine", передан: {type(driver)}')
         elif self.protocol == FieldsNames.protocol_http and not isinstance(driver, aiohttp.ClientSession):
             raise TypeError(f'driver должен быть типа "aiohttp.ClientSession", передан: {type(driver)}')
+        elif self.protocol == FieldsNames.protocol_ssh and not isinstance(driver, SSHClientConnection):
+            raise TypeError(f'driver должен быть типа "SSHClientConnection", передан: {type(driver)}')
         self._driver = driver
 
     @property

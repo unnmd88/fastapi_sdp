@@ -58,7 +58,12 @@ class BadValueToSet(ValueError):
             return ''
 
 
+class ReadFromInteractiveShellError(TimeoutError):
 
+    message = 'Ошибка сеанса интерактивной оболочки'
+
+    def __str__(self):
+        return self.message
 
 
 

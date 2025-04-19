@@ -1,11 +1,14 @@
 import asyncio
 import os
 import time
+from shutil import which
 from typing import Iterator
 
 import asyncssh
+from asyncssh import SSHClientConnection, SSHClientProcess
 
 from api_v1.controller_management.schemas import AllowedControllers
+from sdp_lib.management_controllers.exceptions import ReadFromInteractiveShellError
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.hosts import Host
 from sdp_lib.management_controllers.ssh.constants import kex_algs, enc_algs, term_type, proc_ssh_encoding, itc_login, \
@@ -17,6 +20,23 @@ access_levels = {
     'swarco_r': (os.getenv('swarco_r_login'), os.getenv('swarco_r_passwd')),
     'peek_r': (os.getenv('peek_r_login'), os.getenv('peek_r_passwd')),
 }
+
+
+async def read_timed(stream: asyncssh.SSHReader,
+                     timeout: float = 1,
+                     bufsize: int = 1024) -> str:
+    """Read data from a stream with a timeout."""
+    ret = ''
+    print(f'in func read_timed')
+    while True:
+        try:
+            ret += await asyncio.wait_for(stream.read(bufsize), timeout)
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            return ret
+        # if cnt > 3 and not ret:
+        #     raise ReadFromInteractiveShellError()
+
+
 
 
 class AsyncConnectionSSH:
@@ -61,6 +81,10 @@ class AsyncConnectionSSH:
     #         message = f'\n{datetime.today().strftime("%Y-%m-%d %H:%M:%S")} Программный сбой подключения...'
     #     return client, message
 
+    @property
+    def host_ip(self):
+        return self._ip
+
     @staticmethod
     async def read_timed(stream: asyncssh.SSHReader,
                          timeout: float = 1,
@@ -89,7 +113,9 @@ class AsyncConnectionSSH:
         """
         errorIndication = None
         try:
-            timeout = asyncssh.SSHClientConnectionOptions(login_timeout=login_timeout)
+            timeout = asyncssh.SSHClientConnectionOptions(login_timeout=login_timeout,
+                                                          connect_timeout=4
+                                                          )
             self._ssh_connection = await asyncssh.connect(
                 host=self._ip,
                 username=username,
@@ -112,21 +138,16 @@ class AsyncConnectionSSH:
         self._process = await self._ssh_connection.create_process(**kwargs)
 
     @property
-    def ssh_connection(self):
+    def ssh_connection(self) -> SSHClientConnection:
         return self._ssh_connection
 
     @property
-    def ssh_process(self):
+    def ssh_process(self) -> SSHClientProcess:
         return self._process
 
     def close_conn(self):
         self._ssh_connection.close()
 
-
-
-    @property
-    def proc(self):
-        return self._process
 
 
     # async def adownload_scp(self, access_level: str, files: list[str], dest_path: str = '.'):
@@ -158,6 +179,9 @@ class AsyncConnectionSSH:
     #         return err, (dest_path, os.listdir(dest_path)[-1]), self
     #     finally:
     #         conn.close()
+# async with asyncssh.connect() as conn:
+#     async with conn.create_process() as proc:
+
 
 
 class SwarcoConnectionSSH(AsyncConnectionSSH):
@@ -180,49 +204,39 @@ class SwarcoSSH(Host):
 
     protocol = FieldsNames.protocol_snmp
 
-    def __init__(self, ip=None, host_id=None, driver=None, ssh_conn=None, process=None):
+    def __init__(self, ip=None, host_id=None, driver: SSHClientConnection =None, process=None):
 
         super().__init__(
             ipv4=ip, host_id=host_id, driver=driver
         )
+        self._ssh_process: SSHClientProcess = process
 
-        # if isinstance(driver, SwarcoConnectionSSH):
-        #     self._ssh_conn = driver.ssh_connection
-        #     self._process = driver.ssh_process
+    async def create_connection(self, login_timeout: float = 10, **kwargs):
+        if not isinstance(self._driver, SSHClientConnection):
+            try:
+                self._driver = await asyncssh.connect(
+                    host=self._ipv4,
+                    username=itc_login,
+                    password=itc_passwd,
+                    options=asyncssh.SSHClientConnectionOptions(login_timeout=login_timeout),
+                    kex_algs=kex_algs,
+                    encryption_algs=enc_algs,
+                    known_hosts=None,
+                    **kwargs
+                )
+            # except asyncssh.misc.PermissionDenied:
+            #     errorIndication = 'Permission denied'
+            except (OSError, asyncssh.Error):
+                return 'SSH connection failed'
 
-        self._ssh_conn = ssh_conn
-        self._process = process
+    async def create_process(self, **kwargs):
+        if isinstance(self._driver, SSHClientConnection): # Добавить проверку что коннект живой
+            self._ssh_process = await self._driver.create_process(
+                term_type=term_type,
+                encoding=proc_ssh_encoding,
+                **kwargs
+            )
 
-
-    async def send_commands(self, commands) -> tuple:
-        """
-
-        :param commands: Список комманд, которые будут отправлены в shell
-        :return: errorIndication, stdout(вывод сеанса shell)
-        """
-
-        print(commands)
-
-        # conn2 = AsyncConnectionSSH('10.179.108.177', AllowedControllers.SWARCO)
-        # await conn2.acreate_connect(
-        #     'itc',
-        #     'level1NN'
-        # )
-
-        try:
-            commands_for_json = []
-            async with self._driver.create_process(term_type=term_type, encoding=proc_ssh_encoding) as proc:
-                await self.read_timed(proc.stdout, timeout=3, bufsize=4096)
-                for command in commands:
-                    # logger.debug(command)
-                    commands_for_json.append(command)
-                    proc.stdin.write(command)
-                response = await self.read_timed(proc.stdout, timeout=3, bufsize=4096)
-                print(f'response: {response}')
-                proc.stdin.write('exit\n')
-                errorIndication, stdout = None, response
-        except (OSError, asyncssh.Error):
-            errorIndication = 'SSH connection failed'
 
     async def send_commands2(self, commands) -> tuple:
         """
@@ -241,60 +255,89 @@ class SwarcoSSH(Host):
 
         self.last_response = ''
 
-        await self.driver.read_timed(self._process.stdout, timeout=3, bufsize=4096)
+        await read_timed(self._ssh_process.stdout, timeout=.8, bufsize=4096)
         for command in commands:
-            self._process.stdin.write(f'{command}\n')
+            self._ssh_process.stdin.write(f'{command}\n')
 
-            response = await self.driver.read_timed(self._process.stdout, timeout=.5, bufsize=4096)
+            try:
+                response = await read_timed(self._ssh_process.stdout, timeout=.5, bufsize=4096)
+            except ReadFromInteractiveShellError:
+                await self.create_connection()
+                await self.create_process()
+                self._ssh_process.stdin.write(f'{command}\n')
+                response = await read_timed(self._ssh_process.stdout, timeout=.5, bufsize=4096)
             self.last_response += response
 
             print(f'response: {response}')
+        # self._ssh_process.close()
+        # self._ssh_process.terminate()
+        # await self._ssh_process.wait()
+
         return self.last_response
 
-
-
+    @property
+    def process(self) -> SSHClientProcess:
+        return self._ssh_process
 
 
 async def main():
+    connectt =None
 
-    conn = SwarcoConnectionSSH('10.179.108.177')
-    await conn.acreate_connection()
-    await conn.acreate_proc()
+    try:
+        connectt = await asyncssh.connect(
+            host='10.179.108.177',
+            username=itc_login,
+            password=itc_passwd,
+            options=asyncssh.SSHClientConnectionOptions(login_timeout=10, connect_timeout=4),
+            kex_algs=kex_algs,
+            encryption_algs=enc_algs,
+            known_hosts=None,
+        )
+        procx = await connectt.create_process(
+            term_type=term_type,
+                encoding=proc_ssh_encoding,)
+        await read_timed(procx.stdout, timeout=.8, bufsize=4096)
+
+        print(f'procx.stdout: {procx}')
+        print(f'procx.stdout: {procx.stdout}')
+        print('****' * 20)
+        procx.kill()
+        await procx.wait()
+
+        procx = await connectt.create_process(
+            term_type=term_type,
+                encoding=proc_ssh_encoding,)
+        await read_timed(procx.stdout, timeout=.8, bufsize=4096)
+
+        print(f'procx.stdout: {procx.stdout}')
+        print(f'procx.stdout: {procx}')
+        print('****' * 20)
+
+
+        print(f'connectt.is_closed(): {connectt.is_closed()}')
+    except ValueError as exc:
+        print(f'exc: + {exc}')
+    finally:
+        pass
+        # await connectt.wait_closed()
+    await asyncio.sleep(2)
+    print(f'connectt: {connectt}')
+    print(f'connectt.is_closed(): {connectt.is_closed()}')
+
+    # obj = SwarcoSSH()
+    # obj.set_ipv4('10.179.108.177')
+    # await obj.create_connection()
+    # await obj.create_process()
 
 
 
-    obj = SwarcoSSH(ip=conn._ip, driver=conn, ssh_conn=conn.ssh_connection, process=conn.proc)
+    # await obj.send_commands2(['lang UK', 'l2', '2727','SIMULATE DISPLAY --poll'])
     #
-    print(obj.driver)
-    print(obj.driver.ssh_connection.is_closed())
-
-    await obj.send_commands2(['lang UK', 'l2', '2727','SIMULATE DISPLAY --poll'])
-    #
-    # while True:
-    #     print(f'obj.driver: {obj.driver}')
-    #     print(f' obj.driver.is_closed(): {obj.driver.is_closed()}')
-    #     print(f' proc.is_closing(): {proc.is_closing()}')
-    #     a = input()
-    #     if a == 'stop':
-    #         break
-    #     await obj.send_commands2(proc, a.split())
-    # print(f' 1 >obj.driver: {obj.driver}')
-    # print(f' 1 > obj.driver.is_closed(): {obj.driver.is_closed()}')
-    # print(f' 1 > proc.is_closing(): {proc.is_closing()}')
-    # # conn.close_conn()
-    # await conn.aclose_conn()
-    # print(f' 2 >obj.driver: {obj.driver}')
-    # print(f' 2 > obj.driver.is_closed(): {obj.driver.is_closed()}')
-    # print(f' 2 > proc.is_closing(): {proc.is_closing()}')
-    # time.sleep(1)
-    # print(f' 3 > obj.driver.is_closed(): {obj.driver.is_closed()}')
-
-    print(f'obj.last_response: {obj.last_response}')
-    print(f'obj.last_response: {obj.last_response.encode(stdout_encoding).decode(stdout_decoding)}')
-    to_write = obj.last_response.encode(stdout_encoding).decode(stdout_decoding)
-    print(f'type (obj.last_response): {type(to_write)}')
-    with open('swarco_ssh_stdout.txt', 'w', encoding=stdout_encoding) as f:
-        f.write(to_write)
+    # print(f'obj.last_response: {obj.last_response}')
+    # to_write = obj.last_response.encode(stdout_encoding).decode(stdout_decoding)
+    # print(f'type (obj.last_response): {type(to_write)}')
+    # with open('swarco_ssh_stdout.txt', 'w') as f:
+    #     f.write(to_write)
 if __name__ == '__main__':
     asyncio.run(main())
 

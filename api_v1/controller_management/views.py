@@ -4,7 +4,7 @@ import time
 from fastapi import APIRouter
 
 from core.settings import settings
-from core.shared import HTTP_CLIENT_SESSIONS
+from core.shared import HTTP_CLIENT_SESSIONS, SWARCO_SSH_CONNECTIONS
 from api_v1.controller_management import services
 from api_v1.controller_management.crud.crud import HostPropertiesProcessors
 from api_v1.controller_management.schemas import (
@@ -14,7 +14,7 @@ from api_v1.controller_management.schemas import (
     ResponseSearchinDb, FastManagement
 )
 import logging_config
-
+from sdp_lib.management_controllers.ssh.ssh_core import SwarcoSSH
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -68,6 +68,43 @@ async def set_command(data: FastManagement):
         session=HTTP_CLIENT_SESSIONS[0].session
     )
     return await result_set_command.compose_request()
+
+
+@router.post('/test-ssh', tags=[settings.traffic_lights_tag_management])
+async def test_ssh(commands: dict[str, list[str]]):
+
+    commands = commands.get('commands')
+    print(f'commands: {commands}')
+    print(f'type(commands): {type(commands)}')
+    if not isinstance(SWARCO_SSH_CONNECTIONS.get('10.179.108.177'), SwarcoSSH):
+        obj = SwarcoSSH('10.179.108.177')
+        await obj.create_connection()
+        await obj.create_process()
+        SWARCO_SSH_CONNECTIONS['10.179.108.177'] = obj
+        print(obj.driver.is_closed())
+        print(obj.process.is_closing())
+    else:
+        print(f'SWARCO_SSH_CONNECTIONS: {SWARCO_SSH_CONNECTIONS}')
+        obj = SWARCO_SSH_CONNECTIONS.get('10.179.108.177')
+        print(f'f obj.driver: {obj.driver}')
+        print(f'f obj.process: {obj.process}')
+        print(f'f obj.process.is_closing(): {obj.process.is_closing()}')
+        # await obj.create_process()
+
+    print(obj.driver.is_closed())
+    print(obj.process.is_closing())
+    # ['lang UK', 'l2', '2727','SIMULATE DISPLAY --poll']
+    # ["lang UK", "l2", "2727","SIMULATE DISPLAY --poll"]
+
+
+    print('>>>>>>>>>>>>>>>>>>>>>>>' * 20)
+    await obj.send_commands2(commands)
+    print(obj.driver.is_closed())
+    print(obj.process.is_closing())
+    # await obj.create_process()
+    await obj.send_commands2(['instat102 ?'])
+
+
 
 """ Примеры тела запроса """
 
