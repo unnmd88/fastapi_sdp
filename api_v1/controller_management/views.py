@@ -76,9 +76,9 @@ async def test_ssh(commands: dict[str, list[str]]):
     commands = commands.get('commands')
     print(f'commands: {commands}')
     print(f'type(commands): {type(commands)}')
-    if not isinstance(SWARCO_SSH_CONNECTIONS.get('10.179.108.177'), SwarcoSSH):
+    if not isinstance(SWARCO_SSH_CONNECTIONS.get('10.45.154.18'), SwarcoSSH):
         obj = SwarcoSSH('10.179.108.177')
-        await obj.create_connection()
+        await obj.create_driver_connection()
         await obj.create_process()
         SWARCO_SSH_CONNECTIONS['10.179.108.177'] = obj
         print(obj.driver.is_closed())

@@ -16,7 +16,7 @@ from api_v1.controller_management.schemas import (
     AllowedMonitoringEntity,
     AllowedManagementEntity,
     HostBodyMonitoringMixin,
-    HostBodyManagementMixin,
+    HostBodyManagementMixin, AllowedManagementSources,
 )
 from api_v1.controller_management.sorters import sorters
 from api_v1.controller_management.sorters.sorters import (
@@ -34,6 +34,7 @@ from sdp_lib.management_controllers.http.peek import peek_http
 import logging_config
 from sdp_lib.management_controllers.http.peek.peek_http import DataFromWeb
 from sdp_lib.management_controllers.snmp import snmp_core, snmp_api
+from sdp_lib.management_controllers.ssh import ssh_core
 
 logger = logging.getLogger(__name__)
 
@@ -179,18 +180,21 @@ class Management(Controllers):
             data_host: HostBodyManagementMixin
     ) -> Coroutine:
         type_controller = data_host.type_controller
+        source = data_host.source
         option = data_host.option
         command = data_host.command
         value = data_host.value
-        match (type_controller, command):
-            case (AllowedControllers.SWARCO, AllowedManagementEntity.SET_STAGE):
+        match (type_controller, command, source):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 return snmp_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.POTOK_S, AllowedManagementEntity.SET_STAGE):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 return snmp_api.PotokS(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.POTOK_P, AllowedManagementEntity.SET_STAGE):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
+                return ssh_core.SwarcoSSH(ip=ip).send_commands4(['lang UK', 'itc', 'l2', '2727',  'itc', 'SIMULATE DISPLAY --poll'])
         raise TypeError('DEBUG')

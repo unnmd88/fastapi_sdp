@@ -36,9 +36,13 @@ class AllowedMonitoringOptions(StrEnum):
 
 
 class AllowedManagementEntity(StrEnum):
-    SET_STAGE = 'set_stage'
-    SET_DARK = 'set_dark'
+    set_stage = 'set_stage'
+    set_dark = 'set_dark'
 
+
+class AllowedManagementSources(StrEnum):
+    man = 'man'
+    central = 'central'
 
 class AllowedProtocolsRequest(StrEnum):
     SNMP = 'snmp'
@@ -106,6 +110,7 @@ class HostBodyMonitoringMixin(BaseModel):
 class HostBodyManagementMixin(HostBodyMonitoringMixin):
     command: str
     value: Annotated[int | str, Field()]
+    source: Annotated[AllowedManagementSources, Field(default=None)]
 
 
 """ Взаимосвязаны с запросом в БД. """
@@ -220,7 +225,7 @@ class FastManagement(FastMonitoring):
                         {
                             "192.168.0.2": {
                                 AllowedDataHostFields.type_controller: "Peek",
-                                AllowedDataHostFields.command: AllowedManagementEntity.SET_STAGE,
+                                AllowedDataHostFields.command: AllowedManagementEntity.set_stage,
                                 AllowedDataHostFields.value: 1
                             },
 
