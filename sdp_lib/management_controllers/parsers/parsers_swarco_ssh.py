@@ -1,13 +1,17 @@
 
 from sdp_lib.management_controllers.ssh.swarco_terminal import ItcTerminal
 
+
+MAX_STAGES = 8
+
+
 def process_stdout_itc(content):
     return content
 
 def process_stdout_instat(content):
     splited_stdout = content.splitlines()[1:-1]
     # return splited_stdout
-    return [splited_stdout[3].replace(" ", '')[:9], splited_stdout[4].split(": ")[-1][:9]]
+    return [splited_stdout[3].replace(" ", '')[:MAX_STAGES], splited_stdout[4].split(": ")[-1][:MAX_STAGES]]
 
 
 def process_stdoud_cbmem(content):

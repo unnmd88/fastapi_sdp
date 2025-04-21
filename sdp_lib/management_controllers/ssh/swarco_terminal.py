@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+
+
 class ItcTerminal(StrEnum):
 
     alias_itc = 'itc'

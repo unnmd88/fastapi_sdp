@@ -390,7 +390,7 @@ class SwarcoSSH(Host):
         stdout = await self.write_and_read_shell(ItcTerminal.instat102)
 
         print(f'process_stdout_instat(stdout): {process_stdout_instat(stdout)}')
-        print(f'list(process_stdout_instat(stdout)): {list(process_stdout_instat(stdout))}')
+        print(f'list(process_stdout_instat(stdout)): {list(process_stdout_instat(stdout)[-1])}')
         self.add_data_to_data_response_attrs(data={'stdout': process_stdout_instat(stdout)})
         return self
 
