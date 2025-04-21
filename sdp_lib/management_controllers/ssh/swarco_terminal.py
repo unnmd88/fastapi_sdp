@@ -31,6 +31,9 @@ class ItcTerminal(StrEnum):
 
     inp103_1 = 'inp103=1'
     inp103_0 = 'inp103=0'
+    instat102 = 'instat102 ?'
+
+    echo = 'ECHO'
 
 
 login_commands = [str(ItcTerminal.lang_uk), str(ItcTerminal.l2_login,), str(ItcTerminal.l2_pass)]
@@ -51,15 +54,17 @@ matches_set_stage = {
     num_stage:  f'inp{num_inp}=1' for num_stage, num_inp in zip(range(1, 9), range(104, 112))
 }
 
+reset_inputs_104_111_exclude_103 = [f'inp{num_inp}=0' for num_inp in range(4, 12)]
 reset_inputs_102_111_exclude_103 = [f'inp{num_inp}=0' for num_inp in range(2, 12) if num_inp != 3]
 reset_inputs_101_111 = [f'inp{num_inp}=0' for num_inp in range(1, 12)]
 
 instat_start_102_and_display_commands = [get_instat_command('instat102'), ItcTerminal.display_command]
 
-def get_commands_set_stage(stage: int, as_list=False) -> list[str] | Iterator:
+def get_commands_set_stage(stage: int, as_list=False, instat_start_104=None) -> list[str] | Iterator:
     if stage == 0:
         set_inp_commands = reset_inputs_102_111_exclude_103
     else:
+
         set_inp_commands = [ItcTerminal.inp102_1, matches_set_stage.get(stage, '')]
     if as_list:
         return [command for command in itertools.chain(login_commands, set_inp_commands)]

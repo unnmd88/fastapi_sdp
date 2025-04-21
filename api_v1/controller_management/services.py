@@ -23,6 +23,7 @@ from api_v1.controller_management.sorters.sorters import (
     HostSorterMonitoring,
     HostSorterManagement
 )
+from core.shared import SWARCO_SSH_CONNECTIONS
 
 # from sdp_lib.management_controllers.snmp import snmp_api, snmp_core
 # from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
@@ -196,6 +197,9 @@ class Management(Controllers):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
-                print('case (AllowedControllers.SWARCO, Al')
+                if ip in SWARCO_SSH_CONNECTIONS:
+                    print('case (AllowedControllers.SWARCO, Al')
+                    return SWARCO_SSH_CONNECTIONS[ip].set_stage(value)
                 return ssh_core.SwarcoSSH(ip=ip).set_stage(value)
+
         raise TypeError('DEBUG')

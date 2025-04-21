@@ -7,10 +7,12 @@ import asyncssh
 from asyncssh import SSHClientConnection, SSHClientProcess
 
 from api_v1.controller_management.schemas import AllowedControllers
+from core.shared import SWARCO_SSH_CONNECTIONS
 from sdp_lib.management_controllers.exceptions import ReadFromInteractiveShellError
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.hosts import Host
 from sdp_lib.management_controllers.parsers import parsers_swarco_ssh
+from sdp_lib.management_controllers.parsers.parsers_swarco_ssh import process_stdout_instat
 from sdp_lib.management_controllers.ssh import swarco_terminal
 from sdp_lib.management_controllers.ssh.constants import kex_algs, enc_algs, term_type, proc_ssh_encoding, itc_login, \
     itc_passwd, stdout_encoding, stdout_decoding, swarco_r_login, swarco_r_passwd
@@ -39,7 +41,7 @@ async def read_timed(stream: asyncssh.SSHReader,
             # print(f'ret-----------------------:')
             ret += await asyncio.wait_for(stream.read(bufsize), timeout)
             ret = ret.replace('\u0000', '')
-            # ret.strip().replace("&&> \u0000", '')
+            # print(f'ret >>>> {ret}')
         except (asyncio.TimeoutError, asyncio.CancelledError):
             return ret
             # line.strip().replace("&&> \u0000", '') if line.startswith('&&') else line.strip()
@@ -196,6 +198,15 @@ async def read_timed(stream: asyncssh.SSHReader,
 # async with asyncssh.connect() as conn:
 #     async with conn.create_process() as proc:
 
+
+
+class ConnectionKeeper(typing.NamedTuple):
+    ip: str
+    session: SSHClientConnection
+    process: SSHClientProcess
+
+
+
 FIELD_NAME               = 0
 PROCESSING_STDOUT_METHOD = 0
 
@@ -212,21 +223,28 @@ class SwarcoSSH(Host):
         self._success_conn_time = None
         self.pretty_output = None
         self.raw_stdout = None
+        self.timeout = .2
 
-    async def create_connect(self, connect_timeout: float = 10, login_timeout: float = 10) -> SSHClientConnection:
-        return await asyncssh.connect(
-                    host=self._ipv4,
-                    username=itc_login,
-                    password=itc_passwd,
-                    options=asyncssh.SSHClientConnectionOptions(connect_timeout=connect_timeout,
-                                                                login_timeout=login_timeout),
-                    kex_algs=kex_algs,
-                    encryption_algs=enc_algs,
-                    known_hosts=None,
+    async def create_connect(self, connect_timeout: float = 10, login_timeout: float = 10) -> bool:
+        try:
+            self._driver = await asyncssh.connect(
+                host=self._ipv4,
+                username=itc_login,
+                password=itc_passwd,
+                options=asyncssh.SSHClientConnectionOptions(connect_timeout=connect_timeout,
+                                                            login_timeout=login_timeout),
+                kex_algs=kex_algs,
+                encryption_algs=enc_algs,
+                known_hosts=None,
             )
+            SWARCO_SSH_CONNECTIONS[self.ip_v4] = self
+            return True
+        except (OSError, asyncssh.Error):
+            self.add_data_to_data_response_attrs('SSH connection failed')
+        return False
 
-    async def create_proc(self, connection: SSHClientConnection) -> SSHClientProcess:
-        return await connection.create_process(
+    async def create_proc(self):
+        self._ssh_process = await self._driver.create_process(
             term_type=term_type,
             encoding=proc_ssh_encoding,
         )
@@ -241,7 +259,6 @@ class SwarcoSSH(Host):
     #         except ReadFromInteractiveShellError as exc:
     #             self.add_data_to_data_response_attrs(exc)
     #             break
-
 
     async def main_send_commands(self) -> typing.Self:
         """
@@ -298,13 +315,91 @@ class SwarcoSSH(Host):
             if last_states:
                 self.add_data_to_data_response_attrs(data={'states_after_shell_session': last_states})
 
+
+    # async def _check_connection_and_interactive_session(self) -> bool:
+    #     print(f'self.driver: {self.driver}')
+    #     print(f'self.process: {self.process}')
+    #     skip_check_interactive_shell = False
+    #     if not self._driver or isinstance(self._driver, SSHClientConnection) and self._driver.is_closed():
+    #         await self.create_connect()
+    #         if self.response_errors:
+    #             return False
+    #         await self.create_proc()
+    #         stdout = await read_timed(self._ssh_process.stdout)
+    #         if 'ITC' not in stdout:
+    #             self.add_data_to_data_response_attrs('<SSH connection failed>')
+    #             return False
+    #
+    #         skip_check_interactive_shell = True
+    #
+    #     if not skip_check_interactive_shell:
+    #         shell_is_active = await self._check_interactive_session()
+    #         if not shell_is_active:
+    #             self.add_data_to_data_response_attrs('SSH connection failed!!')
+    #             return False
+    #
+    #     return True
+
+    def write_to_shell(self, data):
+        self.process.stdin.write(f'{data}\n')
+
+    async def write_and_read_shell(self, data: str) -> str:
+        self.write_to_shell(data)
+        return await read_timed(self.process.stdout, timeout=.4)
+
+    async def check_connection_and_interactive_session(self, timeout=.4) -> bool:
+        print(f'self.driver: {self.driver}')
+        print(f'self.process: {self.process}')
+        ok = False
+        try:
+            self.write_to_shell(ItcTerminal.echo)
+            r = await read_timed(self._ssh_process.stdout, timeout=timeout)
+            if 'Ok' in r or 'ITC' in r:
+                return True
+        except (AttributeError, BrokenPipeError, ConnectionResetError):
+            ok = False
+
+        try:
+            await self.create_proc()
+            r = await read_timed(self._ssh_process.stdout, timeout=timeout)
+            if 'ITC' in r:
+                return True
+        except (AttributeError, BrokenPipeError, ConnectionResetError):
+            ok = False
+
+        await self.create_connect()
+        await self.create_proc()
+
+        if self.response_errors:
+            return False
+
+        r = await read_timed(self._ssh_process.stdout, timeout)
+        print(f'r2: {r}')
+        if 'ITC' in r:
+            return True
+        self.add_data_to_data_response_attrs('AAAAAAAAAA!!!')
+        return False
+
     async def set_stage(self, stage: int):
 
-        self._varbinds_for_request = [(comm, False) for comm in swarco_terminal.get_commands_set_stage(stage)]
+        success_conn = await self.check_connection_and_interactive_session()
+        if not success_conn:
+            print(f'if not success_conn: {success_conn}')
+            return self
 
-        for comm in instat_start_102_and_display_commands:
-            self._varbinds_for_request.append((comm, True))
-        return await self.main_send_commands()
+        stdout = await self.write_and_read_shell(ItcTerminal.instat102)
+
+        print(f'process_stdout_instat(stdout): {process_stdout_instat(stdout)}')
+        print(f'list(process_stdout_instat(stdout)): {list(process_stdout_instat(stdout))}')
+        self.add_data_to_data_response_attrs(data={'stdout': process_stdout_instat(stdout)})
+        return self
+
+
+        # self._varbinds_for_request = [(comm, False) for comm in swarco_terminal.get_commands_set_stage(stage)]
+
+        # for comm in instat_start_102_and_display_commands:
+        #     self._varbinds_for_request.append((comm, True))
+        # return await self.main_send_commands()
 
     @property
     def process(self) -> SSHClientProcess:
