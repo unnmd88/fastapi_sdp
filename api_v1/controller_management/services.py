@@ -196,5 +196,6 @@ class Management(Controllers):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
-                return ssh_core.SwarcoSSH(ip=ip).send_commands4(['lang UK', 'itc', 'l2', '2727',  'itc', 'SIMULATE DISPLAY --poll'])
+                print('case (AllowedControllers.SWARCO, Al')
+                return ssh_core.SwarcoSSH(ip=ip).set_stage(value)
         raise TypeError('DEBUG')

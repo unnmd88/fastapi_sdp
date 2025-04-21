@@ -108,7 +108,7 @@ class SnmpHosts(Host):
         self._request_method: Callable | None = None
         self._parse_method_config = None
         self._parser: BaseSnmpParser = self._get_parser()
-        self._varbinds_for_request = None
+
 
     # def set_driver(self, engine: SnmpEngine):
     #     if isinstance(engine, SnmpEngine):

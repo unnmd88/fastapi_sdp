@@ -10,8 +10,12 @@ from api_v1.controller_management.schemas import AllowedControllers
 from sdp_lib.management_controllers.exceptions import ReadFromInteractiveShellError
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.hosts import Host
+from sdp_lib.management_controllers.parsers import parsers_swarco_ssh
+from sdp_lib.management_controllers.ssh import swarco_terminal
 from sdp_lib.management_controllers.ssh.constants import kex_algs, enc_algs, term_type, proc_ssh_encoding, itc_login, \
     itc_passwd, stdout_encoding, stdout_decoding, swarco_r_login, swarco_r_passwd
+from sdp_lib.management_controllers.ssh.swarco_terminal import ItcTerminal, get_instat_command, \
+    instat_start_102_and_display_commands
 from sdp_lib.utils_common import check_is_ipv4
 
 access_levels = {
@@ -192,6 +196,8 @@ async def read_timed(stream: asyncssh.SSHReader,
 # async with asyncssh.connect() as conn:
 #     async with conn.create_process() as proc:
 
+FIELD_NAME               = 0
+PROCESSING_STDOUT_METHOD = 0
 
 class SwarcoSSH(Host):
 
@@ -204,6 +210,7 @@ class SwarcoSSH(Host):
         )
         self._ssh_process: SSHClientProcess = process
         self._success_conn_time = None
+        self.pretty_output = None
         self.raw_stdout = None
 
     async def create_connect(self, connect_timeout: float = 10, login_timeout: float = 10) -> SSHClientConnection:
@@ -224,42 +231,36 @@ class SwarcoSSH(Host):
             encoding=proc_ssh_encoding,
         )
 
-    async def _send_commands(self, commands, parse=False):
+    # async def _send_commands(self, commands, parse=False):
+    #
+    #     for command in commands:
+    #         self._ssh_process.stdin.write(f'{command}\n')
+    #         try:
+    #             command_response = await read_timed(self._ssh_process.stdout, timeout=.5, bufsize=4096)
+    #             self.raw_stdout.append((command, command_response))
+    #         except ReadFromInteractiveShellError as exc:
+    #             self.add_data_to_data_response_attrs(exc)
+    #             break
 
-        for command in commands:
-            self._ssh_process.stdin.write(f'{command}\n')
-            try:
-                command_response = await read_timed(self._ssh_process.stdout, timeout=.5, bufsize=4096)
-                self.raw_stdout.append((command, command_response))
-            except ReadFromInteractiveShellError as exc:
-                self.add_data_to_data_response_attrs(exc)
-                break
 
-
-    async def send_commands4(self, commands: list[str], *response_states) -> typing.Self:
+    async def main_send_commands(self) -> typing.Self:
         """
 
         :param commands: Список комманд, которые будут отправлены в shell
         :return: errorIndication, stdout(вывод сеанса shell)
         """
 
-        print(commands)
+        print(self._varbinds_for_request)
         self.last_response = []
         self.raw_stdout = []
         try:
             self._driver = await self.create_connect()
             self._ssh_process = await self.create_proc(self._driver)
             await read_timed(self._ssh_process.stdout, timeout=.8, bufsize=4096)
-            await self._send_commands(commands)
-            need_parse_commands = self.get_commands_for_response_states(*response_states)
-            await self._send_commands(commands)
-            # if not self.response_errors:
-            #     self.get_commands_for_response_states(*response_states):
+            await self._send_commands(*self._varbinds_for_request)
 
-                # await self._send_commands(*response_states)
-
-            self.add_data_to_data_response_attrs(data={'pretty_output': self.last_response,
-                                                       'raw_output': self.raw_stdout})
+            # self.add_data_to_data_response_attrs(data={'pretty_output': self.last_response,
+            #                                            'raw_output': self.raw_stdout})
         except (OSError, asyncssh.Error):
             self.add_data_to_data_response_attrs('SSH connection failed')
         finally:
@@ -272,21 +273,38 @@ class SwarcoSSH(Host):
             print(f'self.last_response send_commands4: {self.last_response}')
         return self
 
-    def get_commands_for_response_states(self, states):
-        matches = {
-            'itc': ('itc', 'itc', None),
-            'display': ('SIMULATE DISPLAY --poll', 'display', None),
-        }
-        commands = []
-        for state in states:
-            data = matches.get(state)
-            if data is not None:
-                command, fild_name, fn_handler = data
-                commands.append(command)
-            else:
-                if 'instat' in state.lower():
-                    commands.append((f'{state} ?', 'instat', None))
-        return commands
+    async def _send_commands(self, *args):
+
+        last_states = {}
+        sent_commands = []
+        print(f'argsargs: {args}')
+        for command, need_processing in args:
+            self._ssh_process.stdin.write(f'{command}\n')
+            sent_commands.append(command)
+
+            try:
+                stdout = await read_timed(self._ssh_process.stdout, timeout=.5, bufsize=4096)
+                self.raw_stdout.append((command, stdout))
+
+                if need_processing:
+                    field_name, processed_data = parsers_swarco_ssh.process_terminal_stdout(command, stdout)
+                    last_states[field_name] = processed_data
+
+            except ReadFromInteractiveShellError as exc:
+                self.add_data_to_data_response_attrs(exc)
+                break
+
+            # self.add_data_to_data_response_attrs(data={'raw_response': self.raw_stdout})
+            if last_states:
+                self.add_data_to_data_response_attrs(data={'states_after_shell_session': last_states})
+
+    async def set_stage(self, stage: int):
+
+        self._varbinds_for_request = [(comm, False) for comm in swarco_terminal.get_commands_set_stage(stage)]
+
+        for comm in instat_start_102_and_display_commands:
+            self._varbinds_for_request.append((comm, True))
+        return await self.main_send_commands()
 
     @property
     def process(self) -> SSHClientProcess:

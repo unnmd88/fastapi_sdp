@@ -87,8 +87,8 @@ async def test_ssh(commands: dict[str, list[str]]):
         print(f'SWARCO_SSH_CONNECTIONS: {SWARCO_SSH_CONNECTIONS}')
         obj = SWARCO_SSH_CONNECTIONS.get('10.179.108.177')
         print(f'f obj.driver: {obj.driver}')
-        print(f'f obj.process: {obj.process}')
-        print(f'f obj.process.is_closing(): {obj.process.is_closing()}')
+        print(f'f obj.process: {obj.process_terminal_stdout}')
+        print(f'f obj.process.is_closing(): {obj.process_terminal_stdout.is_closing()}')
         # await obj.create_process()
 
     print(obj.driver.is_closed())

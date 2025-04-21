@@ -24,13 +24,14 @@ class Host:
             *,
             ipv4: str = None,
             host_id: str | int = None,
-            driver: SnmpEngine | aiohttp.ClientSession = None
+            driver: SnmpEngine | aiohttp.ClientSession | SSHClientConnection = None
     ):
         self._ipv4 = ipv4
         self._driver = driver
         self.host_id = host_id
         self.last_response = None
         self._response = Responses(self.protocol)
+        self._varbinds_for_request = None
         # self.ERRORS = []
         # self.DATA_RESPONSE = {}
         # self.RAW_RESPONSE = tuple()
