@@ -17,7 +17,7 @@ from sdp_lib.management_controllers.ssh import swarco_terminal
 from sdp_lib.management_controllers.ssh.constants import kex_algs, enc_algs, term_type, proc_ssh_encoding, itc_login, \
     itc_passwd, stdout_encoding, stdout_decoding, swarco_r_login, swarco_r_passwd
 from sdp_lib.management_controllers.ssh.swarco_terminal import ItcTerminal, get_instat_command, \
-    instat_start_102_and_display_commands
+    instat_start_102_and_display_commands, get_inp_command
 from sdp_lib.utils_common import check_is_ipv4
 
 access_levels = {
@@ -388,6 +388,16 @@ class SwarcoSSH(Host):
             return self
 
         stdout = await self.write_and_read_shell(ItcTerminal.instat102)
+
+        self._varbinds_for_request = [str(ItcTerminal.lang_uk), str(ItcTerminal.l2_login,), str(ItcTerminal.l2_pass)]
+        for num, inp_state in enumerate(process_stdout_instat(stdout)[-1], 1):
+            if num == 1 and inp_state == '0':
+                self._varbinds_for_request.append(get_inp_command('102', '1'))
+
+        for command in self._varbinds_for_request:
+            r = await self.write_and_read_shell(command)
+            print(f'RRRR: {r:8}')
+
 
         print(f'process_stdout_instat(stdout): {process_stdout_instat(stdout)}')
         print(f'list(process_stdout_instat(stdout)): {list(process_stdout_instat(stdout)[-1])}')
