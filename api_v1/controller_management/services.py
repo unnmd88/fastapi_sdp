@@ -204,7 +204,7 @@ class Management(Controllers):
                     print('case (AllowedControllers.SWARCO, Al')
                     driver = SWARCO_SSH_CONNECTIONS.get(ip)
                 else:
-                    driver = ssh_core.SwarcoConnectionsSSH(ip)
+                    driver = ssh_core.SwarcoItcUserConnectionsSSH(ip)
                     # return SWARCO_SSH_CONNECTIONS[ip].set_stage(value)
                 return ssh_core.SwarcoSSH(ip=ip, driver=driver).set_stage(value)
 
