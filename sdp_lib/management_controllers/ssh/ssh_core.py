@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Self
+from typing import Self, Sequence
 from collections import deque
 
 import asyncssh
@@ -247,6 +247,7 @@ class SwarcoSSH(Host):
         super().__init__(
             ipv4=ip, host_id=host_id, driver=driver
         )
+        self._sent_commands = None
         self.pretty_output = None
         self.raw_stdout = None
         self.timeout = .2
@@ -276,16 +277,16 @@ class SwarcoSSH(Host):
         states = {}
         sent_commands = []
         self.raw_stdout = []
+        self._sent_commands = []
         print(f'argsargs: {terminal_commands_entity}')
         for group_commands in terminal_commands_entity:
             for data in group_commands:
                 print(f'data: {data}')
                 command, need_processing = data
                 try:
-                    # stdout = await read_timed(self.driver.p.stdout, timeout=.5, bufsize=4096)
                     stdout = await self.driver.write_and_read_shell(command)
                     self.raw_stdout.append((command, stdout))
-
+                    self._sent_commands.append(command)
                     if need_processing:
                         field_name, processed_data = process_terminal_stdout(command, stdout)
                         states[field_name] = processed_data
@@ -296,7 +297,8 @@ class SwarcoSSH(Host):
 
                 # self.add_data_to_data_response_attrs(data={'raw_response': self.raw_stdout})
                 if states:
-                    self.add_data_to_data_response_attrs(data={'states_after_shell_session': states})
+                    self.add_data_to_data_response_attrs(data={'states_after_shell_session': states,
+                                                               'sent_commands': self._sent_commands})
 
 
     def _add_to_send_varbinds_attr(self, *args):
