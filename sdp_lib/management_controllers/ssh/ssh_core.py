@@ -17,7 +17,7 @@ from sdp_lib.management_controllers.ssh import swarco_terminal
 from sdp_lib.management_controllers.ssh.constants import kex_algs, enc_algs, term_type, proc_ssh_encoding, itc_login, \
     itc_passwd, stdout_encoding, stdout_decoding, swarco_r_login, swarco_r_passwd
 from sdp_lib.management_controllers.ssh.swarco_terminal import ItcTerminal, get_instat_command, \
-    instat_start_102_and_display_commands, get_inp_command
+    instat_start_102_and_display_commands, get_inp_command, is_log_l2, get_commands_set_stage
 from sdp_lib.utils_common import check_is_ipv4
 
 access_levels = {
@@ -28,7 +28,7 @@ access_levels = {
 
 
 async def read_timed(stream: asyncssh.SSHReader,
-                     timeout: float = 1,
+                     timeout: float = .6,
                      bufsize: int = 1024) -> str:
     """Read data from a stream with a timeout."""
     ret = ''
@@ -201,22 +201,31 @@ async def read_timed(stream: asyncssh.SSHReader,
 
 
 class SwarcoConnectionSSH:
-    def __init__(self, ip: str):
+    def __init__(
+            self,
+            ip: str,
+            connect_timeout: float = 20,
+            login_timeout: float = 10,
+            open_interactive_process_timeout: float = 2,
+    ):
         self._ipv4 = ip
+        self._connect_timeout = connect_timeout
+        self._login_timeout = login_timeout
+        self._open_interactive_process_timeout = open_interactive_process_timeout
         self._ssh_connection = None
         self._ssh_process = None
         self._last_conn_time = None
         self.command_timeout = .2
         self._connection_errors = deque(maxlen=1)
 
-    async def create_connect(self, connect_timeout: float = 10, login_timeout: float = 10) -> bool:
+    async def create_connect(self) -> bool:
         try:
             self._ssh_connection = await asyncssh.connect(
                 host=self._ipv4,
                 username=itc_login,
                 password=itc_passwd,
-                options=asyncssh.SSHClientConnectionOptions(connect_timeout=connect_timeout,
-                                                            login_timeout=login_timeout),
+                options=asyncssh.SSHClientConnectionOptions(connect_timeout=self._connect_timeout,
+                                                            login_timeout=self._login_timeout),
                 kex_algs=kex_algs,
                 encryption_algs=enc_algs,
                 known_hosts=None,
@@ -228,13 +237,32 @@ class SwarcoConnectionSSH:
         return False
 
     async def create_proc(self):
-        self._ssh_process = await self._ssh_connection.create_process(
-            term_type=term_type,
-            encoding=proc_ssh_encoding,
-        )
+        try:
+
+            self._ssh_process = await asyncio.wait_for(
+                self._ssh_connection.create_process(
+                    term_type=term_type,
+                    encoding=proc_ssh_encoding,
+                ),
+                timeout=self._open_interactive_process_timeout
+            )
+            return True
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            return False
+
 
     def add_connection_error(self, error: str | Exception):
         self._connection_errors.append(error)
+
+    def set_login_timeout(self, value: float) -> float:
+        if 0 < value < 60:
+            self._login_timeout = value
+        return self._login_timeout
+
+    def set_connect_timeout(self, value: float) -> float:
+        if 0 < value < 60:
+            self._connect_timeout = value
+        return self._connect_timeout
 
     @property
     def ssh_connection(self):
@@ -248,40 +276,54 @@ class SwarcoConnectionSSH:
     def stack_connection_errors(self) -> deque:
         return self._connection_errors
 
+    def get_err_from_stack_or_none(self) -> str | Exception | None:
+
+        try:
+            return self._connection_errors.pop()
+        except IndexError:
+            return None
+
     def write_to_shell(self, data: str) -> None:
         self._ssh_process.stdin.write(f'{data}\n')
 
     async def write_and_read_shell(self, data: str) -> str:
         self.write_to_shell(data)
-        return await read_timed(self._ssh_process.stdout, timeout=.4)
+        return await read_timed(self._ssh_process.stdout)
 
-    async def check_connection_and_interactive_session(self, timeout=.4) -> bool:
+    async def check_connection_and_interactive_session(self) -> bool:
         print(f'self._ssh_connection: {self._ssh_connection}')
         print(f'self._ssh_process: {self._ssh_process}')
         ok = False
         try:
             self.write_to_shell(ItcTerminal.echo)
-            r = await read_timed(self._ssh_process.stdout, timeout=timeout)
+            r = await read_timed(self._ssh_process.stdout)
             if 'Ok' in r or 'ITC' in r:
                 return True
         except (AttributeError, BrokenPipeError, ConnectionResetError):
             ok = False
 
         try:
-            await self.create_proc()
-            r = await read_timed(self._ssh_process.stdout, timeout=timeout)
-            if 'ITC' in r:
-                return True
+            success = await self.create_proc()
+            if success:
+                r = await read_timed(self._ssh_process.stdout)
+                if 'ITC' in r:
+                    return True
         except (AttributeError, BrokenPipeError, ConnectionResetError):
             ok = False
 
         await self.create_connect()
-        await self.create_proc()
+        if self._connection_errors:
+            return False
+
+        success = await self.create_proc()
+        if not success:
+            self.add_connection_error('SSH connection failed')
+            return False
 
         if self._connection_errors:
             return False
 
-        r = await read_timed(self._ssh_process.stdout, timeout)
+        r = await read_timed(self._ssh_process.stdout)
         print(f'r2: {r}')
         if 'ITC' in r:
             return True
@@ -371,23 +413,28 @@ class SwarcoSSH(Host):
 
         success_conn = await self.driver.check_connection_and_interactive_session()
         if not success_conn:
+            print(f'if not success_conn: {self.driver.stack_connection_errors}')
+
+            self.add_data_to_data_response_attrs(self.driver.get_err_from_stack_or_none())
             print(f'if not success_conn: {success_conn}')
             return self
 
-        stdout = await self.driver.write_and_read_shell(ItcTerminal.instat102)
+        self._varbinds_for_request = []
 
-        self._varbinds_for_request = [str(ItcTerminal.lang_uk), str(ItcTerminal.l2_login,), str(ItcTerminal.l2_pass)]
-        for num, inp_state in enumerate(process_stdout_instat(stdout)[-1], 1):
-            if num == 1 and inp_state == '0':
-                self._varbinds_for_request.append(get_inp_command('102', '1'))
+        stdout = await self.driver.write_and_read_shell(ItcTerminal.instat102)
+        if not is_log_l2(stdout):
+            self._varbinds_for_request += [ItcTerminal.lang_uk, ItcTerminal.l2_login, ItcTerminal.l2_pass]
+
+        self._varbinds_for_request += get_commands_set_stage(stage, process_stdout_instat(stdout)[-1])
 
         for command in self._varbinds_for_request:
             r = await self.driver.write_and_read_shell(command)
             print(f'RRRR: {r:8}')
 
+        stdout = await self.driver.write_and_read_shell(ItcTerminal.instat102)
+
 
         print(f'process_stdout_instat(stdout): {process_stdout_instat(stdout)}')
-        print(f'list(process_stdout_instat(stdout)): {list(process_stdout_instat(stdout)[-1])}')
         self.add_data_to_data_response_attrs(data={'stdout': process_stdout_instat(stdout)})
         return self
 
