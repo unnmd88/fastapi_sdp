@@ -294,11 +294,11 @@ class SwarcoSSH(Host):
                 except ReadFromInteractiveShellError as exc:
                     raise TypeError('ALARM! FAULT IN SENDING DATA TO SHELL')
 
+                self.add_data_to_data_response_attrs(data={
+                    'states_after_shell_session': states,
+                    'sent_commands': self._sent_commands
+                })
 
-                # self.add_data_to_data_response_attrs(data={'raw_response': self.raw_stdout})
-                if states:
-                    self.add_data_to_data_response_attrs(data={'states_after_shell_session': states,
-                                                               'sent_commands': self._sent_commands})
 
 
     def _add_to_send_varbinds_attr(self, *args):
