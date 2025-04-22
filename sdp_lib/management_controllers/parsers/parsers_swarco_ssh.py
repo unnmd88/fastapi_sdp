@@ -11,7 +11,7 @@ def process_stdout_itc(content):
 def process_stdout_instat(content):
     splited_stdout = content.splitlines()[1:-1]
     # return splited_stdout
-    return [splited_stdout[3].replace(" ", '')[:MAX_STAGES], splited_stdout[4].split(": ")[-1][:MAX_STAGES]]
+    return [splited_stdout[3].replace(" ", '')[:10], splited_stdout[4].split(": ")[-1][:10]]
 
 
 def process_stdoud_cbmem(content):

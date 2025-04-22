@@ -17,6 +17,6 @@ class AsyncClientHTTP:
     def session(self):
         return self._session
 
-    def close(self):
-        self._session.close()
+    async def close(self):
+        await self._session.close()
 
