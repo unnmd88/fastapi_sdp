@@ -50,7 +50,7 @@ S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
-class Controllers(metaclass=abc.ABCMeta):
+class Controllers:
 
     snmp_engine = SnmpEngine()
     sorter: Type[S]
@@ -95,6 +95,7 @@ class Controllers(metaclass=abc.ABCMeta):
                             name=ip_v4
                         ))
         else:
+            print(f'if self._session is None: is Not  NONE!!!')
             async with TaskGroup() as tg:
                 for ip_v4, data_host in self.allowed_to_request_hosts.items():
                     self.result_tasks.append(tg.create_task(
@@ -102,7 +103,6 @@ class Controllers(metaclass=abc.ABCMeta):
                         name=ip_v4
                     ))
         return self.result_tasks
-
 
     async def compose_request(self):
 
@@ -132,6 +132,9 @@ class Controllers(metaclass=abc.ABCMeta):
         for t in self.result_tasks:
             instance = t.result()
             self.allowed_to_request_hosts[t.get_name()].response = instance.response_as_dict
+            # Заглушка, добавляет в шаренный словарь ssh соединение swarco
+            if isinstance(instance, ssh_core.SwarcoSSH):
+                SWARCO_SSH_CONNECTIONS[instance.ip_v4] = instance.driver
 
 
 class StatesMonitoring(Controllers):
