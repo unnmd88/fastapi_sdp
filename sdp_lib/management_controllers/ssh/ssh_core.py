@@ -200,7 +200,10 @@ async def read_timed(stream: asyncssh.SSHReader,
 
 
 
-class SwarcoConnectionSSH:
+class SwarcoConnectionsSSH:
+    """
+    Класс ssh соединений.
+    """
     def __init__(
             self,
             ip: str,
@@ -219,6 +222,9 @@ class SwarcoConnectionSSH:
         self._connection_errors = deque(maxlen=1)
 
     async def create_connect(self) -> bool:
+        """
+        Создает ssh соединение.
+        """
         try:
             self._ssh_connection = await asyncssh.connect(
                 host=self._ipv4,
@@ -230,13 +236,15 @@ class SwarcoConnectionSSH:
                 encryption_algs=enc_algs,
                 known_hosts=None,
             )
-            # SWARCO_SSH_CONNECTIONS[self.ip_v4] = self
             return True
         except (OSError, asyncssh.Error):
             self.add_connection_error('SSH connection failed')
         return False
 
     async def create_proc(self):
+        """
+        Создает процесс оболочки shell.
+        """
         try:
 
             self._ssh_process = await asyncio.wait_for(
@@ -250,49 +258,92 @@ class SwarcoConnectionSSH:
         except (asyncio.TimeoutError, asyncio.CancelledError):
             return False
 
-
-    def add_connection_error(self, error: str | Exception):
+    def add_connection_error(self, error: str | Exception) -> str | Exception:
+        """
+        Добавляет ошибку в стек.
+        :param error: Текст ошибки или экземпляр класса Exception.
+        :return: Текст или экземпляр класса Exception, добавленной в стек.
+        """
         self._connection_errors.append(error)
+        return error
 
     def set_login_timeout(self, value: float) -> float:
+        """
+        Устанавливает таймаут для процесса логина при создании ssh-соединения.
+        :param value: Значение в секундах.
+        :return: Установленное значение.
+        """
         if 0 < value < 60:
             self._login_timeout = value
         return self._login_timeout
 
     def set_connect_timeout(self, value: float) -> float:
+        """
+        Устанавливает таймаут для ssh-соединения.
+        :param value: Значение в секундах.
+        :return: Установленное значение.
+        """
         if 0 < value < 60:
             self._connect_timeout = value
         return self._connect_timeout
 
     @property
     def ssh_connection(self):
+        """
+        Возвращает объект ssh-соединения.
+        """
         return self._ssh_connection
 
     @property
     def ssh_process(self):
+        """
+        Возвращает объект процесса оболочки shell.
+        """
         return self._ssh_process
 
     @property
     def stack_connection_errors(self) -> deque:
+        """
+        Возвращает стек ошибок.
+        """
         return self._connection_errors
 
     def get_err_from_stack_or_none(self) -> str | Exception | None:
-
+        """
+        Достаёт последнюю справа ошибку из стека, если стек не пуст.
+        :return: Последнюю справа ошибку из стека, если стек не пуст, иначе None
+        """
         try:
             return self._connection_errors.pop()
         except IndexError:
             return None
 
     def write_to_shell(self, data: str) -> None:
+        """
+        Записывает данные в stdin сеанса интерактивной оболочки.
+        :param data: Данные для записи в stdin.
+        :return: None
+        """
         self._ssh_process.stdin.write(f'{data}\n')
 
     async def write_and_read_shell(self, data: str) -> str:
+        """
+        Записывает данные в stdin сеанса интерактивной оболочки и ожидает ответа.
+        :param data: Данные для записи в stdin.
+        :return: Stdout сеанса интерактивной оболочки.
+        """
         self.write_to_shell(data)
         return await read_timed(self._ssh_process.stdout)
 
     async def check_connection_and_interactive_session(self) -> bool:
-        print(f'self._ssh_connection: {self._ssh_connection}')
-        print(f'self._ssh_process: {self._ssh_process}')
+        """
+        Проверяет состояние ssh-подключения и сеанса интерактивной оболочки.
+        Сначала происходит проверка сеанса интерактивной оболочки. Если сеанс неактивен, пробует
+        открыть новый сеанс. Если сеанс открыть не удается, инициирует новое ssh-соединение,
+        затем пытается открыть сеанса интерактивной оболочки.
+        :return: True, если соендинение утсановлено и сеанс интерактивной оболочки готов
+                 для чтения и записи данных, иначе False.
+        """
         ok = False
         try:
             self.write_to_shell(ItcTerminal.echo)
@@ -331,10 +382,6 @@ class SwarcoConnectionSSH:
         return False
 
 
-
-
-
-
 FIELD_NAME               = 0
 PROCESSING_STDOUT_METHOD = 0
 
@@ -342,7 +389,7 @@ class SwarcoSSH(Host):
 
     protocol = FieldsNames.protocol_ssh
 
-    def __init__(self, ip=None, host_id=None, driver: SwarcoConnectionSSH = None):
+    def __init__(self, ip=None, host_id=None, driver: SwarcoConnectionsSSH = None):
 
         super().__init__(
             ipv4=ip, host_id=host_id, driver=driver
@@ -352,7 +399,7 @@ class SwarcoSSH(Host):
         self.timeout = .2
 
     def create_and_set_driver(self):
-        self.set_driver(SwarcoConnectionSSH(self.ip_v4))
+        self.set_driver(SwarcoConnectionsSSH(self.ip_v4))
 
     async def main_send_commands(self) -> typing.Self:
         """
