@@ -199,7 +199,10 @@ class Management(Controllers):
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
                 if ip in SWARCO_SSH_CONNECTIONS:
                     print('case (AllowedControllers.SWARCO, Al')
-                    return SWARCO_SSH_CONNECTIONS[ip].set_stage(value)
-                return ssh_core.SwarcoSSH(ip=ip).set_stage(value)
+                    driver = SWARCO_SSH_CONNECTIONS.get(ip)
+                else:
+                    driver = ssh_core.SwarcoConnectionSSH(ip)
+                    # return SWARCO_SSH_CONNECTIONS[ip].set_stage(value)
+                return ssh_core.SwarcoSSH(ip=ip, driver=driver).set_stage(value)
 
         raise TypeError('DEBUG')

@@ -1,11 +1,14 @@
+import abc
 import asyncio
 import functools
 import time
-from typing import Self, TypeVar
+from typing import Self, TypeVar, Any
 from collections.abc import Callable
 
+from pysnmp.entity.engine import SnmpEngine
+
 from sdp_lib.management_controllers.exceptions import BadControllerType
-from sdp_lib.management_controllers.hosts import *
+from sdp_lib.management_controllers.hosts import Host
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.varbinds_parsers import (
     pretty_processing_stcip,
