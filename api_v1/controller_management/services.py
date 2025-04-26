@@ -19,10 +19,14 @@ from api_v1.controller_management.schemas import (
     HostBodyManagementMixin, AllowedManagementSources,
 )
 from api_v1.controller_management.sorters import sorters
-from api_v1.controller_management.sorters.sorters import (
+from api_v1.controller_management.sorters.sorters_core import (
     HostSorterMonitoring,
     HostSorterManagement
 )
+# from api_v1.controller_management.sorters.sorters import (
+#     HostSorterMonitoring,
+#     HostSorterManagement
+# )
 from core.shared import SWARCO_SSH_CONNECTIONS
 
 # from sdp_lib.management_controllers.snmp import snmp_api, snmp_core
@@ -139,7 +143,7 @@ class Controllers:
 
 class StatesMonitoring(Controllers):
 
-    sorter = sorters.HostSorterMonitoring
+    sorter = HostSorterMonitoring
     processor = MonitoringProcessors
 
     def get_coro(
@@ -177,7 +181,7 @@ class StatesMonitoring(Controllers):
 
 class Management(Controllers):
 
-    sorter = sorters.HostSorterManagement
+    sorter = HostSorterManagement
 
     def get_coro(
             self, ip: str,
