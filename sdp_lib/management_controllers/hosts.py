@@ -1,6 +1,5 @@
 import abc
 import json
-from pickle import FALSE
 from typing import Any
 
 import aiohttp
@@ -23,13 +22,14 @@ class Host:
             *,
             ipv4: str = None,
             host_id: str | int = None,
-            driver: SnmpEngine | aiohttp.ClientSession = None
+            driver = None
     ):
         self._ipv4 = ipv4
         self._driver = driver
         self.host_id = host_id
         self.last_response = None
         self._response = Responses(self.protocol)
+        self._varbinds_for_request = None
         # self.ERRORS = []
         # self.DATA_RESPONSE = {}
         # self.RAW_RESPONSE = tuple()
@@ -68,16 +68,18 @@ class Host:
             raise ValueError(f'Значение < self.ipv4 > должно быть валидным ipv4 адресом: {ipv4}')
 
     @property
-    def driver(self) -> SnmpEngine | aiohttp.ClientSession:
+    def driver(self):
         return self._driver
 
-    def set_driver(self, driver: SnmpEngine | aiohttp.ClientSession):
+    def set_driver(self, driver):
         if driver is None:
             return
         if  self.protocol == FieldsNames.protocol_snmp and  not isinstance(driver, SnmpEngine):
             raise TypeError(f'driver должен быть типа "SnmpEngine", передан: {type(driver)}')
         elif self.protocol == FieldsNames.protocol_http and not isinstance(driver, aiohttp.ClientSession):
             raise TypeError(f'driver должен быть типа "aiohttp.ClientSession", передан: {type(driver)}')
+        # elif self.protocol == FieldsNames.protocol_ssh and not isinstance(driver, SSHClientConnection):
+        #     raise TypeError(f'driver должен быть типа "SSHClientConnection", передан: {type(driver)}')
         self._driver = driver
 
     @property

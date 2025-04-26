@@ -16,13 +16,14 @@ from api_v1.controller_management.schemas import (
     AllowedMonitoringEntity,
     AllowedManagementEntity,
     HostBodyMonitoringMixin,
-    HostBodyManagementMixin,
+    HostBodyManagementMixin, AllowedManagementSources,
 )
 from api_v1.controller_management.sorters import sorters
 from api_v1.controller_management.sorters.sorters import (
     HostSorterMonitoring,
     HostSorterManagement
 )
+from core.shared import SWARCO_SSH_CONNECTIONS
 
 # from sdp_lib.management_controllers.snmp import snmp_api, snmp_core
 # from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
@@ -34,6 +35,7 @@ from sdp_lib.management_controllers.http.peek import peek_http
 import logging_config
 from sdp_lib.management_controllers.http.peek.peek_http import DataFromWeb
 from sdp_lib.management_controllers.snmp import snmp_core, snmp_api
+from sdp_lib.management_controllers.ssh import ssh_core
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,7 @@ S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
-class Controllers(metaclass=abc.ABCMeta):
+class Controllers:
 
     snmp_engine = SnmpEngine()
     sorter: Type[S]
@@ -93,6 +95,7 @@ class Controllers(metaclass=abc.ABCMeta):
                             name=ip_v4
                         ))
         else:
+            print(f'if self._session is None: is Not  NONE!!!')
             async with TaskGroup() as tg:
                 for ip_v4, data_host in self.allowed_to_request_hosts.items():
                     self.result_tasks.append(tg.create_task(
@@ -100,7 +103,6 @@ class Controllers(metaclass=abc.ABCMeta):
                         name=ip_v4
                     ))
         return self.result_tasks
-
 
     async def compose_request(self):
 
@@ -130,6 +132,9 @@ class Controllers(metaclass=abc.ABCMeta):
         for t in self.result_tasks:
             instance = t.result()
             self.allowed_to_request_hosts[t.get_name()].response = instance.response_as_dict
+            # Заглушка, добавляет в шаренный словарь ssh соединение swarco
+            if isinstance(instance, ssh_core.SwarcoSSH):
+                SWARCO_SSH_CONNECTIONS[instance.ip_v4] = instance.driver
 
 
 class StatesMonitoring(Controllers):
@@ -179,18 +184,28 @@ class Management(Controllers):
             data_host: HostBodyManagementMixin
     ) -> Coroutine:
         type_controller = data_host.type_controller
+        source = data_host.source
         option = data_host.option
         command = data_host.command
         value = data_host.value
-        match (type_controller, command):
-            case (AllowedControllers.SWARCO, AllowedManagementEntity.SET_STAGE):
+        match (type_controller, command, source):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 return snmp_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.POTOK_S, AllowedManagementEntity.SET_STAGE):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 return snmp_api.PotokS(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.POTOK_P, AllowedManagementEntity.SET_STAGE):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case(AllowedControllers.PEEK, AllowedManagementEntity.SET_STAGE):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
+                if ip in SWARCO_SSH_CONNECTIONS:
+                    print('case (AllowedControllers.SWARCO, Al')
+                    driver = SWARCO_SSH_CONNECTIONS.get(ip)
+                else:
+                    driver = ssh_core.SwarcoItcUserConnectionsSSH(ip)
+                    # return SWARCO_SSH_CONNECTIONS[ip].set_stage(value)
+                return ssh_core.SwarcoSSH(ip=ip, driver=driver).set_stage(value)
+
         raise TypeError('DEBUG')

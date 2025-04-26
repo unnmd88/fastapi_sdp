@@ -22,7 +22,6 @@ from sdp_lib.management_controllers.http.peek.varbinds import InputsVarbinds
 from sdp_lib.management_controllers.parsers.parsers_peek_http_new import (
     MainPageParser,
     InputsPageParser,
-    InputsPageParserSet
 )
 from sdp_lib.management_controllers.structures import HttpResponseStructure
 
@@ -44,7 +43,7 @@ class PeekWebHosts(HttpHosts):
         return {
             DataFromWeb.main_page_get: (routes.main_page, self._request_sender.fetch, MainPageParser),
             DataFromWeb.inputs_page_get: (routes.get_inputs, self._request_sender.fetch, InputsPageParser),
-            DataFromWeb.inputs_page_set: (routes.set_inputs, self._request_sender.post_request, InputsPageParserSet),
+            # DataFromWeb.inputs_page_set: (routes.set_inputs, self._request_sender.post_request, InputsPageParserSet),
         }
 
     async def _single_common_request(
@@ -152,8 +151,13 @@ class PeekWebHosts(HttpHosts):
         return await self.set_inputs_to_web(stage=stage)
 
 
-async def main():
 
+""" Tests """
+
+async def main():
+    """
+    Тестовая функция.
+    """
     try:
         sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(1))
         obj = PeekWebHosts('10.179.107.129', host_id='2406', session=sess)

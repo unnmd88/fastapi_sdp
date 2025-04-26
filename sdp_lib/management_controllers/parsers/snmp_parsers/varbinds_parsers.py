@@ -5,7 +5,7 @@ from functools import cached_property
 
 from sdp_lib.management_controllers.controller_modes import NamesMode
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.parsers_core import Parsers
+from sdp_lib.management_controllers.parsers.parser_core import Parsers
 from sdp_lib.management_controllers.parsers.snmp_parsers.mixins import StcipMixin, Ug405Mixin
 from sdp_lib.management_controllers.snmp._types import T_Varbinds
 from sdp_lib.management_controllers.snmp.oids import Oids

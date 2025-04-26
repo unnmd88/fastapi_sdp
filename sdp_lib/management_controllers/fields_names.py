@@ -16,6 +16,7 @@ class FieldsNames(StrEnum):
     protocol_ug405 = 'ug405'
     protocol_utmc = 'utmc'
     protocol_http = 'http'
+    protocol_ssh = 'ssh'
     web_content = 'web_content'
     source = 'source'
 
