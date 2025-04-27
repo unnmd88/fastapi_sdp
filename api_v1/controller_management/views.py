@@ -8,10 +8,10 @@ from core.shared import HTTP_CLIENT_SESSIONS, SWARCO_SSH_CONNECTIONS
 from api_v1.controller_management import services
 from api_v1.controller_management.crud.crud import HostPropertiesFromDb
 from api_v1.controller_management.schemas import (
-    NumbersOrIpv4,
-    FastMonitoring,
+    BaseFieldsSearchInDb,
+    FieldsMonitoringWithoutSearchInDb,
     ResponseGetState,
-    ResponseSearchinDb, FastManagement
+    ResponseSearchinDb, FieldsManagementWithoutSearchInDb
 )
 import logging_config
 from sdp_lib.management_controllers.ssh.ssh_core import SwarcoSSH
@@ -29,7 +29,7 @@ router = APIRouter()
 
 
 @router.post('/properties', tags=[settings.traffic_lights_tag_static_properties])
-async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
+async def get_hosts(data: BaseFieldsSearchInDb) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
@@ -43,7 +43,7 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
 
 @router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def search_and_get_state(data: NumbersOrIpv4) -> ResponseGetState:
+async def search_and_get_state(data: BaseFieldsSearchInDb) -> ResponseGetState:
     print(f'data: \n {data}')
 
     states = services.StatesMonitoring(
@@ -55,7 +55,7 @@ async def search_and_get_state(data: NumbersOrIpv4) -> ResponseGetState:
 
 
 @router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def get_state(data: FastMonitoring) -> ResponseGetState:
+async def get_state(data: FieldsMonitoringWithoutSearchInDb) -> ResponseGetState:
     # print(f'data: \n {data}')
     states = services.StatesMonitoring(
         income_data=data,
@@ -66,7 +66,7 @@ async def get_state(data: FastMonitoring) -> ResponseGetState:
 
 
 @router.post('/set-command', tags=[settings.traffic_lights_tag_management])
-async def set_command(data: FastManagement):
+async def set_command(data: FieldsManagementWithoutSearchInDb):
 
     result_set_command = services.Management(
         income_data=data,

@@ -45,6 +45,7 @@ class AllowedManagementSources(StrEnum):
     man = 'man'
     central = 'central'
 
+
 class AllowedProtocolsRequest(StrEnum):
     SNMP = 'snmp'
     HTTP = 'http'
@@ -77,7 +78,6 @@ class AllowedDataHostFields(StrEnum):
     value = 'value'
 
 
-
 class TrafficLightsObjectsTableFields(StrEnum):
     IP_ADDRESS = 'ip_adress'
     NUMBER = 'number'
@@ -87,16 +87,7 @@ class TrafficLightsObjectsTableFields(StrEnum):
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-# def get_field_for_search_in_db(field: str) -> str:
-#
-#     if check_is_ipv4(field):
-#         return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
-#     else:
-#         return str(TrafficLightsObjectsTableFields.NUMBER)
-
-""" Mixins """
-
-class HostBodyMonitoringMixin(BaseModel):
+class BaseFields(BaseModel):
 
     model_config = ConfigDict(extra='allow')
 
@@ -108,22 +99,28 @@ class HostBodyMonitoringMixin(BaseModel):
     option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
 
 
-class HostBodyManagementMixin(HostBodyMonitoringMixin):
+class ManagementFields(BaseFields):
     command: str
     value: Annotated[int | str, Field()]
-    source: Annotated[AllowedManagementSources, Field(default=None)]
+    source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
 
 
 """ Взаимосвязаны с запросом в БД. """
 
 
-class NumbersOrIpv4(BaseModel):
+class BaseFieldsSearchInDb(BaseModel):
 
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [
+            {
+                "hosts": ["11", "2390"]
+            },
+        ],
+    })
     # hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates), Field(frozen=True)]
     hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30)]
     source_data: Annotated[dict, Field(default=None)]
 
-    # AfterValidator(remove_duplicates)
     def model_post_init(self, __context) -> None:
         self.source_data = {
             'hosts': self.hosts,
@@ -137,35 +134,8 @@ class NumbersOrIpv4(BaseModel):
             hosts_without_doubles.append(k)
         self.hosts = hosts_without_doubles
 
-        # if self.y > 5:
-        #     self.z = self.y + 5
-        # else:
-        #     self.z = self.y - 5
 
-
-
-    model_config = ConfigDict(json_schema_extra={
-        "examples": [
-            {
-                "hosts": ["11", "2390"]
-            },
-        ],
-    })
-
-# class NumbersOrIpv4(BaseModel):
-#
-#     hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates), Field(frozen=True)]
-#
-#     model_config = ConfigDict(json_schema_extra={
-#         "examples": [
-#             {
-#                 "hosts": ["11", "2390"]
-#             },
-#         ],
-#     })
-
-
-class SearchinDbHostBody(BaseModel):
+class SearchinDbFields(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
     # search_in_db_field: Annotated[str, AfterValidator(get_field_for_search_in_db)]
@@ -184,43 +154,22 @@ class SearchinDbHostBody(BaseModel):
         return len(self.db_records)
 
 
-class DataHostMonitoring(SearchinDbHostBody, HostBodyMonitoringMixin):
-    pass
-
-    # model_config = ConfigDict(extra='allow')
-    #
-    # number: Annotated[str | None, Field(default=None)]
-    # ip_adress: Annotated[str | None, Field(default=None)]
-    # type_controller: Annotated[str | None, Field(default=None)]
-    # address: Annotated[str | None, Field(default=None)]
-    # description: Annotated[str | None, Field(default=None)]
-    # option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
+class BaseFieldsWithSearchInDb(SearchinDbFields, BaseFields):
+    """ Класс агрегатор полей хоста категории "мониторинг"
+        с опцией предварительного поиска в БД.
+    """
 
 
-class DataHostManagement(SearchinDbHostBody, HostBodyManagementMixin):
-    pass
+class DataHostManagement(SearchinDbFields, ManagementFields):
+    """ Класс агрегатор полей хоста категории "управление"
+        с опцией предварительного поиска в БД.
+    """
 
 
 """ Без запроса в БД. """
 
 
-class FastMonitoring(BaseModel):
-
-    hosts: Annotated[
-        dict[str, HostBodyMonitoringMixin], MinLen(1), MaxLen(30), SkipValidation
-    ]
-
-    @field_validator('hosts', mode='before')
-    @classmethod
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, HostBodyMonitoringMixin]:
-        # return {
-        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
-        #     for k, v in hosts.items()
-        # }
-        return {
-            k: HostBodyMonitoringMixin(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
-            for k, v in hosts.items()
-        }
+class FieldsMonitoringWithoutSearchInDb(BaseModel):
 
     model_config = ConfigDict(
         extra='allow',
@@ -245,26 +194,23 @@ class FastMonitoring(BaseModel):
         }
     )
 
-
-class FastManagement(BaseModel):
-
     hosts: Annotated[
-        dict[str, HostBodyManagementMixin], MinLen(1), MaxLen(30), SkipValidation
+        dict[str, BaseFields], MinLen(1), MaxLen(30), SkipValidation
     ]
 
-
     @field_validator('hosts', mode='before')
-    @classmethod
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, HostBodyManagementMixin]:
+    def add_m(cls, hosts: dict[str, Any]) -> dict[str, BaseFields]:
         # return {
         #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
         #     for k, v in hosts.items()
         # }
         return {
-            k: HostBodyManagementMixin(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
+            k: BaseFields(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
             for k, v in hosts.items()
         }
 
+
+class FieldsManagementWithoutSearchInDb(BaseModel):
 
     model_config = ConfigDict(
         json_schema_extra= {
@@ -290,6 +236,21 @@ class FastManagement(BaseModel):
         }
     )
 
+    hosts: Annotated[
+        dict[str, ManagementFields], MinLen(1), MaxLen(30), SkipValidation
+    ]
+
+    @field_validator('hosts', mode='before')
+    def add_m(cls, hosts: dict[str, Any]) -> dict[str, ManagementFields]:
+        # return {
+        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
+        #     for k, v in hosts.items()
+        # }
+        return {
+            k: ManagementFields(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
+            for k, v in hosts.items()
+        }
+
 
 """ Response """
 
@@ -297,7 +258,7 @@ class FastManagement(BaseModel):
 class ResponseSearchinDb(BaseModel):
 
     source_data: Annotated[Any, Field(default=None)]
-    result: list[dict[str, SearchinDbHostBody]]
+    results: list[dict[str, SearchinDbFields]]
     time_execution: Annotated[float, Field(default=0)]
 
     model_config = ConfigDict(
@@ -476,7 +437,7 @@ if __name__ == '__main__':
     data = ['1', "11", "192.168.45.16"]
 
     try:
-        o = NumbersOrIpv4(hosts=data)
+        o = BaseFieldsSearchInDb(hosts=data)
         print(f'o: {o}')
         print(f'o: {o.hosts.keys()}')
         d = o.model_dump()

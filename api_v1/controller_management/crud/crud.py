@@ -12,10 +12,10 @@ from api_v1.controller_management.host_entity import BaseDataHosts
 from api_v1.controller_management.schemas import (
     TrafficLightsObjectsTableFields,
     AllowedDataHostFields,
-    NumbersOrIpv4,
-    SearchinDbHostBody,
+    BaseFieldsSearchInDb,
+    SearchinDbFields,
     ResponseSearchinDb,
-    DataHostMonitoring,
+    BaseFieldsWithSearchInDb,
     DataHostManagement
 )
 from core.utils import get_field_for_search_in_db
@@ -57,7 +57,7 @@ class SearchHostsByIpOrNumQuery:
 
     def get_query_where(
             self,
-            hosts_models: dict[str, SearchinDbHostBody]
+            hosts_models: dict[str, SearchinDbFields]
     ) -> Select[tuple[TrafficLightsObjects]]:
         """
         Формирует сущность запроса поиска записей в БД для каждого хоста из hosts.
@@ -163,7 +163,7 @@ class SearchDb:
 
     search_in_db_class = SearchHostsByIpOrNumQuery
 
-    def __init__(self, src_data: NumbersOrIpv4):
+    def __init__(self, src_data: BaseFieldsSearchInDb):
         # super().__init__(src_data)
         self._src_data = src_data
         self._src_hosts = src_data.hosts
@@ -183,9 +183,9 @@ class SearchDb:
         # print(f'DEBUG self._hosts: {self._src_hosts}')
         # print(f'DEBUG self.hosts_data: {self.processed_hosts_data}')
 
-    def _create_hosts_data(self) -> dict[str, SearchinDbHostBody]:
+    def _create_hosts_data(self) -> dict[str, SearchinDbFields]:
         return {
-            name_or_ipv4: SearchinDbHostBody(
+            name_or_ipv4: SearchinDbFields(
                 ip_or_name_source=name_or_ipv4,
                 search_in_db_field=get_field_for_search_in_db(name_or_ipv4),
                 db_records=[]
@@ -238,7 +238,7 @@ class SearchDb:
         return self._src_hosts
 
     @property
-    def processed_hosts_data(self) -> dict[str, SearchinDbHostBody]:
+    def processed_hosts_data(self) -> dict[str, SearchinDbFields]:
         return self._processed_hosts_data
 
     @property
@@ -252,7 +252,7 @@ class HostPropertiesFromDb(SearchDb):
         try:
             return ResponseSearchinDb(
                 source_data=self._src_data.source_data,
-                result=[self._processed_hosts_data],
+                results=[self._processed_hosts_data],
                 time_execution=time.time() - self.start_time,
                 **add_to_response
             )
@@ -270,7 +270,7 @@ class HostPropertiesFromDb(SearchDb):
 
 T_HostModels = TypeVar(
     'T_HostModels',
-    DataHostMonitoring,
+    BaseFieldsWithSearchInDb,
     DataHostManagement
 )
 
@@ -280,7 +280,7 @@ class _MonitoringAndManagementProcessors:
     checker = AfterSearchInDbChecker
     host_model: Type[T_HostModels]
 
-    def __init__(self, src_data: NumbersOrIpv4):
+    def __init__(self, src_data: BaseFieldsSearchInDb):
         # self._src_data = src_data
         self._db = HostPropertiesFromDb(src_data)
         self._processed_data_hosts = None
@@ -305,7 +305,7 @@ class _MonitoringAndManagementProcessors:
         return self._processed_data_hosts
 
 class MonitoringProcessors(_MonitoringAndManagementProcessors):
-    host_model = DataHostMonitoring
+    host_model = BaseFieldsWithSearchInDb
 
 
 class ManagementProcessors(_MonitoringAndManagementProcessors):
