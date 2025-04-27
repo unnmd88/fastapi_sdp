@@ -246,16 +246,25 @@ class FastMonitoring(BaseModel):
     )
 
 
-class FastManagement(FastMonitoring):
+class FastManagement(BaseModel):
 
     hosts: Annotated[
         dict[str, HostBodyManagementMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
 
+
     @field_validator('hosts', mode='before')
     @classmethod
     def add_m(cls, hosts: dict[str, Any]) -> dict[str, HostBodyManagementMixin]:
-        return hosts
+        # return {
+        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
+        #     for k, v in hosts.items()
+        # }
+        return {
+            k: HostBodyManagementMixin(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
+            for k, v in hosts.items()
+        }
+
 
     model_config = ConfigDict(
         json_schema_extra= {

@@ -200,7 +200,7 @@ class Management(Controllers):
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
+            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):

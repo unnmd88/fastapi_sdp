@@ -43,14 +43,14 @@ class PeekWebHosts(HttpHosts):
         return {
             DataFromWeb.main_page_get: (routes.main_page, self._request_sender.fetch, MainPageParser),
             DataFromWeb.inputs_page_get: (routes.get_inputs, self._request_sender.fetch, InputsPageParser),
-            # DataFromWeb.inputs_page_set: (routes.set_inputs, self._request_sender.post_request, InputsPageParserSet),
+            DataFromWeb.inputs_page_set: (routes.set_inputs, self._request_sender.post_request, None),
         }
 
     async def _single_common_request(
             self,
             url,
             method: Callable,
-            parser,
+            parser_class,
             **kwargs
     ):
         self.last_response = await self._request_sender.http_request_to_host(
@@ -61,14 +61,22 @@ class PeekWebHosts(HttpHosts):
         if self.check_http_response_errors_and_add_to_host_data_if_has():
             return self
 
+        # print(f'self.last_response: {self.last_response}')
+
+        if parser_class is None:
+            # Вернуть ответ из self._request_sender.http_request_to_host если парсер не задан
+            return self.last_response[HttpResponseStructure.CONTENT]
+
+        parser = parser_class()
         parser.parse(self.last_response[HttpResponseStructure.CONTENT])
-        print(f'parser.data_for_response: {parser.data_for_response}')
+        # print(f'parser.data_for_response: {parser.data_for_response}')
         if not parser.data_for_response:
             self.add_data_to_data_response_attrs(error=BadControllerType())
         else:
             self.add_data_to_data_response_attrs(
                 data=parser.data_for_response
             )
+
         return self
 
     """ Monitoring """
@@ -79,7 +87,7 @@ class PeekWebHosts(HttpHosts):
                 route, method, parser_class = self.matches.get(page)
                 tg.create_task(
                     self._single_common_request(
-                        self._base_url + route, method, parser_class(),
+                        self._base_url + route, method, parser_class,
                         **kwargs
                     )
                 )
@@ -98,6 +106,7 @@ class PeekWebHosts(HttpHosts):
     async def post_all_pages(self, page, payload_data: list[tuple]):
         async with asyncio.TaskGroup() as tg:
             results = []
+            print(f'page: {page}\npayload: {payload_data}')
             route, method, parser_class = self.matches.get(page)
             max_concurrent_tasks = 5
             for num_task, payload in enumerate(payload_data, 1):
@@ -107,7 +116,7 @@ class PeekWebHosts(HttpHosts):
                 results.append(
                     tg.create_task(
                         self._single_common_request(
-                            self._base_url + route, method, parser_class(),
+                            self._base_url + route, method, parser_class,
                             cookies=static_data.cookies,
                             data=payload
                         )
@@ -160,10 +169,11 @@ async def main():
     """
     try:
         sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(1))
-        obj = PeekWebHosts('10.179.107.129', host_id='2406', session=sess)
+        obj = PeekWebHosts('10.179.75.113', host_id='3290', session=sess)
         # await obj.get_states()
         # await obj.request_all_types(AvailableDataFromWeb.main_page_get)
         await obj.set_inputs_to_web(inps_name_and_vals=(('MPP_PH2', '-'),
+                                                        ('MPP_MAN', '-'),
                                                         ('MPP_PH3', 'ВКЛ'),
                                                         ('MPP_PH4', '0')))
 
