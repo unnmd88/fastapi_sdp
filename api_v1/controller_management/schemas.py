@@ -252,6 +252,11 @@ class FastManagement(FastMonitoring):
         dict[str, HostBodyManagementMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
 
+    @field_validator('hosts', mode='before')
+    @classmethod
+    def add_m(cls, hosts: dict[str, Any]) -> dict[str, HostBodyManagementMixin]:
+        return hosts
+
     model_config = ConfigDict(
         json_schema_extra= {
             "examples": [
@@ -419,13 +424,17 @@ class ResponseGetState(BaseModel):
 
 """ Проверка данных(свойств) определённого хоста """
 
-T_PydanticModel = TypeVar(
-    "T_PydanticModel",
-    DataHostMonitoring,
-    DataHostManagement,
-    FastMonitoring,
-    FastManagement
-)
+# T_PydanticModel = TypeVar(
+#     "T_PydanticModel",
+#     DataHostMonitoring,
+#     DataHostManagement,
+#     FastMonitoring,
+#     FastManagement
+# )
+
+T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel)
+
+
 
 
 """ Модели БД """

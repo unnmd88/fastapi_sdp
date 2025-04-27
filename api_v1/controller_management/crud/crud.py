@@ -159,7 +159,7 @@ class SearchHostsByIpOrNumQuery:
 #         return self.hosts_data
 
 
-class BaseProcessor:
+class SearchDb:
 
     search_in_db_class = SearchHostsByIpOrNumQuery
 
@@ -167,14 +167,21 @@ class BaseProcessor:
         # super().__init__(src_data)
         self._src_data = src_data
         self._src_hosts = src_data.hosts
-        self.processed_hosts_data = self._create_hosts_data()
-        self.hosts_after_search: list | None = None
+        self._processed_hosts_data = self._create_hosts_data()
+        self._hosts_after_search: list | None = None
         self.db = self.search_in_db_class()
         self.start_time = time.time()
 
-        print(f'DEBUG self._src_data {self._src_data}')
-        print(f'DEBUG self._hosts: {self._src_hosts}')
-        print(f'DEBUG self.hosts_data: {self.processed_hosts_data}')
+    def __repr__(self):
+        return (f'self._src_data: {self._src_data!r}\n'
+                f'self._src_hosts: {self._src_hosts!r}\n'
+                f'self.processed_hosts_data: {self._processed_hosts_data!r}\n'
+                f'self.hosts_after_search: {self._hosts_after_search!r}\n'
+                )
+
+        # print(f'DEBUG self._src_data {self._src_data}')
+        # print(f'DEBUG self._hosts: {self._src_hosts}')
+        # print(f'DEBUG self.hosts_data: {self.processed_hosts_data}')
 
     def _create_hosts_data(self) -> dict[str, SearchinDbHostBody]:
         return {
@@ -188,7 +195,7 @@ class BaseProcessor:
 
     def _process_data_hosts_after_request(self):
 
-        for found_record in self.hosts_after_search:
+        for found_record in self._hosts_after_search:
             # print(f'found_record: {found_record}')
             self._add_record_to_hosts_data(dict(found_record))
 
@@ -206,41 +213,56 @@ class BaseProcessor:
 
         if number in self._src_hosts:
             key = number
-        elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self.processed_hosts_data:
+        elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self._processed_hosts_data:
             key = ip
         else:
             raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
         # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
-        self.processed_hosts_data[key].db_records.append(found_record)
+        self._processed_hosts_data[key].db_records.append(found_record)
         return key
 
     async def search_hosts_and_processing(self):
-        self.hosts_after_search = await search_hosts_base_properties(
-            self.db.get_query_where(self.processed_hosts_data)
+        self._hosts_after_search = await search_hosts_base_properties(
+            self.db.get_query_where(self._processed_hosts_data)
         )
         self._process_data_hosts_after_request()
-        print(f'self.hosts_data: {self.processed_hosts_data}')
-        return self.processed_hosts_data
+        print(f'self.hosts_data: {self._processed_hosts_data}')
+        return self._processed_hosts_data
+
+    @property
+    def src_data(self):
+        return self._src_data
+
+    @property
+    def src_hosts(self):
+        return self._src_hosts
+
+    @property
+    def processed_hosts_data(self) -> dict[str, SearchinDbHostBody]:
+        return self._processed_hosts_data
+
+    @property
+    def hosts_after_search(self):
+        return self._hosts_after_search
 
 
-class HostPropertiesProcessor(BaseProcessor):
+class HostPropertiesFromDb(SearchDb):
 
     def get_response_as_model(self, **add_to_response):
         try:
             return ResponseSearchinDb(
                 source_data=self._src_data.source_data,
-                result=[self.processed_hosts_data],
+                result=[self._processed_hosts_data],
                 time_execution=time.time() - self.start_time,
                 **add_to_response
             )
         except ValueError:
             return self.get_response_dict
 
-
     def get_response_dict(self):
         return {
             AllowedDataHostFields.source_data: self._src_data,
-            AllowedDataHostFields.results: [self.processed_hosts_data],
+            AllowedDataHostFields.results: [self._processed_hosts_data],
         }
 
 
@@ -253,7 +275,6 @@ T_HostModels = TypeVar(
 )
 
 
-
 class _MonitoringAndManagementProcessors:
 
     checker = AfterSearchInDbChecker
@@ -261,13 +282,13 @@ class _MonitoringAndManagementProcessors:
 
     def __init__(self, src_data: NumbersOrIpv4):
         # self._src_data = src_data
-        self._host_processor = HostPropertiesProcessor(src_data)
-
+        self._db = HostPropertiesFromDb(src_data)
+        self._processed_data_hosts = None
 
     async def search_hosts_and_processing(self):
-        await self._host_processor.search_hosts_and_processing()
-        processed_data_hosts = {}
-        for curr_host_ipv4, current_data_host in self._host_processor.processed_hosts_data.items():
+        await self._db.search_hosts_and_processing()
+        self._processed_data_hosts = {}
+        for curr_host_ipv4, current_data_host in self._db.processed_hosts_data.items():
             current_host = self.checker(ip_or_name=curr_host_ipv4, properties=current_data_host)
             if current_host.validate_record():
                 record = current_host.properties.db_records[0]
@@ -275,11 +296,13 @@ class _MonitoringAndManagementProcessors:
                 model = self.host_model(
                     **(current_data_host.model_dump() | record)
                 )
-                processed_data_hosts[key_ip] = model
+                self._processed_data_hosts[key_ip] = model
             else:
-                processed_data_hosts[curr_host_ipv4] = current_data_host
-        self.hosts_data = processed_data_hosts
+                self._processed_data_hosts[curr_host_ipv4] = current_data_host
 
+    @property
+    def processed_data_hosts(self) -> dict[str, T_HostModels]:
+        return self._processed_data_hosts
 
 class MonitoringProcessors(_MonitoringAndManagementProcessors):
     host_model = DataHostMonitoring

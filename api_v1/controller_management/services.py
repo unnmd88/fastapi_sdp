@@ -114,7 +114,7 @@ class Controllers:
         if self.search_in_db:
             hosts_from_db: P = self._get_processor_class()(self.income_data)
             await hosts_from_db.search_hosts_and_processing()
-            data_hosts = self._get_sorter_class()(hosts_from_db.hosts_data)
+            data_hosts = self._get_sorter_class()(hosts_from_db.processed_data_hosts)
         else:
             data_hosts = self._get_sorter_class()(self.income_data.hosts)
 

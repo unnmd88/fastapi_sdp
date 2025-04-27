@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from core.settings import settings
 from core.shared import HTTP_CLIENT_SESSIONS, SWARCO_SSH_CONNECTIONS
 from api_v1.controller_management import services
-from api_v1.controller_management.crud.crud import HostPropertiesProcessor
+from api_v1.controller_management.crud.crud import HostPropertiesFromDb
 from api_v1.controller_management.schemas import (
     NumbersOrIpv4,
     FastMonitoring,
@@ -33,8 +33,11 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
-    hosts_from_db = HostPropertiesProcessor(data)
+    hosts_from_db = HostPropertiesFromDb(data)
+    print(hosts_from_db)
     await hosts_from_db.search_hosts_and_processing()
+    print(hosts_from_db)
+
     # print(f'DEB:hosts_from_db.response_as_model:\n{hosts_from_db.response_as_model}')
     return hosts_from_db.get_response_as_model()
 
