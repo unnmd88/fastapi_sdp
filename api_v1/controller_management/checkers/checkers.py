@@ -30,7 +30,6 @@ matches_sources = {
 }
 
 def validate_num_stage(type_controller, stage):
-    # stages_range = matches_stages.get(type_controller)
     if int(stage) in matches_stages.get(type_controller, range(-1, -1)):
         return True
     return False
