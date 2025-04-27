@@ -258,7 +258,7 @@ class FieldsManagementWithoutSearchInDb(BaseModel):
 class ResponseSearchinDb(BaseModel):
 
     source_data: Annotated[Any, Field(default=None)]
-    result: list[dict[str, SearchinDbFields]]
+    results: list[dict[str, SearchinDbFields]]
     time_execution: Annotated[float, Field(default=0)]
 
     model_config = ConfigDict(

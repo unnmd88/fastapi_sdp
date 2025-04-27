@@ -252,7 +252,7 @@ class HostPropertiesFromDb(SearchDb):
         try:
             return ResponseSearchinDb(
                 source_data=self._src_data.source_data,
-                result=[self._processed_hosts_data],
+                results=[self._processed_hosts_data],
                 time_execution=time.time() - self.start_time,
                 **add_to_response
             )

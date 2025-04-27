@@ -63,7 +63,7 @@ class SetCommandFields(BaseFields):
                 f'Некорректное значение фазы для данного типа контроллера < value >: {self.value}',
             )
 
-        if not validate_source(self.type_controller, self.source):
+        if self.source is not None and not validate_source(self.type_controller, self.source):
             raise PydanticCustomError(
                 f'Некорректное значение источника < source >',
                 f'Некорректное значение источника команды < source >: {self.source}',
