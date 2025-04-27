@@ -15,8 +15,8 @@ from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedMonitoringEntity,
     AllowedManagementEntity,
-    HostBodyMonitoringMixin,
-    HostBodyManagementMixin, AllowedManagementSources,
+    BaseFields,
+    ManagementFields, AllowedManagementSources,
 )
 from api_v1.controller_management.sorters import sorters
 from api_v1.controller_management.sorters.sorters_core import (
@@ -99,7 +99,6 @@ class Controllers:
                             name=ip_v4
                         ))
         else:
-            print(f'if self._session is None: is Not  NONE!!!')
             async with TaskGroup() as tg:
                 for ip_v4, data_host in self.allowed_to_request_hosts.items():
                     self.result_tasks.append(tg.create_task(
@@ -148,7 +147,7 @@ class StatesMonitoring(Controllers):
 
     def get_coro(
             self, ip: str,
-            data_host: HostBodyMonitoringMixin
+            data_host: BaseFields
     ) -> Coroutine:
         type_controller = data_host.type_controller
         option = data_host.option
@@ -185,7 +184,7 @@ class Management(Controllers):
 
     def get_coro(
             self, ip: str,
-            data_host: HostBodyManagementMixin
+            data_host: ManagementFields
     ) -> Coroutine:
         type_controller = data_host.type_controller
         source = data_host.source
