@@ -210,8 +210,6 @@ class FieldsMonitoringWithoutSearchInDb(BaseModel):
         }
 
 
-
-
 class FieldsManagementWithoutSearchInDb(BaseModel):
 
     model_config = ConfigDict(
@@ -252,8 +250,6 @@ class FieldsManagementWithoutSearchInDb(BaseModel):
             k: ManagementFields(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
             for k, v in hosts.items()
         }
-
-
 
 
 """ Response """
