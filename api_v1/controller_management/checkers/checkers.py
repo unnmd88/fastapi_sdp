@@ -65,7 +65,7 @@ class MonitoringHostDataChecker(HostData):
         return res
 
     def get_validate_classes(self):
-        return (TypeControllerAndIp,)
+        return (TypeControllerAndIp, )
 
     def get_validate_methods(self):
         """
@@ -102,7 +102,7 @@ class AfterSearchInDbChecker(HostData):
 
     def __init__(self, ip_or_name: str, properties: SearchinDbHostBody):
         super().__init__(ip_or_name, properties)
-        self.properties: SearchinDbHostBody = properties
+        self.properties = properties
 
     def validate_record(self):
         try:

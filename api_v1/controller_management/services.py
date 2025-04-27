@@ -19,10 +19,14 @@ from api_v1.controller_management.schemas import (
     HostBodyManagementMixin, AllowedManagementSources,
 )
 from api_v1.controller_management.sorters import sorters
-from api_v1.controller_management.sorters.sorters import (
+from api_v1.controller_management.sorters.sorters_core import (
     HostSorterMonitoring,
     HostSorterManagement
 )
+# from api_v1.controller_management.sorters.sorters import (
+#     HostSorterMonitoring,
+#     HostSorterManagement
+# )
 from core.shared import SWARCO_SSH_CONNECTIONS
 
 # from sdp_lib.management_controllers.snmp import snmp_api, snmp_core
@@ -110,7 +114,7 @@ class Controllers:
         if self.search_in_db:
             hosts_from_db: P = self._get_processor_class()(self.income_data)
             await hosts_from_db.search_hosts_and_processing()
-            data_hosts = self._get_sorter_class()(hosts_from_db.hosts_data)
+            data_hosts = self._get_sorter_class()(hosts_from_db.processed_data_hosts)
         else:
             data_hosts = self._get_sorter_class()(self.income_data.hosts)
 
@@ -139,7 +143,7 @@ class Controllers:
 
 class StatesMonitoring(Controllers):
 
-    sorter = sorters.HostSorterMonitoring
+    sorter = HostSorterMonitoring
     processor = MonitoringProcessors
 
     def get_coro(
@@ -177,7 +181,7 @@ class StatesMonitoring(Controllers):
 
 class Management(Controllers):
 
-    sorter = sorters.HostSorterManagement
+    sorter = HostSorterManagement
 
     def get_coro(
             self, ip: str,
@@ -196,7 +200,7 @@ class Management(Controllers):
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
                 return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
+            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):

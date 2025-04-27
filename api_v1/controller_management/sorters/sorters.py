@@ -5,21 +5,21 @@ from api_v1.controller_management.checkers.checkers import (
 )
 
 
-class HostSorterMonitoring(BaseHostsSorters):
-
-    def _get_checker_class(self):
-        """
-        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
-        :return:
-        """
-        return MonitoringHostDataChecker
-
-
-class HostSorterManagement(BaseHostsSorters):
-
-    def _get_checker_class(self):
-        """
-        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
-        :return:
-        """
-        return ManagementHostDataChecker
+# class HostSorterMonitoring(BaseHostsSorters):
+#
+#     def _get_checker_class(self):
+#         """
+#         Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+#         :return:
+#         """
+#         return MonitoringHostDataChecker
+#
+#
+# class HostSorterManagement(BaseHostsSorters):
+#
+#     def _get_checker_class(self):
+#         """
+#         Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+#         :return:
+#         """
+#         return ManagementHostDataChecker

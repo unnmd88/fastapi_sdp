@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     yield
 
     for identification, session in HTTP_CLIENT_SESSIONS.items():
-        session.close()
+        await session.close()
 
 # routr = APIRouter(prefix=f'{settings.api_v1_prefix}{settings.traffic_lights_prefix}')
 

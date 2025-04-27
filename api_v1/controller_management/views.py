@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from core.settings import settings
 from core.shared import HTTP_CLIENT_SESSIONS, SWARCO_SSH_CONNECTIONS
 from api_v1.controller_management import services
-from api_v1.controller_management.crud.crud import HostPropertiesProcessors
+from api_v1.controller_management.crud.crud import HostPropertiesFromDb
 from api_v1.controller_management.schemas import (
     NumbersOrIpv4,
     FastMonitoring,
@@ -33,13 +33,19 @@ async def get_hosts(data: NumbersOrIpv4) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
-    hosts_from_db = HostPropertiesProcessors(data)
+    hosts_from_db = HostPropertiesFromDb(data)
+    print(hosts_from_db)
     await hosts_from_db.search_hosts_and_processing()
-    return hosts_from_db.response_as_model
+    print(hosts_from_db)
+
+    # print(f'DEB:hosts_from_db.response_as_model:\n{hosts_from_db.response_as_model}')
+    return hosts_from_db.get_response_as_model()
 
 
 @router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
 async def search_and_get_state(data: NumbersOrIpv4) -> ResponseGetState:
+    print(f'data: \n {data}')
+
     states = services.StatesMonitoring(
         income_data=data,
         search_in_db=True,

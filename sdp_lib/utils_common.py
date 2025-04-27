@@ -7,6 +7,8 @@ from datetime import datetime as dt
 from string import ascii_letters
 from typing import Callable, TypeVar, Any
 
+from sqlalchemy.sql.base import elements
+
 T = TypeVar('T')
 
 def timed(func: Callable):
@@ -86,5 +88,6 @@ def convert_value_to_string(value: Any) -> str:
     :return: Строковое представление value.
     """
     return str(value)
+
 
 

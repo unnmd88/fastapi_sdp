@@ -80,10 +80,12 @@ class InputsVarbinds:
                 self.create_payload(self._mpp_man_index, ActuatorAsValue.ON)
             )
 
-        stage = str(stage)
+        # stage = str(stage)
         mpp_ph_to_set = f'{PREFIX_MAN_STAGE_PEEK}{stage}'
         for mpp in mpp_stages_inputs:
+
             if (mpp != mpp_ph_to_set
+                and self._inputs_from_web[mpp][InputsStructure.STATE] != '0'
                 and self._inputs_from_web[mpp][InputsStructure.ACTUATOR] != ActuatorAsChar.OFF
             ):
                 payloads.append(

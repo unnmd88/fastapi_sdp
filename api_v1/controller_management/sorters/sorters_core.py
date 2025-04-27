@@ -8,7 +8,10 @@ from typing import Any, Type, TypeVar
 from pydantic import BaseModel
 
 import logging_config
-from api_v1.controller_management.checkers.checkers import MonitoringHostDataChecker
+from api_v1.controller_management.checkers.checkers import (
+    MonitoringHostDataChecker,
+    ManagementHostDataChecker
+)
 from api_v1.controller_management.host_entity import BaseDataHosts
 from api_v1.controller_management.schemas import T_PydanticModel
 
@@ -105,3 +108,22 @@ class BaseHostsSorters(BaseDataHosts):
         else:
             self.add_host_to_container_with_bad_hosts(current_host.full_host_data_as_dict)
 
+
+class HostSorterMonitoring(BaseHostsSorters):
+
+    def _get_checker_class(self):
+        """
+        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+        :return:
+        """
+        return MonitoringHostDataChecker
+
+
+class HostSorterManagement(BaseHostsSorters):
+
+    def _get_checker_class(self):
+        """
+        Возвращает класс для валидации данных полей, применяемый в методе self.sort.
+        :return:
+        """
+        return ManagementHostDataChecker

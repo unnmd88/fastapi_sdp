@@ -1,3 +1,4 @@
+from collections import Counter
 from enum import StrEnum
 from typing import Annotated, Any, TypeVar
 from annotated_types import MinLen, MaxLen
@@ -86,12 +87,12 @@ class TrafficLightsObjectsTableFields(StrEnum):
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-def get_field_for_search_in_db(field: str) -> str:
-
-    if check_is_ipv4(field):
-        return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
-    else:
-        return str(TrafficLightsObjectsTableFields.NUMBER)
+# def get_field_for_search_in_db(field: str) -> str:
+#
+#     if check_is_ipv4(field):
+#         return str(TrafficLightsObjectsTableFields.IP_ADDRESS)
+#     else:
+#         return str(TrafficLightsObjectsTableFields.NUMBER)
 
 """ Mixins """
 
@@ -115,9 +116,33 @@ class HostBodyManagementMixin(HostBodyMonitoringMixin):
 
 """ Взаимосвязаны с запросом в БД. """
 
+
 class NumbersOrIpv4(BaseModel):
 
-    hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates)]
+    # hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates), Field(frozen=True)]
+    hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30)]
+    source_data: Annotated[dict, Field(default=None)]
+
+    # AfterValidator(remove_duplicates)
+    def model_post_init(self, __context) -> None:
+        self.source_data = {
+            'hosts': self.hosts,
+            'doubles': {}
+        }
+        counter = Counter(self.hosts)
+        hosts_without_doubles = []
+        for k, v in counter.items():
+            if v > 1:
+                self.source_data['doubles'][k] = v
+            hosts_without_doubles.append(k)
+        self.hosts = hosts_without_doubles
+
+        # if self.y > 5:
+        #     self.z = self.y + 5
+        # else:
+        #     self.z = self.y - 5
+
+
 
     model_config = ConfigDict(json_schema_extra={
         "examples": [
@@ -127,20 +152,31 @@ class NumbersOrIpv4(BaseModel):
         ],
     })
 
+# class NumbersOrIpv4(BaseModel):
+#
+#     hosts: Annotated[list[ip_or_name], MinLen(1), MaxLen(30), AfterValidator(remove_duplicates), Field(frozen=True)]
+#
+#     model_config = ConfigDict(json_schema_extra={
+#         "examples": [
+#             {
+#                 "hosts": ["11", "2390"]
+#             },
+#         ],
+#     })
+
 
 class SearchinDbHostBody(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
-    search_in_db_field: Annotated[str, AfterValidator(get_field_for_search_in_db)]
+    # search_in_db_field: Annotated[str, AfterValidator(get_field_for_search_in_db)]
+    search_in_db_field:  Annotated[str, Field(frozen=True)]
     db_records: Annotated[list, Field(default=[])]
     errors: Annotated[list, Field(default=[])]
 
     # @computed_field
     @property
     def found(self)-> bool:
-        if len(self.db_records):
-            return True
-        return False
+        return bool(self.db_records)
 
     @computed_field
     @property
@@ -173,7 +209,6 @@ class FastMonitoring(BaseModel):
     hosts: Annotated[
         dict[str, HostBodyMonitoringMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
-
 
     @field_validator('hosts', mode='before')
     @classmethod
@@ -211,11 +246,25 @@ class FastMonitoring(BaseModel):
     )
 
 
-class FastManagement(FastMonitoring):
+class FastManagement(BaseModel):
 
     hosts: Annotated[
         dict[str, HostBodyManagementMixin], MinLen(1), MaxLen(30), SkipValidation
     ]
+
+
+    @field_validator('hosts', mode='before')
+    @classmethod
+    def add_m(cls, hosts: dict[str, Any]) -> dict[str, HostBodyManagementMixin]:
+        # return {
+        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
+        #     for k, v in hosts.items()
+        # }
+        return {
+            k: HostBodyManagementMixin(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
+            for k, v in hosts.items()
+        }
+
 
     model_config = ConfigDict(
         json_schema_extra= {
@@ -246,8 +295,9 @@ class FastManagement(FastMonitoring):
 
 
 class ResponseSearchinDb(BaseModel):
-    source_data: Annotated[NumbersOrIpv4, Field(description='TEst11')]
-    results: list[dict[str, SearchinDbHostBody]]
+
+    source_data: Annotated[Any, Field(default=None)]
+    result: list[dict[str, SearchinDbHostBody]]
     time_execution: Annotated[float, Field(default=0)]
 
     model_config = ConfigDict(
@@ -383,13 +433,17 @@ class ResponseGetState(BaseModel):
 
 """ Проверка данных(свойств) определённого хоста """
 
-T_PydanticModel = TypeVar(
-    "T_PydanticModel",
-    DataHostMonitoring,
-    DataHostManagement,
-    FastMonitoring,
-    FastManagement
-)
+# T_PydanticModel = TypeVar(
+#     "T_PydanticModel",
+#     DataHostMonitoring,
+#     DataHostManagement,
+#     FastMonitoring,
+#     FastManagement
+# )
+
+T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel)
+
+
 
 
 """ Модели БД """
