@@ -503,17 +503,6 @@ class PeekUg405(Ug405Hosts):
     def operation_mode_dependency(self) -> bool:
         return True
 
-    # async def get_dependency_data_and_add_error_if_has(self):
-    #
-    #     self.last_response = await self._request_sender.snmp_get_next(varbinds=[peek_ug405_varbinds.site_id_varbind])
-    #
-    #     if self.check_snmp_response_errors_and_add_to_host_data_if_has():
-    #         return
-    #     try:
-    #         self._set_scn_from_response()
-    #     except BadControllerType as e:
-    #         self.add_data_to_data_response_attrs(e)
-
     def _set_scn_from_response(self) -> None | BadControllerType:
         try:
             oid = str(self.last_response[SnmpResponseStructure.VAR_BINDS][0][0])
@@ -522,6 +511,7 @@ class PeekUg405(Ug405Hosts):
         except IndexError:
             raise  BadControllerType()
         return None
+
 
 async def main():
 
