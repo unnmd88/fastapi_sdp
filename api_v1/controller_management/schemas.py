@@ -100,6 +100,7 @@ class BaseFields(BaseModel):
 
 
 class ManagementFields(BaseFields):
+    model_config = ConfigDict(use_enum_values=True)
     command: str
     value: Annotated[int | str, Field()]
     source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
