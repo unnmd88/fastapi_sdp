@@ -8,13 +8,12 @@ from pydantic import (
     Field,
     ConfigDict,
     computed_field,
-    AfterValidator, SkipValidation, field_validator, model_serializer
+    AfterValidator, SkipValidation, field_validator
 )
 from pydantic_core import ValidationError
 
-from sdp_lib.management_controllers.available_services import AllowedManagementSources, AllowedManagementEntity
+from api_v1.controller_management.available_services import AllowedManagementSources, AllowedManagementEntity
 from sdp_lib.management_controllers.constants import AllowedControllers
-from sdp_lib.utils_common import check_is_ipv4, remove_duplicates
 
 # class AllowedControllers(StrEnum):
 #     SWARCO = 'Swarco'

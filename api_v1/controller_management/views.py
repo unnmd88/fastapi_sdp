@@ -18,8 +18,7 @@ from api_v1.controller_management.schemas import (
     FieldsManagementWithoutSearchInDb,
     ControllerManagementOptions
 )
-import logging_config
-from sdp_lib.management_controllers.available_services import all_controllers_services, T_CommandOptions
+from api_v1.controller_management.available_services import all_controllers_services, T_CommandOptions
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
