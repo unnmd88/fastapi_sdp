@@ -56,7 +56,7 @@ def ug405_dependency(
         @functools.wraps(func)
         async def wrapped(instance, value=None, *args, **kwargs):
             # print(f'dependency_varbinds: {dependency_varbinds}')
-            await instance.get_dependency_data_and_add_error_if_has()
+            await instance._get_dependency_data_and_add_error_if_has()
             if instance.response_errors:
                 return instance
 
@@ -224,6 +224,13 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
         self.scn_as_ascii_string = self._get_scn_as_ascii_from_scn_as_chars_attr()
 
     @property
+    def snmp_config(self) -> HostSnmpConfig:
+        """
+        Возвращает конфигурацию конкретной реализации snmp(Stcip, Ug405 ...)
+        """
+        return snmp_config.ug405
+
+    @property
     @abc.abstractmethod
     def method_for_get_scn(self) -> Callable:
         """ Snmp-метод для получения scn """
@@ -236,15 +243,20 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
             иначе False.
         """
 
-    @abc.abstractmethod
-    async def get_dependency_data_and_add_error_if_has(self):
-        """ Метод, в котором аккумулируются зависимости для
-            snmp-запроса. Например, scn для ug405.
+    async def _get_dependency_data_and_add_error_if_has(self):
+        """
+        Получает и обрабатывает зависимость для snmp-запросов.
+        В данной реализации получение scn и установка в соответствующие атрибуты.
         """
 
-    @property
-    def snmp_config(self) -> HostSnmpConfig:
-        return snmp_config.ug405
+        self.last_response = await self.method_for_get_scn(varbinds=[VarbindsUg405.site_id_varbind])
+
+        if self.check_snmp_response_errors_and_add_to_host_data_if_has():
+            return
+        try:
+            self._set_scn_from_response()
+        except BadControllerType as e:
+            self.add_data_to_data_response_attrs(e)
 
     async def _collect_data_and_send_snmp_request_ug405(
             self,
@@ -255,11 +267,10 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
             parse_method: Callable = None,
     ):
         """
-        Осуществляет вызов соответствующего snmp-запроса и передает
-        self.__parse_response_all_types_requests полученный ответ для парса response.
+        Основной метод-драйвер для формирования snmp запроса.
         """
 
-        await self.get_dependency_data_and_add_error_if_has()
+        await self._get_dependency_data_and_add_error_if_has()
         if self.response_errors:
             return self
 
@@ -287,16 +298,15 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
             self._parse_method_config = parse_method()
         else:
             self._parse_method_config = self._get_default_processed_config_with_scn()
-        # self._parse_method_config = parse_method or self._get_pretty_processed_config_with_scn()
 
         return await self._make_request_and_build_response()
 
-        # self.last_response = await method(varbinds=varbinds)
-        # print(f'self.last_response: {self.last_response}')
-        # # return self.__parse_and_processing_response_all_types_requests(parser)
-        # return self.__parse_and_processing_response_all_types_requests()
-
-    async def get_states(self):
+    async def get_states(self) -> Self:
+        """
+        Отравляет snmp-get запрос и формирует текущее состояние работы
+        дорожного контроллера.
+        :return: Self.
+        """
         return await self._collect_data_and_send_snmp_request_ug405(
             method=self._request_sender.snmp_get,
             varbinds_generate_method=self.varbinds.get_varbinds_current_states,
@@ -304,7 +314,12 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
             parse_method=self._get_pretty_processed_config_with_scn
         )
 
-    async def set_stage(self, value: int):
+    async def set_stage(self, value: int) -> Self:
+        """
+        Отравляет snmp-set запрос на установку фазы дорожного контроллера.
+        :param value: Номер фазы в десятичном представлении.
+        :return:
+        """
         return await self._collect_data_and_send_snmp_request_ug405(
             method=self._request_sender.snmp_set,
             varbinds_generate_method=self.varbinds.get_varbinds_set_stage,
@@ -312,21 +327,51 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
             parse_method=self._get_default_processed_config_with_scn
         )
 
-    async def set_operation_mode(self, value: int):
+    async def set_operation_mode(self, value: int) -> None:
+        """
+        Отправляет запрос на установку utcType2OperationMode.
+        :param value: Значение utcType2OperationMode.
+        :return: None
+        """
         self.last_response = await self._request_sender.snmp_set(
             varbinds=[VarbindsUg405.get_operation_mode_varbinds(value)]
         )
 
     async def set_operation_mode1(self):
+        """
+        Отправляет запрос на установку utcType2OperationMode = 1.
+        :return: None
+        """
         await self.set_operation_mode(1)
 
     async def set_operation_mode2(self):
+        """
+        Отправляет запрос на установку utcType2OperationMode = 2.
+        :return: None
+        """
         await self.set_operation_mode(2)
 
     async def set_operation_mode3(self):
+        """
+        Отправляет запрос на установку utcType2OperationMode = 3.
+        :return: None
+        """
         await self.set_operation_mode(3)
 
     async def set_operation_mode3_across_operation_mode2(self):
+        """
+        Устанавливает utcType2OperationMode = 3.
+        Перед установкой проверяет текущее значение utcType2OperationMode.
+
+        -- Если utcType2OperationMode = 1:
+           то устанавливает utcType2OperationMode = 2, затем utcType2OperationMode = 3
+        -- Если utcType2OperationMode = 2:
+           то устанавливает utcType2OperationMode = 3
+        -- Если utcType2OperationMode = 3:
+           сразу возвращает True.
+
+        :return: True, utcType2OperationMode = 3, иначе False.
+        """
 
         self.last_response = await self._request_sender.snmp_get(
             varbinds=[VarbindsUg405.operation_mode_varbind]
@@ -335,8 +380,6 @@ class Ug405Hosts(SnmpHosts, ScnConverterMixin):
             return False
 
         op_mode = str(self.last_response[SnmpResponseStructure.VAR_BINDS][0][1])
-        print(f'op_mode[1]: {op_mode}')
-
         if op_mode == '3':
             return True
 
@@ -445,17 +488,6 @@ class PotokP(Ug405Hosts):
             raise  BadControllerType()
         return None
 
-    async def get_dependency_data_and_add_error_if_has(self):
-
-        self.last_response = await self._request_sender.snmp_get(varbinds=[potok_ug405_varbinds.site_id_varbind])
-
-        if self.check_snmp_response_errors_and_add_to_host_data_if_has():
-            return
-        try:
-            self._set_scn_from_response()
-        except BadControllerType as e:
-            self.add_data_to_data_response_attrs(e)
-
 
 class PeekUg405(Ug405Hosts):
 
@@ -471,16 +503,16 @@ class PeekUg405(Ug405Hosts):
     def operation_mode_dependency(self) -> bool:
         return True
 
-    async def get_dependency_data_and_add_error_if_has(self):
-
-        self.last_response = await self._request_sender.snmp_get_next(varbinds=[peek_ug405_varbinds.site_id_varbind])
-
-        if self.check_snmp_response_errors_and_add_to_host_data_if_has():
-            return
-        try:
-            self._set_scn_from_response()
-        except BadControllerType as e:
-            self.add_data_to_data_response_attrs(e)
+    # async def get_dependency_data_and_add_error_if_has(self):
+    #
+    #     self.last_response = await self._request_sender.snmp_get_next(varbinds=[peek_ug405_varbinds.site_id_varbind])
+    #
+    #     if self.check_snmp_response_errors_and_add_to_host_data_if_has():
+    #         return
+    #     try:
+    #         self._set_scn_from_response()
+    #     except BadControllerType as e:
+    #         self.add_data_to_data_response_attrs(e)
 
     def _set_scn_from_response(self) -> None | BadControllerType:
         try:
@@ -524,7 +556,7 @@ async def main():
 
     """set command test"""
 
-    res = await obj.set_stage(1)
+    res = await obj.set_stage(2)
 
     # print(res.response_as_dict)
 
