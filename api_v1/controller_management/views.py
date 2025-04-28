@@ -1,8 +1,11 @@
 import logging
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from api_v1.controller_management.crud import crud
+from core.models.db_helper import db_helper
 from core.settings import settings
 from core.shared import HTTP_CLIENT_SESSIONS, SWARCO_SSH_CONNECTIONS
 from api_v1.controller_management import services
@@ -11,7 +14,7 @@ from api_v1.controller_management.schemas import (
     BaseFieldsSearchInDb,
     FieldsMonitoringWithoutSearchInDb,
     ResponseGetState,
-    ResponseSearchinDb, FieldsManagementWithoutSearchInDb
+    ResponseSearchinDb, FieldsManagementWithoutSearchInDb, ControllerManagementOptions
 )
 import logging_config
 from sdp_lib.management_controllers.ssh.ssh_core import SwarcoSSH
@@ -26,6 +29,15 @@ router = APIRouter()
 #     logger.debug(data.model_json_schema())
 #     return data
 
+@router.get('/controller-management-options')
+async def get_controller_management_options(
+    session: AsyncSession = Depends(db_helper.session_dependency)
+) -> list[ControllerManagementOptions]:
+    return await crud.get_controller_management_options(session)
+
+# @router.get('/controller-management-options/{controller_type}')
+# async def get_controller_management_options(controller_type, session: AsyncSession):
+#     return await crud.get_controller_management_options(session)
 
 
 @router.post('/properties', tags=[settings.traffic_lights_tag_static_properties])

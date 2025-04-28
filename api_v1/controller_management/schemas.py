@@ -167,6 +167,24 @@ class DataHostManagement(SearchinDbFields, ManagementFields):
     """
 
 
+def splitter(data, splitter=';') -> list:
+    try:
+        if data is None:
+            return []
+        return data.split(splitter)
+    except AttributeError:
+        return [data]
+
+
+class ControllerManagementOptions(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    type_controller: str
+    group: Annotated[int, Field(exclude=True)]
+    commands: Annotated[str, AfterValidator(splitter)]
+    max_stage: int
+    options: Annotated[str | list | None, AfterValidator(splitter)]
+    sources: Annotated[str | list | None, AfterValidator(splitter)]
+
 """ Без запроса в БД. """
 
 
