@@ -19,7 +19,7 @@ from pysnmp.smi.rfc1902 import (
 from sdp_lib.management_controllers.snmp import (
     oids,
     snmp_requests,
-    host_data
+    snmp_config
 )
 from sdp_lib.management_controllers.snmp._types import (
     T_Oids,
@@ -193,7 +193,7 @@ class VarbindsUg405(Varbinds):
         if 0 < num_stage < 129:
             return (
                 cls.operation_mode3_varbind,
-                wrap_oid_by_object_type(f'{Oids.utcControlTO}{scn_as_ascii}', cls.integer32_val1),
+                wrap_oid_by_object_type(f'{str(Oids.utcControlTO)}{scn_as_ascii}', cls.integer32_val1),
                 wrap_oid_by_object_type(f'{Oids.utcControlFn}{scn_as_ascii}', cls.hex_vals128.get(num_stage)),
                 # wrap_oid_by_object_type(f'{Oids.utcControlFn}{scn_as_ascii}', OctetString(hexValue='1'))
             )
@@ -213,11 +213,15 @@ class VarbindsPotokP(VarbindsUg405):
     _oids_state = oids.oids_state_potok_p
 
 
+class VarbindsPeek(VarbindsUg405):
+    _oids_state = oids.oids_state_peek_ug405
+
+
 # Singleton instances
 potok_ug405_varbinds = VarbindsPotokP()
 potok_stcip_varbinds = VarbindsPotokS()
 swarco_stcip_varbinds = VarbindsSwarco()
-# peek_ug405_varbinds = VarbindsUg405()
+peek_ug405_varbinds = VarbindsPeek()
 
 
 class AbstractVarbindsWrappersByScn:

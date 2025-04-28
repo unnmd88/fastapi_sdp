@@ -99,6 +99,10 @@ oids_state_potok_s = (
     Oids.swarcoUTCDetectorQty,
 )
 
+oids_state_peek_ug405 = (
+    # Не реализовано
+)
+
 oids_scn_required = {
         Oids.utcReplyGn, Oids.utcReplyFR, Oids.utcReplyDF, Oids.utcControlTO,
         Oids.utcControlFn, Oids.potokP_utcReplyPlanStatus, Oids.potokP_utcReplyPlanSource,

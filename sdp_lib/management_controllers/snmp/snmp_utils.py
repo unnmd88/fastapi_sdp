@@ -8,7 +8,7 @@ from pysnmp.proto.rfc1902 import Unsigned32, Integer32, Integer, OctetString
 from pysnmp.smi.rfc1902 import ObjectType, ObjectIdentity
 
 from sdp_lib.management_controllers.snmp import oids
-from sdp_lib.management_controllers.snmp.host_data import swarco_stcip, AllowedControllers
+# from sdp_lib.management_controllers.snmp.snmp_config import swarco_stcip, AllowedControllers
 from sdp_lib.management_controllers.snmp.oids import Oids
 from sdp_lib.management_controllers.snmp.set_commands import AvailableGetCommands, AvailableSetCommands
 

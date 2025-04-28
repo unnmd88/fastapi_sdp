@@ -26,7 +26,8 @@ matches_stages = {
 
 
 matches_sources = {
-    AllowedControllers.SWARCO: {AllowedManagementSources.man}
+    AllowedControllers.SWARCO: {AllowedManagementSources.man},
+    AllowedControllers.PEEK: {AllowedManagementSources.central}
 }
 
 def validate_num_stage(type_controller, stage):
@@ -67,7 +68,7 @@ class SetCommandFields(BaseFields):
                 f'Некорректное значение источника < source >',
                 f'Некорректное значение источника команды < source >: {self.source}',
             )
-
+        return self
 
 class FoundInDatabaseFields(BaseModel):
 

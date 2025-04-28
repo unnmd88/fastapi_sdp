@@ -202,6 +202,9 @@ class Management(Controllers):
             case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
+            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
+                # print('fFF')
+                return snmp_api.PeekUg405(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
                 if ip in SWARCO_SSH_CONNECTIONS:
                     print('case (AllowedControllers.SWARCO, Al')
