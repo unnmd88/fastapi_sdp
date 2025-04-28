@@ -12,14 +12,15 @@ from pydantic import (
 )
 from pydantic_core import ValidationError
 
+from sdp_lib.management_controllers.available_services import AllowedManagementSources, AllowedManagementEntity
+from sdp_lib.management_controllers.constants import AllowedControllers
 from sdp_lib.utils_common import check_is_ipv4, remove_duplicates
 
-
-class AllowedControllers(StrEnum):
-    SWARCO = 'Swarco'
-    POTOK_P = 'Поток (P)'
-    POTOK_S = 'Поток (S)'
-    PEEK = 'Peek'
+# class AllowedControllers(StrEnum):
+#     SWARCO = 'Swarco'
+#     POTOK_P = 'Поток (P)'
+#     POTOK_S = 'Поток (S)'
+#     PEEK = 'Peek'
 
 
 class AllowedMonitoringEntity(StrEnum):
@@ -36,14 +37,10 @@ class AllowedMonitoringOptions(StrEnum):
     base_and_inputs = 'base_and_inputs'
 
 
-class AllowedManagementEntity(StrEnum):
-    set_stage = 'set_stage'
-    set_dark = 'set_dark'
 
 
-class AllowedManagementSources(StrEnum):
-    man = 'man'
-    central = 'central'
+
+
 
 
 class AllowedProtocolsRequest(StrEnum):
