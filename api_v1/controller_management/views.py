@@ -70,7 +70,7 @@ async def get_state(data: FieldsMonitoringWithoutSearchInDb) -> ResponseGetState
     return await states.compose_request()
 
 
-@router.get('/command-options', tags=[settings.traffic_lights_tag_management])
+@router.get('/commands-and-options', tags=[settings.traffic_lights_tag_management])
 async def commands_options() -> T_CommandOptions:
     return all_controllers_services
 
