@@ -308,7 +308,13 @@ class PotokPStandardParser(BaseSnmpParser, Ug405Mixin):
         }
 
 
-class PeekStandardParser(BaseSnmpParser):
-    pass
+class PeekStandardParser(BaseSnmpParser, Ug405Mixin):
+    @property
+    def matches(self) -> dict[str | Oids, tuple[FieldsNames, Callable]]:
+        return {}
+
+    @property
+    def extras_methods(self) -> dict[str, Callable]:
+        return {}
 
 
