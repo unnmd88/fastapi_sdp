@@ -2,7 +2,7 @@ import abc
 from typing import Any
 
 
-class Parsers(metaclass=abc.ABCMeta):
+class Parsers:
 
     def __init__(self, content: Any = None):
         self.content = content
@@ -12,6 +12,6 @@ class Parsers(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def parse(self, *args, **kwargs) -> dict[str, Any]:
-        ...
+        """ Основной метод парса данных для формирования response. """
 
 

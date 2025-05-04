@@ -8,18 +8,18 @@ from pydantic import (
     Field,
     ConfigDict,
     computed_field,
-    AfterValidator, SkipValidation, field_validator, model_serializer
+    AfterValidator, SkipValidation, field_validator
 )
 from pydantic_core import ValidationError
 
-from sdp_lib.utils_common import check_is_ipv4, remove_duplicates
+from api_v1.controller_management.available_services import AllowedManagementSources, AllowedManagementEntity
+from sdp_lib.management_controllers.constants import AllowedControllers
 
-
-class AllowedControllers(StrEnum):
-    SWARCO = 'Swarco'
-    POTOK_P = 'Поток (P)'
-    POTOK_S = 'Поток (S)'
-    PEEK = 'Peek'
+# class AllowedControllers(StrEnum):
+#     SWARCO = 'Swarco'
+#     POTOK_P = 'Поток (P)'
+#     POTOK_S = 'Поток (S)'
+#     PEEK = 'Peek'
 
 
 class AllowedMonitoringEntity(StrEnum):
@@ -36,14 +36,10 @@ class AllowedMonitoringOptions(StrEnum):
     base_and_inputs = 'base_and_inputs'
 
 
-class AllowedManagementEntity(StrEnum):
-    set_stage = 'set_stage'
-    set_dark = 'set_dark'
 
 
-class AllowedManagementSources(StrEnum):
-    man = 'man'
-    central = 'central'
+
+
 
 
 class AllowedProtocolsRequest(StrEnum):
@@ -166,6 +162,24 @@ class DataHostManagement(SearchinDbFields, ManagementFields):
         с опцией предварительного поиска в БД.
     """
 
+
+def splitter(data, splitter=';') -> list:
+    try:
+        if data is None:
+            return []
+        return data.split(splitter)
+    except AttributeError:
+        return [data]
+
+
+class ControllerManagementOptions(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    type_controller: str
+    group: Annotated[int, Field(exclude=True)]
+    commands: Annotated[str, AfterValidator(splitter)]
+    max_stage: int
+    options: Annotated[str | list | None, AfterValidator(splitter)]
+    sources: Annotated[str | list | None, AfterValidator(splitter)]
 
 """ Без запроса в БД. """
 

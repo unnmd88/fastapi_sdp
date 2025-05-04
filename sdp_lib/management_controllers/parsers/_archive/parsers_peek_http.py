@@ -1,25 +1,22 @@
 import json
 import pprint
 import time
-from typing import (
-    Any,
-    TypeAlias
-)
+from typing import Any
 
 from sdp_lib.management_controllers.fields_names import FieldsNames
-from sdp_lib.management_controllers.parsers.parser_core import Parsers
+from sdp_lib.management_controllers.parsers.parsers_core import Parsers
 
 
-properties: TypeAlias = dict[str, tuple[str, ...]]
+properties = dict[str, tuple[str, ...]]
 
 
 class ParserBase(Parsers):
     """
     Базовый класс интерфейса парсера Peek web.
     """
-    def __init__(self):
-        super().__init__()
-        self.content_as_list = None
+    def __init__(self, content):
+        super().__init__(content)
+        self.content_as_list = self.content.splitlines()
 
     def base_extract_data_from_line(self, line: str, pattern: str):
         """
@@ -57,8 +54,8 @@ class MainPageParser(ParserBase):
     pattern_cycle = ':D;;##T_CYCLE##;'
     pattern_mode_and_stage = ':D;;##T_MODE## (##T_STAGE##);'
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, content: str):
+        super().__init__(content)
         self.address = None
         self.current_plan = None
         self.current_plan_param = None
@@ -183,14 +180,13 @@ class MainPageParser(ParserBase):
         mode, stage = self.extract_current_xp_mode_and_stage(lines[5])
         return num_xp, state, mode, stage
 
-    def parse(self, content: str):
+    def parse(self):
         """
         Парсит данные с основной web страницы ДК Peek, присваивая их соответствующим атрибутам.
         :param get_parsed_data_as_dict: Параметр является опцией.
                                         При True -> формирует атрибут self.parsed_content_as_dict.
         :return: None.
         """
-        self.content_as_list = content.splitlines()
         common_data_is_extracted = False
         for i, line in enumerate(self.content_as_list):
             if not common_data_is_extracted:
@@ -285,7 +281,7 @@ class MainPageParser(ParserBase):
         ]
 
 
-input_data: TypeAlias = tuple[str, str, str, str, str, str]
+INPUT_DATA = tuple[str, str, str, str, str, str]
 
 
 class InputsPageParser(ParserBase):
@@ -299,14 +295,14 @@ class InputsPageParser(ParserBase):
 
     pattern_input_data = ':D;'
 
-    def parse(self, content: str):
+    def parse(self):
         """
         Парсит данные с основной web страницы ДК Peek, присваивая их соответствующим атрибутам.
         :param get_parsed_data_as_dict: Параметр является опцией.
                                         При True -> формирует атрибут self.parsed_content_as_dict.
         :return: None.
         """
-        self.content_as_list = content.splitlines()
+
         for line in self.content_as_list:
             if self.pattern_input_data in line:
                 index, num, name, state, _time, actuator = self.extract_data_from_line(line)
@@ -318,12 +314,6 @@ class InputsPageParser(ParserBase):
 
     def extract_data_from_line(self, line: str):
         return line.split(';')[1:]
-
-
-class SetInputsPageParser(ParserBase):
-
-    def parse(self, content):
-        return content
 
 
 if __name__ == '__main__':

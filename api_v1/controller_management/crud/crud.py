@@ -3,6 +3,8 @@ from collections.abc import Sequence
 from functools import cached_property
 from typing import Any, TypeVar, Type
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from core.models import db_helper, TrafficLightsObjects
 from sqlalchemy import select, or_, Select
 from sqlalchemy.engine.row import RowMapping
@@ -18,6 +20,7 @@ from api_v1.controller_management.schemas import (
     BaseFieldsWithSearchInDb,
     DataHostManagement
 )
+from core.models.intersections import ControllerManagementOptions
 from core.utils import get_field_for_search_in_db
 
 
@@ -30,6 +33,24 @@ async def search_hosts_base_properties(query) -> list[RowMapping]:
     async with db_helper.engine.connect() as conn:
         result = await conn.execute(query)
         return result.mappings().all()
+
+async def get_controller_management_options(session: AsyncSession):
+    columns = (
+        ControllerManagementOptions.type_controller,
+        ControllerManagementOptions.group,
+        ControllerManagementOptions.commands,
+        ControllerManagementOptions.max_stage,
+        ControllerManagementOptions.options,
+        ControllerManagementOptions.sources,
+    )
+
+    query = select(*columns)
+    res = await session.execute(query)
+    # options = res.scalars().all()
+    return res.mappings().all()
+    # for o in options:
+    #     print(f'o: {dict(o)}')
+
 
 # Deprecated
 class BaseRead:
@@ -91,72 +112,6 @@ class SearchHostsByIpOrNumQuery:
             TrafficLightsObjectsTableFields.NUMBER: TrafficLightsObjects.number,
             TrafficLightsObjectsTableFields.IP_ADDRESS: TrafficLightsObjects.ip_adress,
         }
-
-
-# class BaseProcessor(BaseDataHosts):
-#
-#     search_in_db_class = ReadHostsByIpOrNum
-#
-#     def __init__(self, source_data: NumbersOrIpv4):
-#         super().__init__(source_data)
-#         self.hosts_after_search: list | None = None
-#         self.db = self._get_search_in_db_instance()
-#         self.start_time = time.time()
-#
-#     @classmethod
-#     def _get_search_in_db_instance(cls):
-#         return cls.search_in_db_class()
-#
-#     def __repr__(self):
-#         return (
-#             f'self.income_data: {self.source_data}\n'
-#             f'self.hosts_after_search: {self.hosts_after_search}\n'
-#             f'self.hosts: {self.hosts_data}\n'
-#         )
-#
-#     def _create_hosts_data(self) -> dict[str, SearchinDbHostBody]:
-#         return {
-#             host: SearchinDbHostBody(
-#                 ip_or_name_source=host,
-#                 search_in_db_field=host,
-#                 db_records=[]
-#             )
-#             for host in self.source_data.hosts
-#         }
-#
-#     def _process_data_hosts_after_request(self):
-#
-#         for found_record in self.hosts_after_search:
-#             self._add_record_to_hosts_data(dict(found_record))
-#
-#     def _add_record_to_hosts_data(
-#             self,
-#             found_record: dict[str, Any]
-#     ) -> str | None:
-#
-#         number, ip = (
-#             found_record[TrafficLightsObjectsTableFields.NUMBER],
-#             found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
-#         )
-#         if number is None and ip is None:
-#             return None
-#
-#         if number in self.hosts_data:
-#             key = number
-#         elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self.hosts_data:
-#             key = ip
-#         else:
-#             raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
-#         # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
-#         self.hosts_data[key].db_records.append(found_record)
-#         return key
-#
-#     async def search_hosts_and_processing(self):
-#         self.hosts_after_search = await self.db.get_hosts_where(
-#             self.db.get_query_where(self.hosts_data)
-#         )
-#         self._process_data_hosts_after_request()
-#         return self.hosts_data
 
 
 class SearchDb:
@@ -303,6 +258,7 @@ class _MonitoringAndManagementProcessors:
     @property
     def processed_data_hosts(self) -> dict[str, T_HostModels]:
         return self._processed_data_hosts
+
 
 class MonitoringProcessors(_MonitoringAndManagementProcessors):
     host_model = BaseFieldsWithSearchInDb
