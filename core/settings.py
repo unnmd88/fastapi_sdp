@@ -1,10 +1,17 @@
 import os
 from pathlib import Path
 
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+class RunApp(BaseModel):
+    host: str = '127.0.0.1'
+    port: int = 8000
+    reload: bool = True
 
 
 class SettingsDb(BaseSettings):
@@ -30,10 +37,13 @@ class SettingsDb(BaseSettings):
 
 class Settings(BaseSettings):
     api_v1_prefix: str = '/api/v1'
+    traffic_lights_prefix: str = '/traffic-lights'
     traffic_lights_tag_static_properties: str = 'Traffic lights static properties'
     traffic_lights_tag_monitoring: str = 'Traffic lights monitoring'
     traffic_lights_tag_management: str = 'Traffic lights management'
 
+    run_config_default: RunApp = RunApp()
+    run_config_sdp: RunApp = RunApp(host='192.168.45.93', port=8001)
 
 settings_db = SettingsDb()
 settings = Settings()

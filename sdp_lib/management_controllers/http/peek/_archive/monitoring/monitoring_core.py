@@ -13,8 +13,8 @@ class GetData(PeekWeb):
 
     parser_class: Type[P]
 
-    def __init__(self, ip_v4: str, session: aiohttp.ClientSession):
-        super().__init__(ip_v4, session)
+    def __init__(self, ipv4: str, session: aiohttp.ClientSession):
+        super().__init__(ipv4=ipv4, session=session)
         self.method = self.fetch
 
     @classmethod

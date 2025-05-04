@@ -36,6 +36,7 @@ class Oids(StrEnum):
 
     """ UG405 """
     # -- Control Bits --#
+    utcType2Control = os.getenv('utcType2Control')
     utcControlLO = os.getenv('utcControlLO')
     utcControlFF = os.getenv('utcControlFF')
     utcControlTO = os.getenv('utcControlTO')
@@ -66,3 +67,47 @@ class Oids(StrEnum):
     potokP_utcReplyHardwareErr = os.getenv('potokP_utcReplyHardwareErr')
     potokP_utcReplySoftwareErr = os.getenv('potokP_utcReplySoftwareErr')
     potokP_utcReplyElectricalCircuitErr = os.getenv('potokP_utcReplyElectricalCircuitErr')
+
+
+oids_state_swarco = (
+    Oids.swarcoUTCTrafftechFixedTimeStatus,
+    Oids.swarcoUTCTrafftechPlanSource,
+    Oids.swarcoUTCStatusEquipment,
+    Oids.swarcoUTCTrafftechPhaseStatus,
+    Oids.swarcoUTCTrafftechPlanCurrent,
+    Oids.swarcoUTCDetectorQty,
+    Oids.swarcoSoftIOStatus
+)
+
+oids_state_potok_p = (
+    Oids.utcType2OperationMode,
+    Oids.potokP_utcReplyDarkStatus,
+    Oids.utcReplyFR,
+    Oids.utcReplyGn,
+    Oids.potokP_utcReplyPlanStatus,
+    Oids.potokP_utcReplyLocalAdaptiv,
+    Oids.utcType2ScootDetectorCount,
+    Oids.utcReplyDF,
+    Oids.utcReplyMC,
+)
+
+oids_state_potok_s = (
+    Oids.swarcoUTCStatusEquipment,
+    Oids.swarcoUTCTrafftechPhaseStatus,
+    Oids.swarcoUTCTrafftechPlanCurrent,
+    Oids.swarcoUTCStatusMode,
+    Oids.swarcoUTCDetectorQty,
+)
+
+oids_state_peek_ug405 = (
+    # Не реализовано
+)
+
+oids_scn_required = {
+        Oids.utcReplyGn, Oids.utcReplyFR, Oids.utcReplyDF, Oids.utcControlTO,
+        Oids.utcControlFn, Oids.potokP_utcReplyPlanStatus, Oids.potokP_utcReplyPlanSource,
+        Oids.potokP_utcReplyPlanSource, Oids.potokP_utcReplyDarkStatus,
+        Oids.potokP_utcReplyLocalAdaptiv, Oids.potokP_utcReplyHardwareErr,
+        Oids.potokP_utcReplySoftwareErr, Oids.potokP_utcReplyElectricalCircuitErr,
+        Oids.utcReplyMC, Oids.utcReplyCF, Oids.utcReplyVSn, Oids.utcType2ScootDetectorCount
+    }

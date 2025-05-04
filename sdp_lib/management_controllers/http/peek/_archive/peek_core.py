@@ -49,7 +49,7 @@ class PeekWeb(HttpHost):
 
     async def http_request_to_host(self, *, timeout: float = 1, **kwargs) -> tuple[Exception | None, str | None]:
         """
-        Совершает http запрос получения контента веб страницы.
+        Генерирует http запрос получения контента веб страницы.
         :return: Кортеж из 2 объектов:
                  [0] -> экземпляр производного класса от Exception
                  при ошибке в получении контента, иначе None.
@@ -60,7 +60,7 @@ class PeekWeb(HttpHost):
         try:
             content = await self.method(
                 url=self.full_url,
-                session=self.session,
+                session=self._driver,
                 timeout=timeout,
                 **kwargs
             )
