@@ -28,18 +28,13 @@ from api_v1.controller_management.sorters.sorters_core import (
 #     HostSorterManagement
 # )
 from core.shared import SWARCO_SSH_CONNECTIONS
-
-# from sdp_lib.management_controllers.snmp import snmp_api, snmp_core
-# from sdp_lib.management_controllers.http.peek.monitoring.main_page import MainPage as peek_MainPage
-# from sdp_lib.management_controllers.http.peek.monitoring.multiple import MultipleData as peek_MultipleData
-# from sdp_lib.management_controllers.http.peek.management.set_inputs import SetStage as peek_SetStage
 from sdp_lib.management_controllers.http.peek import peek_http
-
 
 import logging_config
 from sdp_lib.management_controllers.http.peek.peek_http import DataFromWeb
-from sdp_lib.management_controllers.snmp import snmp_core, snmp_api
+from sdp_lib.management_controllers.snmp import snmp_api
 from sdp_lib.management_controllers.ssh import ssh_core
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +51,7 @@ P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 class Controllers:
 
-    snmp_engine = SnmpEngine()
+    snmp_engine = snmp_api.snmp_engine
     sorter: Type[S]
     processor: Type[P]
 
