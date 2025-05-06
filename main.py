@@ -35,8 +35,8 @@ def root():
 # app.include_router(routr)
 
 if __name__ == '__main__':
-    uvicorn.run('main:app', **settings.run_config_sdp.model_dump())
-    # uvicorn.run('main:app', port=8001, reload=True)
+    # uvicorn.run('main:app', **settings.run_config_sdp.model_dump())
+    uvicorn.run('main:app', port=8001, reload=True)
 
 
 
