@@ -9,16 +9,17 @@ from core.models.db_helper import db_helper
 from core.settings import settings
 from core.shared import HTTP_CLIENT_SESSIONS
 from api_v1.controller_management import services
-from api_v1.controller_management.crud.crud import HostPropertiesFromDb
+from api_v1.controller_management.crud.crud import TrafficLights
 from api_v1.controller_management.schemas import (
     BaseFieldsSearchInDb,
-    FieldsMonitoringWithoutSearchInDb,
+    Monitoring,
     ResponseGetState,
     ResponseSearchinDb,
-    FieldsManagementWithoutSearchInDb,
+    Management,
     ControllerManagementOptions
 )
 from api_v1.controller_management.available_services import all_controllers_services, T_CommandOptions
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -42,9 +43,9 @@ async def get_hosts(data: BaseFieldsSearchInDb) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
-    hosts_from_db = HostPropertiesFromDb(data)
+    hosts_from_db = TrafficLights(data)
     await hosts_from_db.search_hosts_and_processing()
-    return hosts_from_db.get_response_as_model()
+    return hosts_from_db.get_response_as_pydantic_model()
 
 
 @router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
@@ -59,8 +60,12 @@ async def search_and_get_state(data: BaseFieldsSearchInDb) -> ResponseGetState:
 
 
 @router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def get_state(data: FieldsMonitoringWithoutSearchInDb) -> ResponseGetState:
+# async def get_state(data: Monitoring) -> ResponseGetState:
+async def get_state(data: Monitoring) -> Monitoring:
     # print(f'data: \n {data}')
+
+    return data
+
     states = services.StatesMonitoring(
         income_data=data,
         search_in_db=False,
@@ -75,7 +80,9 @@ async def commands_options() -> T_CommandOptions:
 
 
 @router.post('/set-command', tags=[settings.traffic_lights_tag_management])
-async def set_command(data: FieldsManagementWithoutSearchInDb):
+async def set_command(data: Management):
+
+    return data
 
     result_set_command = services.Management(
         income_data=data,

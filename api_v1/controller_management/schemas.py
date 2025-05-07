@@ -1,6 +1,8 @@
+import ipaddress
 from collections import Counter
+from collections.abc import Callable, Iterable
 from enum import StrEnum
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any, TypeVar, Self, AnyStr
 from annotated_types import MinLen, MaxLen
 
 from pydantic import (
@@ -8,18 +10,21 @@ from pydantic import (
     Field,
     ConfigDict,
     computed_field,
-    AfterValidator, SkipValidation, field_validator
+    ValidationError,
+    AfterValidator,
+    SkipValidation,
+    field_validator,
+    IPvAnyAddress,
+    model_validator
 )
-from pydantic_core import ValidationError
+from pydantic_core import PydanticCustomError
 
-from api_v1.controller_management.available_services import AllowedManagementSources, AllowedManagementEntity
-from sdp_lib.management_controllers.constants import AllowedControllers
-
-# class AllowedControllers(StrEnum):
-#     SWARCO = 'Swarco'
-#     POTOK_P = 'Поток (P)'
-#     POTOK_S = 'Поток (S)'
-#     PEEK = 'Peek'
+from api_v1.controller_management.available_services import (
+    AllowedManagementSources,
+    AllowedManagementEntity
+)
+from core.user_exceptions.validate_exceptions import ErrMessages
+from core.constants import AllowedControllers
 
 
 class AllowedMonitoringEntity(StrEnum):
@@ -34,12 +39,6 @@ class AllowedMonitoringOptions(StrEnum):
     advanced = 'advanced'
     inputs = 'inputs'
     base_and_inputs = 'base_and_inputs'
-
-
-
-
-
-
 
 
 class AllowedProtocolsRequest(StrEnum):
@@ -184,7 +183,73 @@ class ControllerManagementOptions(BaseModel):
 """ Без запроса в БД. """
 
 
-class FieldsMonitoringWithoutSearchInDb(BaseModel):
+
+
+class MonitoringFields(BaseModel):
+
+    model_config = ConfigDict(extra='allow', use_enum_values=True)
+
+    number: Annotated[str | None, Field(default=None)]
+    ip_v4: Annotated[str | None, Field(default=None, exclude=True)]
+    type_controller: Annotated[str | None, Field(default=None)]
+    errors: Annotated[list, Field(default=[])]
+    response: Annotated[dict, Field(default={})]
+    option: Annotated[str | None, Field(default=None)]
+
+    # @field_validator('type_controller', mode='after')
+    # @classmethod
+    # def check_type_controller(cls, type_controller):
+    #     try:
+    #         AllowedControllers(type_controller)
+    #     except ValueError:
+    #         cls.add_to_errors('Некорректный тип контроллера')
+    #     return type_controller
+
+    def add_err(self, exc_or_err: Exception | AnyStr):
+        self.errors.append(str(exc_or_err))
+
+    def check_type_controller(self):
+        try:
+            AllowedControllers(self.type_controller)
+        except ValueError:
+            self.add_err(ErrMessages.get_bad_controller_pretty(self.type_controller))
+
+    def check_ipv4(self):
+        try:
+            ipaddress.IPv4Address(self.ip_v4)
+        except ValueError as e:
+            self.add_err(ErrMessages.get_bad_ip_pretty(self.ip_v4))
+
+    def model_post_init(self, __context) -> None:
+        for method in self.get_all_validate_methods():
+            method()
+
+    def get_all_validate_methods(self) -> Iterable[Callable]:
+
+        yield self.check_ipv4
+        yield self.check_type_controller
+
+
+
+    # @model_validator(mode='after')
+    # def check_type_controller(self) -> Self:
+    #     try:
+    #         AllowedControllers(self.type_controller)
+    #     except ValueError:
+    #         self.errors.append('Некорректный тип контроллера')
+    #     return self
+
+
+
+class ManagementFields(MonitoringFields):
+
+    command: str
+    value: Annotated[int | str, Field()]
+    source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
+
+
+
+class Monitoring(BaseModel):
 
     model_config = ConfigDict(
         extra='allow',
@@ -209,25 +274,26 @@ class FieldsMonitoringWithoutSearchInDb(BaseModel):
         }
     )
 
+    _model = MonitoringFields
+
     hosts: Annotated[
-        dict[str, BaseFields], MinLen(1), MaxLen(30), SkipValidation
+        dict[str, MonitoringFields | ManagementFields], MinLen(1), MaxLen(30), SkipValidation
     ]
 
     @field_validator('hosts', mode='before')
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, BaseFields]:
-        # return {
-        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
-        #     for k, v in hosts.items()
-        # }
-        return {
-            k: BaseFields(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
-            for k, v in hosts.items()
-        }
+    @classmethod
+    def body_to_pydantic_model(cls, hosts: dict[str, Any]) -> dict[str, MonitoringFields | ManagementFields]:
+        # a_a = {k: cls._model(**v) for k, v in hosts.items()}
+        # print(f'a_a: {a_a}')
+        return {k: cls._model(ip_v4=k, **v) for k, v in hosts.items()}
 
 
-class FieldsManagementWithoutSearchInDb(BaseModel):
+
+
+class Management(Monitoring):
 
     model_config = ConfigDict(
+        extra='allow',
         json_schema_extra= {
             "examples": [
                 {
@@ -251,20 +317,16 @@ class FieldsManagementWithoutSearchInDb(BaseModel):
         }
     )
 
-    hosts: Annotated[
-        dict[str, ManagementFields], MinLen(1), MaxLen(30), SkipValidation
-    ]
+    _model = ManagementFields
 
-    @field_validator('hosts', mode='before')
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, ManagementFields]:
-        # return {
-        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
-        #     for k, v in hosts.items()
-        # }
-        return {
-            k: ManagementFields(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
-            for k, v in hosts.items()
-        }
+
+    # hosts: Annotated[
+    #     dict[str, ManagementFields], MinLen(1), MaxLen(30), SkipValidation
+    # ]
+    #
+    # @field_validator('hosts', mode='before')
+    # def add_m(cls, hosts: dict[str, Any]) -> dict[str, ManagementFields]:
+    #     return {k: ManagementFields(**v) for k, v in hosts.items()}
 
 
 """ Response """
