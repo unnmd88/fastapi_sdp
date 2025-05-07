@@ -95,6 +95,7 @@ class BaseFields(BaseModel):
 
 
 class ManagementFields(BaseFields):
+
     model_config = ConfigDict(use_enum_values=True)
     command: str
     value: Annotated[int | str, Field()]
@@ -134,10 +135,8 @@ class BaseFieldsSearchInDb(BaseModel):
 class SearchinDbFields(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
-    # search_in_db_field: Annotated[str, AfterValidator(get_field_for_search_in_db)]
     search_in_db_field:  Annotated[str, Field(frozen=True)]
     db_records: Annotated[list, Field(default=[])]
-    errors: Annotated[list, Field(default=[])]
 
     # @computed_field
     @property
@@ -171,18 +170,17 @@ def splitter(data, splitter=';') -> list:
         return [data]
 
 
-class ControllerManagementOptions(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    type_controller: str
-    group: Annotated[int, Field(exclude=True)]
-    commands: Annotated[str, AfterValidator(splitter)]
-    max_stage: int
-    options: Annotated[str | list | None, AfterValidator(splitter)]
-    sources: Annotated[str | list | None, AfterValidator(splitter)]
+# class ControllerManagementOptions(BaseModel):
+#
+#     model_config = ConfigDict(from_attributes=True)
+#     type_controller: str
+#     group: Annotated[int, Field(exclude=True)]
+#     commands: Annotated[str, AfterValidator(splitter)]
+#     max_stage: int
+#     options: Annotated[str | list | None, AfterValidator(splitter)]
+#     sources: Annotated[str | list | None, AfterValidator(splitter)]
 
 """ Без запроса в БД. """
-
-
 
 
 class MonitoringFields(BaseModel):
@@ -195,6 +193,8 @@ class MonitoringFields(BaseModel):
     errors: Annotated[list, Field(default=[])]
     response: Annotated[dict, Field(default={})]
     option: Annotated[str | None, Field(default=None)]
+    database: Annotated[dict, Field(default={})]
+    allowed: Annotated[bool, Field(default=False)]
 
     # @field_validator('type_controller', mode='after')
     # @classmethod
@@ -220,16 +220,23 @@ class MonitoringFields(BaseModel):
         except ValueError as e:
             self.add_err(ErrMessages.get_bad_ip_pretty(self.ip_v4))
 
+    def check_database(self):
+        try:
+            if self.database['count'] > 1:
+                self.add_err('Более 1 записи найдено в БД')
+        except KeyError:
+            pass
+
     def model_post_init(self, __context) -> None:
         for method in self.get_all_validate_methods():
             method()
+        if not self.errors:
+            self.allowed = True
 
     def get_all_validate_methods(self) -> Iterable[Callable]:
 
         yield self.check_ipv4
         yield self.check_type_controller
-
-
 
     # @model_validator(mode='after')
     # def check_type_controller(self) -> Self:
@@ -238,7 +245,6 @@ class MonitoringFields(BaseModel):
     #     except ValueError:
     #         self.errors.append('Некорректный тип контроллера')
     #     return self
-
 
 
 class ManagementFields(MonitoringFields):
@@ -286,8 +292,6 @@ class Monitoring(BaseModel):
         # a_a = {k: cls._model(**v) for k, v in hosts.items()}
         # print(f'a_a: {a_a}')
         return {k: cls._model(ip_v4=k, **v) for k, v in hosts.items()}
-
-
 
 
 class Management(Monitoring):
