@@ -1,4 +1,5 @@
 import logging
+import pprint
 import time
 
 from fastapi import APIRouter, Depends
@@ -9,16 +10,17 @@ from core.models.db_helper import db_helper
 from core.settings import settings
 from core.shared import HTTP_CLIENT_SESSIONS
 from api_v1.controller_management import services
-from api_v1.controller_management.crud.crud import HostPropertiesFromDb
+from api_v1.controller_management.crud.crud import TrafficLights
 from api_v1.controller_management.schemas import (
     BaseFieldsSearchInDb,
-    FieldsMonitoringWithoutSearchInDb,
+    Monitoring,
     ResponseGetState,
     ResponseSearchinDb,
-    FieldsManagementWithoutSearchInDb,
-    ControllerManagementOptions
+    Management, MonitoringFields,
+    # ControllerManagementOptions
 )
 from api_v1.controller_management.available_services import all_controllers_services, T_CommandOptions
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -30,11 +32,11 @@ router = APIRouter()
 #     logger.debug(data.model_json_schema())
 #     return data
 
-@router.get('/controller-management-options')
-async def get_controller_management_options(
-    session: AsyncSession = Depends(db_helper.session_dependency)
-) -> list[ControllerManagementOptions]:
-    return await crud.get_controller_management_options(session)
+# @router.get('/controller-management-options')
+# async def get_controller_management_options(
+#     session: AsyncSession = Depends(db_helper.session_dependency)
+# ) -> list[ControllerManagementOptions]:
+#     return await crud.get_controller_management_options(session)
 
 
 @router.post('/properties', tags=[settings.traffic_lights_tag_static_properties])
@@ -42,28 +44,66 @@ async def get_hosts(data: BaseFieldsSearchInDb) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
-    hosts_from_db = HostPropertiesFromDb(data)
+    hosts_from_db = TrafficLights(data)
     await hosts_from_db.search_hosts_and_processing()
-    return hosts_from_db.get_response_as_model()
+    return hosts_from_db.get_response_as_pydantic_model()
 
 
 @router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def search_and_get_state(data: BaseFieldsSearchInDb) -> ResponseGetState:
+async def search_and_get_state(data: BaseFieldsSearchInDb):
+
+    hosts_from_db = TrafficLights(data)
+    await hosts_from_db.search_hosts_and_processing()
+    print(f'hosts_from_db host_data: {hosts_from_db.host_data}' )
+    print(f'hosts_from_db host_data: {hosts_from_db.src_data}' )
+    print(f'hosts_from_db hosts_after_search: {hosts_from_db.hosts_after_search}' )
+    print(f'get_response_as_pydantic_model: {hosts_from_db.get_response_as_pydantic_model()}' )
+
+    # number: Annotated[str | None, Field(default=None)]
+    # ip_v4: Annotated[str | None, Field(default=None, exclude=True)]
+    # type_controller: Annotated[str | None, Field(default=None)]
+    # errors: Annotated[list, Field(default=[])]
+    # response: Annotated[dict, Field(default={})]
+    # option: Annotated[str | None, Field(default=None)]
+    # database: Annotated[dict, Field(default={})]
+    # allowed: Annotated[bool, Field(default=False)]
+
+    d = {}
+    for v in hosts_from_db.host_data.values():
+        ip = v.db_records[0]['ip_adress']
+        type_controller = v.db_records[0]['type_controller']
+        d[ip] = {
+            'type_controller': type_controller,
+            'database': v.model_dump()
+        }
+
+    print(f'd: \n{d}')
+
+
+    host_for_req = Monitoring(
+        hosts={
+            **d
+        }
+    )
+
+    print(f'host_for_req: \n{host_for_req}')
 
     states = services.StatesMonitoring(
-        income_data=data,
-        search_in_db=True,
+        income_data=host_for_req,
         session=HTTP_CLIENT_SESSIONS[0].session
     )
     return await states.compose_request()
 
 
 @router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def get_state(data: FieldsMonitoringWithoutSearchInDb) -> ResponseGetState:
+# async def get_state(data: Monitoring) -> ResponseGetState:
+async def get_state(data: Monitoring) -> Monitoring:
     # print(f'data: \n {data}')
+
+    # return data
+
     states = services.StatesMonitoring(
         income_data=data,
-        search_in_db=False,
         session=HTTP_CLIENT_SESSIONS[0].session
     )
     return await states.compose_request()
@@ -75,7 +115,9 @@ async def commands_options() -> T_CommandOptions:
 
 
 @router.post('/set-command', tags=[settings.traffic_lights_tag_management])
-async def set_command(data: FieldsManagementWithoutSearchInDb):
+async def set_command(data: Management):
+
+    return data
 
     result_set_command = services.Management(
         income_data=data,

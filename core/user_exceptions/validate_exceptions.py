@@ -2,14 +2,37 @@
 Модуль содержит классы ошибок для валидации данных json.
 """
 import abc
+from enum import StrEnum
 
-from mypyc.primitives.set_ops import set_update_op
+from core.constants import AllowedControllers
+from sdp_lib.management_controllers import exceptions as sdp_lib_exc
 
-from api_v1.controller_management.schemas import AllowedControllers
+
+class ErrMessages(StrEnum):
+
+    bad_ip = 'Некорректный ip-v4 адрес'
+    bad_controller = 'Недопустимый тип контроллера'
+
+    @classmethod
+    def get_bad_ip_pretty(cls, ip):
+        return f'{cls.bad_ip}: {ip}'
+
+    @classmethod
+    def get_bad_controller_pretty(cls, controller_type):
+        return f'{cls.bad_controller}: {controller_type}'
 
 
 class BaseClientException(Exception):
     pass
+
+
+class BadIpv4(BaseClientException):
+
+    def __init__(self, src_ip=None):
+        self.src_ip = src_ip
+
+    def __str__(self):
+        return f'Некорректный ip-v4 адрес' if self.src_ip is None else f'Некорректный ip-v4 адрес: {self.src_ip}'
 
 
 class ClientException(BaseClientException):
@@ -79,3 +102,5 @@ class NotFoundInDB(ClientException):
         data.pop(self._input)
         return data
 
+
+BadControllerType = sdp_lib_exc.BadControllerType
