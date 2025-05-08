@@ -46,6 +46,7 @@ async def get_hosts(data: BaseFieldsSearchInDb) -> ResponseSearchinDb:
     logger.debug(f'data: {data}')
     hosts_from_db = TrafficLights(data)
     await hosts_from_db.search_hosts_and_processing()
+    hosts_from_db.get_as_dict()
     return hosts_from_db.get_response_as_pydantic_model()
 
 
@@ -54,37 +55,12 @@ async def search_and_get_state(data: BaseFieldsSearchInDb):
 
     hosts_from_db = TrafficLights(data)
     await hosts_from_db.search_hosts_and_processing()
-    print(f'hosts_from_db host_data: {hosts_from_db.host_data}' )
-    print(f'hosts_from_db host_data: {hosts_from_db.src_data}' )
-    print(f'hosts_from_db hosts_after_search: {hosts_from_db.hosts_after_search}' )
-    print(f'get_response_as_pydantic_model: {hosts_from_db.get_response_as_pydantic_model()}' )
+    # print(f'hosts_from_db host_data: {hosts_from_db.host_data}' )
+    # print(f'hosts_from_db src_data: {hosts_from_db.src_data}' )
+    # print(f'hosts_from_db hosts_after_search: {hosts_from_db.hosts_after_search}' )
+    # print(f'get_response_as_pydantic_model: {hosts_from_db.get_response_as_pydantic_model()}' )
 
-    # number: Annotated[str | None, Field(default=None)]
-    # ip_v4: Annotated[str | None, Field(default=None, exclude=True)]
-    # type_controller: Annotated[str | None, Field(default=None)]
-    # errors: Annotated[list, Field(default=[])]
-    # response: Annotated[dict, Field(default={})]
-    # option: Annotated[str | None, Field(default=None)]
-    # database: Annotated[dict, Field(default={})]
-    # allowed: Annotated[bool, Field(default=False)]
-
-    d = {}
-    for v in hosts_from_db.host_data.values():
-        ip = v.db_records[0]['ip_adress']
-        type_controller = v.db_records[0]['type_controller']
-        d[ip] = {
-            'type_controller': type_controller,
-            'database': v.model_dump()
-        }
-
-    print(f'd: \n{d}')
-
-
-    host_for_req = Monitoring(
-        hosts={
-            **d
-        }
-    )
+    host_for_req = Monitoring(hosts={**hosts_from_db.get_as_dict()})
 
     print(f'host_for_req: \n{host_for_req}')
 

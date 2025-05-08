@@ -7,3 +7,5 @@ class AllowedControllers(StrEnum):
     POTOK_P = 'Поток (P)'
     POTOK_S = 'Поток (S)'
     PEEK = 'Peek'
+
+

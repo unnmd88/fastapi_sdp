@@ -73,33 +73,34 @@ class AllowedDataHostFields(StrEnum):
     value = 'value'
 
 
-class TrafficLightsObjectsTableFields(StrEnum):
-    IP_ADDRESS = 'ip_adress'
-    NUMBER = 'number'
-    ALL = '*'
+# class TrafficLightsTableFields(StrEnum):
+#     ip_address = 'ip_adress'
+#     number = 'number'
+#     type_controller = 'type_controller'
+#     ALL = '*'
 
 
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-class BaseFields(BaseModel):
-
-    model_config = ConfigDict(extra='allow')
-
-    number: Annotated[str | None, Field(default=None)]
-    ip_adress: Annotated[str | None, Field(default=None)]
-    type_controller: Annotated[str | None, Field(default=None)]
-    address: Annotated[str | None, Field(default=None)]
-    description: Annotated[str | None, Field(default=None)]
-    option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
-
-
-class ManagementFields(BaseFields):
-
-    model_config = ConfigDict(use_enum_values=True)
-    command: str
-    value: Annotated[int | str, Field()]
-    source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
+# class BaseFields(BaseModel):
+#
+#     model_config = ConfigDict(extra='allow')
+#
+#     number: Annotated[str | None, Field(default=None)]
+#     ip_adress: Annotated[str | None, Field(default=None)]
+#     type_controller: Annotated[str | None, Field(default=None)]
+#     address: Annotated[str | None, Field(default=None)]
+#     description: Annotated[str | None, Field(default=None)]
+#     option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
+#
+#
+# class ManagementFields(BaseFields):
+#
+#     model_config = ConfigDict(use_enum_values=True)
+#     command: str
+#     value: Annotated[int | str, Field()]
+#     source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
 
 
 """ Взаимосвязаны с запросом в БД. """
@@ -149,16 +150,16 @@ class SearchinDbFields(BaseModel):
         return len(self.db_records)
 
 
-class BaseFieldsWithSearchInDb(SearchinDbFields, BaseFields):
-    """ Класс агрегатор полей хоста категории "мониторинг"
-        с опцией предварительного поиска в БД.
-    """
-
-
-class DataHostManagement(SearchinDbFields, ManagementFields):
-    """ Класс агрегатор полей хоста категории "управление"
-        с опцией предварительного поиска в БД.
-    """
+# class BaseFieldsWithSearchInDb(SearchinDbFields, BaseFields):
+#     """ Класс агрегатор полей хоста категории "мониторинг"
+#         с опцией предварительного поиска в БД.
+#     """
+#
+#
+# class DataHostManagement(SearchinDbFields, ManagementFields):
+#     """ Класс агрегатор полей хоста категории "управление"
+#         с опцией предварительного поиска в БД.
+#     """
 
 
 def splitter(data, splitter=';') -> list:
@@ -252,7 +253,6 @@ class ManagementFields(MonitoringFields):
     command: str
     value: Annotated[int | str, Field()]
     source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
-
 
 
 class Monitoring(BaseModel):

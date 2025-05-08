@@ -2,8 +2,9 @@ import time
 import typing
 from collections.abc import Sequence, Iterable, Collection, Callable
 from functools import cached_property
-from typing import Any, TypeVar, Type
+from typing import Any, TypeVar, Type, Annotated
 
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.models import db_helper, TrafficLightsObjects
@@ -13,16 +14,27 @@ from sqlalchemy.engine.row import RowMapping
 from api_v1.controller_management.checkers.checkers import AfterSearchInDbChecker
 from api_v1.controller_management.host_entity import BaseDataHosts
 from api_v1.controller_management.schemas import (
-    TrafficLightsObjectsTableFields,
+    # TrafficLightsTableFields,
     AllowedDataHostFields,
     BaseFieldsSearchInDb,
     SearchinDbFields,
     ResponseSearchinDb,
-    BaseFieldsWithSearchInDb,
-    DataHostManagement
+    # BaseFieldsWithSearchInDb,
+    # DataHostManagement
 )
-from core.models.intersections import ControllerManagementOptions
+from core.models.intersections import ControllerManagementOptions, TrafficLightsTableFields
 from core.utils import get_field_for_search_in_db
+
+
+class TrafficLight(BaseModel):
+
+    model_config = ConfigDict(from_attributes=True)
+
+    number: str | None
+    ip_adress: str | None
+    type_controller: str | None
+    address: str | None
+    description: str | None
 
 
 async def search_hosts_base_properties(query) -> list[RowMapping]:
@@ -53,231 +65,26 @@ async def get_controller_management_options(session: AsyncSession):
     #     print(f'o: {dict(o)}')
 
 
-# Deprecated
-# class BaseRead:
-#     """
-#     Базовый класс поиска в БД.
-#     """
-#     async def search_hosts_base_properties(self, query) -> list[RowMapping]:
-#         """
-#         Осуществляет запрос поиска в БД.
-#         :param query: Сущность запроса.
-#         :return: list с найденными записями RowMapping.
-#         """
-#         async with db_helper.engine.connect() as conn:
-#             result = await conn.execute(query)
-#             return result.mappings().all()
-
-
-
-# class TrafficLightsByIpOrNumQuery:
-#     """
-#     Поиск хостов в БД по определённым полям.
-#     """
-#
-#     standard_columns = (
-#         TrafficLightsObjects.number,
-#         TrafficLightsObjects.ip_adress,
-#         TrafficLightsObjects.type_controller,
-#         TrafficLightsObjects.address,
-#         TrafficLightsObjects.description
-#     )
-#
-#     all_columns = (
-#         TrafficLightsObjects.number,
-#         TrafficLightsObjects.ip_adress,
-#         TrafficLightsObjects.type_controller,
-#         TrafficLightsObjects.address,
-#         TrafficLightsObjects.description,
-#         TrafficLightsObjects.time_create,
-#         TrafficLightsObjects.time_update,
-#     )
-#
-#     matches = {
-#         TrafficLightsObjectsTableFields.NUMBER: TrafficLightsObjects.number,
-#         TrafficLightsObjectsTableFields.IP_ADDRESS: TrafficLightsObjects.ip_adress,
-#     }
-#
-#     @classmethod
-#     def get_query(
-#             cls,
-#             hosts_models: dict[str, SearchinDbFields],
-#             columns: Collection[TrafficLightsObjects] = standard_columns
-#     ) -> Select[tuple[TrafficLightsObjects]]:
-#         """
-#         Формирует сущность запроса поиска записей в БД для каждого хоста из hosts.
-#         :param hosts_models: Список вида с объектами моделей, в которых содержаться
-#                               данные для поиска. Например:
-#                               [BaseSearchHostsInDb(ip_or_name_from_user='10.45.154.16',
-#                               search_in_db_field='ip_adress'), BaseSearchHostsInDb(ip_or_name_from_user='3245']
-#         :return: Select[tuple[TrafficLightsObjects]]
-#         """
-#         query = (
-#             cls.matches.get(data_hots.search_in_db_field) == ip_or_name_from_user
-#             for ip_or_name_from_user, data_hots in hosts_models.items()
-#         )
-#         return select(*columns).where(or_(*query))
-#
-#
-#
-#         if self.all_columns:
-#             return select(TrafficLightsObjects).where(or_(*query))
-#         return select(*self.standard_columns).where(or_(*query))
-#
-#
-#     # @cached_property
-#     # def standard_columns(self) -> tuple:
-#     #     return (
-#     #         TrafficLightsObjects.number,
-#     #         TrafficLightsObjects.ip_adress,
-#     #         TrafficLightsObjects.type_controller,
-#     #         TrafficLightsObjects.address,
-#     #         TrafficLightsObjects.description
-#     #     )
-#     #
-#     # @cached_property
-#     # def matches(self):
-#     #     return {
-#     #         TrafficLightsObjectsTableFields.NUMBER: TrafficLightsObjects.number,
-#     #         TrafficLightsObjectsTableFields.IP_ADDRESS: TrafficLightsObjects.ip_adress,
-#     #     }
-
-
-# class SearchDb:
-#
-#     search_in_db_class = SearchHostsByIpOrNumQuery
-#
-#     def __init__(self, src_data: BaseFieldsSearchInDb):
-#         # super().__init__(src_data)
-#         self._src_data = src_data
-#         self._src_hosts = src_data.hosts
-#         self._processed_hosts_data = self._create_hosts_data()
-#         self._hosts_after_search: list | None = None
-#         self.db = self.search_in_db_class()
-#         self.start_time = time.time()
-#
-#     def __repr__(self):
-#         return (f'self._src_data: {self._src_data!r}\n'
-#                 f'self._src_hosts: {self._src_hosts!r}\n'
-#                 f'self.processed_hosts_data: {self._processed_hosts_data!r}\n'
-#                 f'self.hosts_after_search: {self._hosts_after_search!r}\n'
-#                 )
-#
-#         # print(f'DEBUG self._src_data {self._src_data}')
-#         # print(f'DEBUG self._hosts: {self._src_hosts}')
-#         # print(f'DEBUG self.hosts_data: {self.processed_hosts_data}')
-#
-#     def _create_hosts_data(self) -> dict[str, SearchinDbFields]:
-#         return {
-#             name_or_ipv4: SearchinDbFields(
-#                 ip_or_name_source=name_or_ipv4,
-#                 search_in_db_field=get_field_for_search_in_db(name_or_ipv4),
-#                 db_records=[]
-#             )
-#             for name_or_ipv4 in self._src_hosts
-#         }
-#
-#     def _process_data_hosts_after_request(self):
-#
-#         for found_record in self._hosts_after_search:
-#             # print(f'found_record: {found_record}')
-#             self._add_record_to_hosts_data(dict(found_record))
-#
-#     def _add_record_to_hosts_data(
-#             self,
-#             found_record: dict[str, Any]
-#     ) -> str | None:
-#
-#         number, ip = (
-#             found_record[TrafficLightsObjectsTableFields.NUMBER],
-#             found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
-#         )
-#         if number is None and ip is None:
-#             return None
-#
-#         if number in self._src_hosts:
-#             key = number
-#         elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self._processed_hosts_data:
-#             key = ip
-#         else:
-#             raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
-#         # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
-#         self._processed_hosts_data[key].db_records.append(found_record)
-#         return key
-#
-#     async def search_hosts_and_processing(self):
-#         self._hosts_after_search = await search_hosts_base_properties(
-#             self.db.get_query_where(self._processed_hosts_data)
-#         )
-#         self._process_data_hosts_after_request()
-#         print(f'self.hosts_data: {self._processed_hosts_data}')
-#         return self._processed_hosts_data
-#
-#     @property
-#     def src_data(self):
-#         return self._src_data
-#
-#     @property
-#     def src_hosts(self):
-#         return self._src_hosts
-#
-#     @property
-#     def processed_hosts_data(self) -> dict[str, SearchinDbFields]:
-#         return self._processed_hosts_data
-#
-#     @property
-#     def hosts_after_search(self):
-#         return self._hosts_after_search
-#
-#
-# class TrafficLights(SearchDb):
-#
-#     def get_response_as_model(self, **add_to_response):
-#         try:
-#             return ResponseSearchinDb(
-#                 source_data=self._src_data.source_data,
-#                 results=[self._processed_hosts_data],
-#                 time_execution=time.time() - self.start_time,
-#                 **add_to_response
-#             )
-#         except ValueError:
-#             return self.get_response_dict
-#
-#     def get_response_dict(self):
-#         return {
-#             AllowedDataHostFields.source_data: self._src_data,
-#             AllowedDataHostFields.results: [self._processed_hosts_data],
-#         }
-
-
-# T_Checker = TypeVar('T_Checker', bound=AfterSearchInDbChecker)
+all_traffic_lights_table_columns = (
+    TrafficLightsObjects.number,
+    TrafficLightsObjects.ip_adress,
+    TrafficLightsObjects.type_controller,
+    TrafficLightsObjects.address,
+    TrafficLightsObjects.description,
+    TrafficLightsObjects.time_create,
+    TrafficLightsObjects.time_update,
+)
 
 
 class TrafficLights:
 
     response_model = ResponseSearchinDb
-
-    standard_columns = (
-        TrafficLightsObjects.number,
-        TrafficLightsObjects.ip_adress,
-        TrafficLightsObjects.type_controller,
-        TrafficLightsObjects.address,
-        TrafficLightsObjects.description
-    )
-
-    all_columns = (
-        TrafficLightsObjects.number,
-        TrafficLightsObjects.ip_adress,
-        TrafficLightsObjects.type_controller,
-        TrafficLightsObjects.address,
-        TrafficLightsObjects.description,
-        TrafficLightsObjects.time_create,
-        TrafficLightsObjects.time_update,
-    )
+    standard_columns = all_traffic_lights_table_columns[:5]
+    all_columns = all_traffic_lights_table_columns
 
     matches = {
-        str(TrafficLightsObjectsTableFields.NUMBER): TrafficLightsObjects.number,
-        str(TrafficLightsObjectsTableFields.IP_ADDRESS): TrafficLightsObjects.ip_adress,
+        str(TrafficLightsTableFields.number): TrafficLightsObjects.number,
+        str(TrafficLightsTableFields.ip_address): TrafficLightsObjects.ip_adress,
     }
 
     def __init__(self, src_data: BaseFieldsSearchInDb):
@@ -320,32 +127,59 @@ class TrafficLights:
         query = self._get_query()
         self._hosts_after_search = await search_hosts_base_properties(query)
         for found_record in self._hosts_after_search:
-            # print(f'found_record: {found_record}')
-            self._add_record_to_hosts_data(dict(found_record))
+            print(f'found_record: {found_record}')
+            print(f'type(found_record): {found_record}')
+            a = TrafficLight(**found_record)
+            print(f'a TrafficLight: {a}')
+            # self._add_record_to_hosts_data(dict(found_record))
+            self._add_record_to_hosts_data(TrafficLight(**found_record))
         print(f'self.hosts_data: {self._host_data}')
         return self._host_data
 
+    # def _add_record_to_hosts_data(
+    #         self,
+    #         found_record: dict[str, Any]
+    # ) -> str | None:
+    #
+    #     host_name, ip = (
+    #         found_record[TrafficLightsObjectsTableFields.NUMBER],
+    #         found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
+    #     )
+    #     if host_name is None and ip is None:
+    #         return None
+    #
+    #     if host_name in self._host_data:
+    #         key = host_name
+    #     elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self._host_data:
+    #         key = ip
+    #     else:
+    #         raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
+    #     # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
+    #     self._host_data[key].db_records.append(found_record)
+    #     return key
+
     def _add_record_to_hosts_data(
             self,
-            found_record: dict[str, Any]
+            found_record: TrafficLight
     ) -> str | None:
 
-        host_name, ip = (
-            found_record[TrafficLightsObjectsTableFields.NUMBER],
-            found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
-        )
-        if host_name is None and ip is None:
+        # host_name, ip = (
+        #     found_record[TrafficLightsObjectsTableFields.NUMBER],
+        #     found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
+        # )
+        if found_record.number is None and found_record.ip_adress is None:
             return None
 
-        if host_name in self._host_data:
-            key = host_name
-        elif found_record[TrafficLightsObjectsTableFields.IP_ADDRESS] in self._host_data:
-            key = ip
+        if found_record.number in self._host_data:
+            key = found_record.number
+        elif found_record.ip_address in self._host_data:
+            key = found_record.ip_adress
         else:
             raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
         # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
         self._host_data[key].db_records.append(found_record)
         return key
+
 
     @property
     def src_data(self):
@@ -367,6 +201,30 @@ class TrafficLights:
     def hosts_after_search(self, data):
         self._hosts_after_search = data
 
+    def get_as_dict(self):
+
+        res = {}
+        for name, host_model in self._host_data.items():
+            try:
+                db_data: TrafficLight = host_model.db_records[0]
+                key = db_data.ip_adress
+                type_controller = db_data.type_controller
+                number = db_data.number
+            except IndexError:
+                type_controller = number = None
+                key = name
+
+            res[key] = {
+                str(TrafficLightsTableFields.type_controller): type_controller,
+                str(TrafficLightsTableFields.number): number,
+                'database': host_model.model_dump()
+            }
+        print(f'RESS! > {res}')
+        return res
+
+
+
+
     def get_response_as_pydantic_model(self, **extra_fields):
 
         try:
@@ -384,54 +242,6 @@ class TrafficLights:
             AllowedDataHostFields.source_data: self._src_data,
             AllowedDataHostFields.results: [self._host_data],
         }
-
-
-
-T_HostModels = TypeVar(
-    'T_HostModels',
-    BaseFieldsWithSearchInDb,
-    DataHostManagement
-)
-
-
-class _MonitoringAndManagementProcessors:
-
-    checker = AfterSearchInDbChecker
-    host_model: Type[T_HostModels]
-
-    def __init__(self, src_data: BaseFieldsSearchInDb):
-        # self._src_data = src_data
-        self._db = TrafficLights(src_data)
-        self._processed_data_hosts = None
-
-    async def search_hosts_and_processing(self):
-        await self._db.search_hosts_and_processing()
-        self._processed_data_hosts = {}
-        for curr_host_ipv4, current_data_host in self._db.processed_hosts_data.items():
-            current_host = self.checker(ip_or_name=curr_host_ipv4, properties=current_data_host)
-            if current_host.validate_record():
-                record = current_host.properties.db_records[0]
-                key_ip = record[TrafficLightsObjectsTableFields.IP_ADDRESS]
-                model = self.host_model(
-                    **(current_data_host.model_dump() | record)
-                )
-                self._processed_data_hosts[key_ip] = model
-            else:
-                self._processed_data_hosts[curr_host_ipv4] = current_data_host
-
-    @property
-    def processed_data_hosts(self) -> dict[str, T_HostModels]:
-        return self._processed_data_hosts
-
-
-class MonitoringProcessors(_MonitoringAndManagementProcessors):
-    host_model = BaseFieldsWithSearchInDb
-
-
-class ManagementProcessors(_MonitoringAndManagementProcessors):
-    host_model = DataHostManagement
-
-
 
 
 """ Archive """

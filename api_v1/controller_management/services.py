@@ -7,16 +7,16 @@ import aiohttp
 from pysnmp.entity.engine import SnmpEngine
 from typing_extensions import deprecated
 
-from api_v1.controller_management.crud.crud import (
-    MonitoringProcessors,
-    ManagementProcessors
-)
+# from api_v1.controller_management.crud.crud import (
+#     MonitoringProcessors,
+#     ManagementProcessors
+# )
 
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedMonitoringEntity,
     AllowedManagementEntity,
-    BaseFields,
+    # BaseFields,
     ManagementFields, AllowedManagementSources,
 )
 from api_v1.controller_management.sorters import sorters
@@ -47,7 +47,7 @@ T = TypeVar(
     # peek_MainPage
 )
 S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
-P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
+# P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
 
@@ -100,7 +100,7 @@ class Controllers:
         await self._make_request()
         self.add_response_to_data_hosts()
         self.hosts['Время составило'] = time.time() - start_time
-        return self.income_data
+        return self.income_data.hosts
 
     def get_all_hosts_as_dict(self):
         return self.allowed_to_request_hosts | {'bad_hosts': self.bad_hosts}
@@ -118,7 +118,7 @@ class StatesMonitoring(Controllers):
 
     def get_coro(
             self, ip: str,
-            data_host: BaseFields
+            data_host
     ) -> Coroutine:
         print(f'ip > {ip}\ndata_host > {data_host}')
         type_controller = data_host.type_controller
