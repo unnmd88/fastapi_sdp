@@ -12,6 +12,7 @@ class ErrMessages(StrEnum):
 
     bad_ip = 'Некорректный ip-v4 адрес'
     bad_controller = 'Недопустимый тип контроллера'
+    bad_num_stage = 'Некорректный номер фазы'
 
     @classmethod
     def get_bad_ip_pretty(cls, ip):

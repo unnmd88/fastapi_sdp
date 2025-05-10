@@ -14,9 +14,15 @@ class AllowedManagementEntity(enum.StrEnum):
     set_dark = 'set_dark'
 
 
+AVAILABLE_COMMANDS = {command for  command in AllowedManagementEntity}
+
+
 class AllowedManagementSources(enum.StrEnum):
     man = 'man'
     central = 'central'
+
+
+AVAILABLE_SOURCES = {command for  command in AllowedManagementEntity}
 
 
 mutable_seq = Annotated[MutableSequence, Field(default=[])]
@@ -34,37 +40,45 @@ class CommandOptions(BaseModel):
     default: AllowedManagementSources
 
 
-
-
-
 class Stage(CommandOptions):
+    stages_range: set[int] | list[int] | tuple[int]
     alias: str = 'Фаза'
+
+def get_stage_range_as_set(min_val: int, max_val: int) -> set:
+    try:
+        return {num_stage for num_stage in range(min_val, max_val)}
+    except ValueError:
+        return set()
 
 
 swarco_set_stage_options = Stage(
     min_val=0,
     max_val=8,
     sources=[AllowedManagementSources.man],
-    default=AllowedManagementSources.central
+    default=AllowedManagementSources.central,
+    stages_range=get_stage_range_as_set(0, 8)
 )
 
 potok_s_set_stage_options = Stage(
     min_val=0,
     max_val=128,
-    default=AllowedManagementSources.central
+    default=AllowedManagementSources.central,
+    stages_range=get_stage_range_as_set(0, 128)
 )
 
 potok_p_set_stage_options = Stage(
     min_val=0,
     max_val=128,
-    default=AllowedManagementSources.central
+    default=AllowedManagementSources.central,
+    stages_range=get_stage_range_as_set(0, 128)
 )
 
 peek_set_stage_options = Stage(
     min_val=0,
     max_val=128,
     sources=[AllowedManagementSources.central],
-    default=AllowedManagementSources.man
+    default=AllowedManagementSources.man,
+    stages_range=get_stage_range_as_set(0, 32)
 )
 
 

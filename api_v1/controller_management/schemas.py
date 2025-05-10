@@ -2,6 +2,7 @@ import ipaddress
 from collections import Counter
 from collections.abc import Callable, Iterable
 from enum import StrEnum
+from functools import cached_property
 from typing import Annotated, Any, TypeVar, Self, AnyStr
 from annotated_types import MinLen, MaxLen
 
@@ -23,6 +24,7 @@ from api_v1.controller_management.available_services import (
     AllowedManagementSources,
     AllowedManagementEntity
 )
+from api_v1.controller_management import available_services
 from core.user_exceptions.validate_exceptions import ErrMessages
 from core.constants import AllowedControllers, AllowedDataHostFields
 
@@ -207,15 +209,13 @@ class MonitoringFields(BaseModel):
             pass
 
     def model_post_init(self, __context) -> None:
-        for method in self.get_all_validate_methods():
-            method()
+        self.validate_all()
         if not self.errors:
             self.allowed = True
 
-    def get_all_validate_methods(self) -> Iterable[Callable]:
-
-        yield self.check_ipv4
-        yield self.check_type_controller
+    def validate_all(self):
+        self.check_ipv4()
+        self.check_type_controller()
 
     # @model_validator(mode='after')
     # def check_type_controller(self) -> Self:
@@ -226,11 +226,50 @@ class MonitoringFields(BaseModel):
     #     return self
 
 
+
+
+
 class ManagementFields(MonitoringFields):
+
+    controller_options = {
+        str(AllowedControllers.SWARCO): available_services.swarco_set_stage_options,
+        str(AllowedControllers.PEEK): available_services.peek_set_stage_options,
+        str(AllowedControllers.POTOK_P): available_services.potok_p_set_stage_options,
+        str( AllowedControllers.POTOK_S): available_services.potok_s_set_stage_options
+    }
+
+    matches_sources = {
+        AllowedControllers.SWARCO: {AllowedManagementSources.man},
+        AllowedControllers.PEEK: {AllowedManagementSources.central}
+    }
 
     command: str
     value: Annotated[int | str, Field()]
     source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
+
+    @cached_property
+    def matches_commands(self):
+        return {
+            'set_stage': (self.check_num_stage, )
+        }
+
+    def check_num_stage(self):
+        controller_options: available_services.Stage = self.matches_stages[self.type_controller]
+        if not int(self.value) in controller_options.stages_range:
+            msg = (
+                f'Некорректный номер фазы. Должен быть в диапазоне '
+                f'[{controller_options.min_val};{controller_options.max_val}]'
+            )
+            self.add_err(msg)
+
+    def validate_all(self):
+        super().validate_all()
+        try:
+            for method in self.matches_commands[self.command]:
+                method()
+        except KeyError:
+            """ Невалидная команда """
+
 
 
 class Monitoring(BaseModel):

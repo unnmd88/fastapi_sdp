@@ -1,5 +1,4 @@
 import logging
-import pprint
 import time
 
 from fastapi import APIRouter, Depends
@@ -62,8 +61,6 @@ async def search_and_get_state(data: BaseSearchTrafficLightsInDb):
 
     host_for_req = Monitoring(hosts={**hosts_from_db.get_as_dict()})
 
-    print(f'host_for_req: \n{host_for_req}')
-
     states = services.StatesMonitoring(
         income_data=host_for_req,
         session=HTTP_CLIENT_SESSIONS[0].session
@@ -74,9 +71,6 @@ async def search_and_get_state(data: BaseSearchTrafficLightsInDb):
 @router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
 # async def get_state(data: Monitoring) -> ResponseGetState:
 async def get_state(data: Monitoring):
-    # print(f'data: \n {data}')
-
-    # return data
 
     states = services.StatesMonitoring(
         income_data=data,
@@ -92,8 +86,6 @@ async def commands_options() -> T_CommandOptions:
 
 @router.post('/set-command', tags=[settings.traffic_lights_tag_management])
 async def set_command(data: Management):
-
-    # return data
 
     result_set_command = services.Management(
         income_data=data,

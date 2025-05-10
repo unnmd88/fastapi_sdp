@@ -17,7 +17,7 @@ from api_v1.controller_management.schemas import (
     AllowedMonitoringEntity,
     AllowedManagementEntity,
     # BaseFields,
-    ManagementFields, AllowedManagementSources,
+    ManagementFields, AllowedManagementSources, MonitoringFields,
 )
 from api_v1.controller_management.sorters import sorters
 from api_v1.controller_management.sorters.sorters_core import (
@@ -65,8 +65,12 @@ class Controllers:
         self.result_tasks = None
         self._session = session
 
+
     @abc.abstractmethod
-    def get_coro(self, ip_v4: str, data_host: dict) -> Coroutine:
+    def get_coro(
+            self, ip_v4: str,
+            data_host: MonitoringFields | ManagementFields
+    ) -> Coroutine:
         ...
 
     async def _make_request(self):

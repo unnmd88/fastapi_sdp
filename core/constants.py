@@ -34,3 +34,6 @@ class AllowedDataHostFields(StrEnum):
     #management
     command = 'command'
     value = 'value'
+
+
+
