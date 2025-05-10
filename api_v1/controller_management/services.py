@@ -33,7 +33,7 @@ from sdp_lib.management_controllers.http.peek import peek_http
 
 import logging_config
 from sdp_lib.management_controllers.http.peek.peek_http import DataFromWeb
-from sdp_lib.management_controllers.snmp import snmp_api
+from sdp_lib.management_controllers import api as cm_api
 from sdp_lib.management_controllers.ssh import ssh_core
 
 
@@ -50,11 +50,9 @@ S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 # P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
-
-
 class Controllers:
 
-    snmp_engine = snmp_api.snmp_engine
+    snmp_engine = cm_api.snmp_engine
 
     def __init__(
             self,
@@ -127,16 +125,16 @@ class StatesMonitoring(Controllers):
             case (AllowedControllers.SWARCO, None):
                 # return stcip_monitoring.CurrentStatesSwarco(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
                 # return snmp_core.SwarcoStcip(ip_v4=ip, engine=self.snmp_engine).get_states()
-                return snmp_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).get_states()
+                return cm_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_S, None):
                 # return snmp_core.PotokS(ip_v4=ip, engine=self.snmp_engine).get_states()
-                return snmp_api.PotokS(ipv4=ip, engine=self.snmp_engine).get_states()
+                return cm_api.PotokS(ipv4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_P, None):
-                scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
+                scn = cm_api.PotokP.add_CO_to_scn(data_host.number)
                 # scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
                 # return ug405_monitoring.MonitoringPotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
                 # return snmp_core.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
-                return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine, scn=scn).get_states()
+                return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine, scn=scn).get_states()
             case(AllowedControllers.PEEK, None):
                 # return peek_MainPage(ipv4=ip, session=self._session).get_and_parse()
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).get_states()
@@ -163,18 +161,18 @@ class Management(Controllers):
         value = data_host.value
         match (type_controller, command, source):
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
-                return snmp_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).set_stage(value)
+                return cm_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
-                return snmp_api.PotokS(ipv4=ip, engine=self.snmp_engine).set_stage(value)
+                return cm_api.PotokS(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
-                scn = snmp_api.PotokP.add_CO_to_scn(data_host.number)
-                return snmp_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
+                scn = cm_api.PotokP.add_CO_to_scn(data_host.number)
+                return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
                 # print('fFF')
-                return snmp_api.PeekUg405(ipv4=ip, engine=self.snmp_engine).set_stage(value)
+                return cm_api.PeekUg405(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
                 if ip in SWARCO_SSH_CONNECTIONS:
                     print('case (AllowedControllers.SWARCO, Al')

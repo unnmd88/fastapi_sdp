@@ -12,7 +12,7 @@ from core.shared import HTTP_CLIENT_SESSIONS
 from api_v1.controller_management import services
 from api_v1.controller_management.crud.crud import TrafficLights
 from api_v1.controller_management.schemas import (
-    BaseFieldsSearchInDb,
+    BaseSearchTrafficLightsInDb,
     Monitoring,
     ResponseGetState,
     ResponseSearchinDb,
@@ -40,7 +40,7 @@ router = APIRouter()
 
 
 @router.post('/properties', tags=[settings.traffic_lights_tag_static_properties])
-async def get_hosts(data: BaseFieldsSearchInDb) -> ResponseSearchinDb:
+async def get_hosts(data: BaseSearchTrafficLightsInDb) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
@@ -51,7 +51,7 @@ async def get_hosts(data: BaseFieldsSearchInDb) -> ResponseSearchinDb:
 
 
 @router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def search_and_get_state(data: BaseFieldsSearchInDb):
+async def search_and_get_state(data: BaseSearchTrafficLightsInDb):
 
     hosts_from_db = TrafficLights(data)
     await hosts_from_db.search_hosts_and_processing()
@@ -73,7 +73,7 @@ async def search_and_get_state(data: BaseFieldsSearchInDb):
 
 @router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
 # async def get_state(data: Monitoring) -> ResponseGetState:
-async def get_state(data: Monitoring) -> Monitoring:
+async def get_state(data: Monitoring):
     # print(f'data: \n {data}')
 
     # return data
@@ -93,11 +93,10 @@ async def commands_options() -> T_CommandOptions:
 @router.post('/set-command', tags=[settings.traffic_lights_tag_management])
 async def set_command(data: Management):
 
-    return data
+    # return data
 
     result_set_command = services.Management(
         income_data=data,
-        search_in_db=False,
         session=HTTP_CLIENT_SESSIONS[0].session
     )
     return await result_set_command.compose_request()
@@ -175,3 +174,26 @@ async def set_command(data: Management):
 }
 
 '''
+
+
+########################
+"""
+
+{
+  "hosts": {
+    "10.179.72.185": {
+      "type_controller": "Swarco"
+    },
+    "10.179.24.73": {
+      "type_controller": "Поток (S)"
+    },
+     "10.179.91.17": {
+          "type_controller": "Поток (P)"
+        },
+     "10.179.66.97": {
+          "type_controller": "Peek"
+    }
+  }
+}
+
+"""

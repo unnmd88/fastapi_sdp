@@ -4,5 +4,4 @@ from sdp_lib.management_controllers.snmp.snmp_core import (
     PotokS,
     PeekUg405
 )
-from sdp_lib.management_controllers.snmp.snmp_requests import snmp_engine
 

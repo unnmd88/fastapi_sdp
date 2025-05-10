@@ -1,40 +1,41 @@
+import logging
 import time
-import typing
-from collections.abc import Sequence, Iterable, Collection, Callable
-from functools import cached_property
-from typing import Any, TypeVar, Type, Annotated
+from collections.abc import (
+    Sequence,
+    Iterable,
+    Collection,
+    Callable
+)
 
-from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models import db_helper, TrafficLightsObjects
-from sqlalchemy import select, or_, Select
+from core.models import (
+    db_helper,
+    TrafficLightsObjects
+)
+from sqlalchemy import (
+    select,
+    or_,
+    Select
+)
 from sqlalchemy.engine.row import RowMapping
 
-from api_v1.controller_management.checkers.checkers import AfterSearchInDbChecker
-from api_v1.controller_management.host_entity import BaseDataHosts
 from api_v1.controller_management.schemas import (
-    # TrafficLightsTableFields,
     AllowedDataHostFields,
-    BaseFieldsSearchInDb,
+    BaseSearchTrafficLightsInDb,
     SearchinDbFields,
     ResponseSearchinDb,
-    # BaseFieldsWithSearchInDb,
-    # DataHostManagement
+    TrafficLightDbRecords,
 )
-from core.models.intersections import ControllerManagementOptions, TrafficLightsTableFields
+from core.models.intersections import (
+    ControllerManagementOptions,
+    TrafficLightsTableFields
+)
 from core.utils import get_field_for_search_in_db
+from sdp_lib import logging_config
+from sdp_lib.management_controllers.fields_names import FieldsNames
 
-
-class TrafficLight(BaseModel):
-
-    model_config = ConfigDict(from_attributes=True)
-
-    number: str | None
-    ip_adress: str | None
-    type_controller: str | None
-    address: str | None
-    description: str | None
+logger = logging.getLogger(__name__)
 
 
 async def search_hosts_base_properties(query) -> list[RowMapping]:
@@ -87,7 +88,7 @@ class TrafficLights:
         str(TrafficLightsTableFields.ip_address): TrafficLightsObjects.ip_adress,
     }
 
-    def __init__(self, src_data: BaseFieldsSearchInDb):
+    def __init__(self, src_data: BaseSearchTrafficLightsInDb):
         self._src_data = src_data
         self._src_hosts = src_data.hosts
         self._host_data = self._create_hosts_data()
@@ -124,16 +125,9 @@ class TrafficLights:
 
     async def search_hosts_and_processing(self):
 
-        query = self._get_query()
-        self._hosts_after_search = await search_hosts_base_properties(query)
+        self._hosts_after_search = await search_hosts_base_properties(self._get_query())
         for found_record in self._hosts_after_search:
-            print(f'found_record: {found_record}')
-            print(f'type(found_record): {found_record}')
-            a = TrafficLight(**found_record)
-            print(f'a TrafficLight: {a}')
-            # self._add_record_to_hosts_data(dict(found_record))
-            self._add_record_to_hosts_data(TrafficLight(**found_record))
-        print(f'self.hosts_data: {self._host_data}')
+            self._add_record_to_hosts_data(TrafficLightDbRecords(**found_record))
         return self._host_data
 
     # def _add_record_to_hosts_data(
@@ -160,13 +154,9 @@ class TrafficLights:
 
     def _add_record_to_hosts_data(
             self,
-            found_record: TrafficLight
+            found_record: TrafficLightDbRecords
     ) -> str | None:
 
-        # host_name, ip = (
-        #     found_record[TrafficLightsObjectsTableFields.NUMBER],
-        #     found_record[TrafficLightsObjectsTableFields.IP_ADDRESS]
-        # )
         if found_record.number is None and found_record.ip_adress is None:
             return None
 
@@ -176,10 +166,8 @@ class TrafficLights:
             key = found_record.ip_adress
         else:
             raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
-        # self.hosts_data[key][AllowedDataHostFields.db_records].append(found_record)
         self._host_data[key].db_records.append(found_record)
         return key
-
 
     @property
     def src_data(self):
@@ -206,7 +194,7 @@ class TrafficLights:
         res = {}
         for name, host_model in self._host_data.items():
             try:
-                db_data: TrafficLight = host_model.db_records[0]
+                db_data: TrafficLightDbRecords = host_model.db_records[0]
                 key = db_data.ip_adress
                 type_controller = db_data.type_controller
                 number = db_data.number
@@ -217,13 +205,10 @@ class TrafficLights:
             res[key] = {
                 str(TrafficLightsTableFields.type_controller): type_controller,
                 str(TrafficLightsTableFields.number): number,
-                'database': host_model.model_dump()
+                str(AllowedDataHostFields.database): host_model
             }
-        print(f'RESS! > {res}')
+        logger.debug(f'This is res: {res}')
         return res
-
-
-
 
     def get_response_as_pydantic_model(self, **extra_fields):
 

@@ -24,7 +24,7 @@ from api_v1.controller_management.available_services import (
     AllowedManagementEntity
 )
 from core.user_exceptions.validate_exceptions import ErrMessages
-from core.constants import AllowedControllers
+from core.constants import AllowedControllers, AllowedDataHostFields
 
 
 class AllowedMonitoringEntity(StrEnum):
@@ -45,39 +45,6 @@ class AllowedProtocolsRequest(StrEnum):
     SNMP = 'snmp'
     HTTP = 'http'
     AUTO = 'auto'
-
-
-class AllowedDataHostFields(StrEnum):
-    errors = 'errors'
-    host_id = 'host_id'
-    type_controller = 'type_controller'
-    scn = 'scn'
-
-    source_data = 'source_data'
-    results = 'results'
-    execution_time = 'execution_time'
-    ip_or_name_from_user = 'ip_or_name_from_user'
-    entity = 'entity'
-    ip_adress = 'ip_adress'
-    ipv4 = 'ip_address'
-    ip_or_name = 'ip/name'
-    option = 'option'
-    #Database entity
-    search_in_db = 'search_in_db'
-    search_in_db_field = 'search_in_db_field'
-    found = 'found'
-    count = 'count'
-    db_records = 'db_records'
-    #management
-    command = 'command'
-    value = 'value'
-
-
-# class TrafficLightsTableFields(StrEnum):
-#     ip_address = 'ip_adress'
-#     number = 'number'
-#     type_controller = 'type_controller'
-#     ALL = '*'
 
 
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
@@ -106,7 +73,7 @@ ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 """ Взаимосвязаны с запросом в БД. """
 
 
-class BaseFieldsSearchInDb(BaseModel):
+class BaseSearchTrafficLightsInDb(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={
         "examples": [
@@ -133,11 +100,22 @@ class BaseFieldsSearchInDb(BaseModel):
         self.hosts = hosts_without_doubles
 
 
+class TrafficLightDbRecords(BaseModel):
+
+    model_config = ConfigDict(from_attributes=True)
+
+    number: str | None
+    ip_adress: str | None
+    type_controller: str | None
+    address: str | None
+    description: str | None
+
+
 class SearchinDbFields(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
     search_in_db_field:  Annotated[str, Field(frozen=True)]
-    db_records: Annotated[list, Field(default=[])]
+    db_records: Annotated[list[TrafficLightDbRecords], Field(default=[])]
 
     # @computed_field
     @property
@@ -194,7 +172,7 @@ class MonitoringFields(BaseModel):
     errors: Annotated[list, Field(default=[])]
     response: Annotated[dict, Field(default={})]
     option: Annotated[str | None, Field(default=None)]
-    database: Annotated[dict, Field(default={})]
+    database: Annotated[dict | SearchinDbFields, Field(default={})]
     allowed: Annotated[bool, Field(default=False)]
 
     # @field_validator('type_controller', mode='after')
@@ -518,7 +496,7 @@ if __name__ == '__main__':
     data = ['1', "11", "192.168.45.16"]
 
     try:
-        o = BaseFieldsSearchInDb(hosts=data)
+        o = BaseSearchTrafficLightsInDb(hosts=data)
         print(f'o: {o}')
         print(f'o: {o.hosts.keys()}')
         d = o.model_dump()
