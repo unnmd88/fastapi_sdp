@@ -1,4 +1,5 @@
 import enum
+from collections.abc import Collection
 from typing import (
     MutableSequence,
     Annotated, TypeVar
@@ -14,15 +15,9 @@ class AllowedManagementEntity(enum.StrEnum):
     set_dark = 'set_dark'
 
 
-AVAILABLE_COMMANDS = {command for  command in AllowedManagementEntity}
-
-
 class AllowedManagementSources(enum.StrEnum):
     man = 'man'
     central = 'central'
-
-
-AVAILABLE_SOURCES = {command for  command in AllowedManagementEntity}
 
 
 mutable_seq = Annotated[MutableSequence, Field(default=[])]
@@ -41,14 +36,22 @@ class CommandOptions(BaseModel):
 
 
 class Stage(CommandOptions):
+
     stages_range: set[int] | list[int] | tuple[int]
     alias: str = 'Фаза'
+
 
 def get_stage_range_as_set(min_val: int, max_val: int) -> set:
     try:
         return {num_stage for num_stage in range(min_val, max_val)}
     except ValueError:
         return set()
+
+
+
+class Commands(BaseModel):
+    available_commands: Collection[AllowedManagementEntity | str]
+    stage_command: Stage
 
 
 swarco_set_stage_options = Stage(
@@ -79,6 +82,12 @@ peek_set_stage_options = Stage(
     sources=[AllowedManagementSources.central],
     default=AllowedManagementSources.man,
     stages_range=get_stage_range_as_set(0, 32)
+)
+
+
+swarco = Commands(
+    available_commands={AllowedManagementEntity.set_stage},
+    stage_command=swarco_set_stage_options
 )
 
 

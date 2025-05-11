@@ -36,4 +36,6 @@ class AllowedDataHostFields(StrEnum):
     value = 'value'
 
 
+class AllowedManagementEntity(StrEnum):
 
+    set_stage = 'set_stage'
