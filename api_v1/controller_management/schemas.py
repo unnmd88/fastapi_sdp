@@ -1,4 +1,5 @@
 import ipaddress
+import pprint
 from collections import Counter
 from collections.abc import Callable, Iterable
 from enum import StrEnum
@@ -22,7 +23,7 @@ from pydantic_core import PydanticCustomError
 
 from api_v1.controller_management.available_services import (
     AllowedManagementSources,
-    AllowedManagementEntity, Commands
+    AllowedManagementEntity
 )
 from api_v1.controller_management import available_services
 from core.user_exceptions.validate_exceptions import ErrMessages
@@ -234,30 +235,41 @@ class MonitoringFields(BaseModel):
 
 class ManagementFields(MonitoringFields):
 
-    set_stage_options: ClassVar = {
-        str(AllowedControllers.SWARCO): available_services.swarco_set_stage_options,
-        str(AllowedControllers.PEEK): available_services.peek_set_stage_options,
-        str(AllowedControllers.POTOK_P): available_services.potok_p_set_stage_options,
-        str( AllowedControllers.POTOK_S): available_services.potok_s_set_stage_options
-    }
+    # set_stage_options: ClassVar = {
+    #     str(AllowedControllers.SWARCO): available_services.swarco,
+    #     # str(AllowedControllers.PEEK): available_services.peek_set_stage_options,
+    #     # str(AllowedControllers.POTOK_P): available_services.potok_p_set_stage_options,
+    #     # str( AllowedControllers.POTOK_S): available_services.potok_s_set_stage_options
+    # }
 
-    matches_command_to_controller = {
+    matches_command_to_controller: ClassVar = {
         str(AllowedControllers.SWARCO): available_services.swarco,
     }
 
-    matches_sources: ClassVar = {
-        AllowedControllers.SWARCO: {AllowedManagementSources.man},
-        AllowedControllers.PEEK: {AllowedManagementSources.central}
-    }
+    # matches_sources: ClassVar = {
+    #     AllowedControllers.SWARCO: {AllowedManagementSources.man},
+    #     AllowedControllers.PEEK: {AllowedManagementSources.central}
+    # }
 
     command: Annotated[str, SkipValidation]
     value: Annotated[int | str | None, Field(default=None), SkipValidation]
     source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
 
-    settings_and_options: Annotated[available_services.Commands | None, Field(default=None, exclude=True)]
+    command_entity: Annotated[available_services.T_CommandOptions | None, Field(default=None, exclude=True)]
 
     def set_settings_and_options(self):
-        self.settings_and_options = self.matches_command_to_controller.get(self.type_controller)
+        self.command_entity: available_services.T_Services = self.matches_command_to_controller.get(self.type_controller)
+
+    # @cached_property
+    # def matches_command_to_controller(self):
+    #     """
+    #     Возвращает словарь, ключами которого являются типы доступных команд
+    #     в строковом представлении, а ключи - последовательности методов валидации
+    #     для данного типа команды.
+    #     """
+    #     return {
+    #         str(AllowedControllers.SWARCO): available_services.swarco,
+    #     }
 
     @cached_property
     def matches_commands(self):
@@ -271,18 +283,19 @@ class ManagementFields(MonitoringFields):
         }
 
     def check_command_for_current_controller_type(self) -> bool:
-        if self.command not in self.settings_and_options.available_commands:
+        if self.command not in self.command_entity.available_commands:
             self.add_err(f'Невалидная команда: < {self.command} >')
             return False
         return True
 
-
     def check_num_stage(self):
-        controller_options: available_services.Stage = self.set_stage_options[self.type_controller]
-        if not int(self.value) in self.settings_and_options.stage_command.stages_range:
+        # controller_options: available_services.Stage = self.set_stage_options[self.type_controller]
+        vals_range: available_services.T_Services = self.command_entity.services_entity.get(self.command)
+
+        if not int(self.value) in vals_range.values_range_as_set:
             msg = (
                 f'Некорректный номер фазы. Должен быть в диапазоне '
-                f'[{controller_options.min_val}...{controller_options.max_val}]'
+                f'[{vals_range.min_val}...{vals_range.max_val}]'
             )
             self.add_err(msg)
             return False
@@ -295,7 +308,9 @@ class ManagementFields(MonitoringFields):
     def validate_all(self) -> None:
         super().validate_all()
         self.set_settings_and_options()
-        self.settings_and_options = self.matches_command_to_controller.get(self.type_controller)
+        self.command_entity = self.matches_command_to_controller.get(self.type_controller)
+
+        # print(f'self.settings_and_options')
 
         if self.errors:
             return
@@ -579,7 +594,7 @@ if __name__ == '__main__':
     }
     swarco2 = {
         'ip_v4': '10.45.154.15',
-        'type_controller': 'Swarc',
+        'type_controller': 'Swarco',
         'command': 'set_stage',
         'value': 9
     }
@@ -592,3 +607,6 @@ if __name__ == '__main__':
     #     value=1
     # )
     print(swarco2_set_stage)
+    pprint.pprint(swarco2_set_stage)
+    pprint.pprint(swarco2_set_stage.model_dump_json())
+    pprint.pprint(available_services.swarco.model_dump_json())
