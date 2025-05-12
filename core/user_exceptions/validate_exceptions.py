@@ -13,14 +13,33 @@ class ErrMessages(StrEnum):
     bad_ip = 'Некорректный ip-v4 адрес'
     bad_controller = 'Недопустимый тип контроллера'
     bad_num_stage = 'Некорректный номер фазы'
+    bad_command = 'Невалидная команда'
+    bad_source = 'Невалидный источник'
 
     @classmethod
     def get_bad_ip_pretty(cls, ip):
         return f'{cls.bad_ip}: {ip}'
 
     @classmethod
-    def get_bad_controller_pretty(cls, controller_type):
+    def get_bad_controller_pretty(cls, controller_type) -> str:
         return f'{cls.bad_controller}: {controller_type}'
+
+    @classmethod
+    def bad_command_pretty(cls, allowed_commands) -> str:
+        return f'{cls.bad_command}. Доступные команды: {list(allowed_commands)}'
+
+    @classmethod
+    def bad_value_pretty(cls, min_val, max_val, command_name='') -> str:
+        command_name_pattern = f' < {command_name} >' if command_name else command_name
+        return (
+            f'Некорректное значение команды{command_name_pattern}. '
+            f'Допустимый диапазон: '
+            f'[{min_val}...{max_val}]'
+        )
+
+    @classmethod
+    def bad_source_pretty(cls, sources) -> str:
+        return f'Невалидный источник команды. Допустимые: {sources}'
 
 
 class BaseClientException(Exception):

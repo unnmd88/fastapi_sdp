@@ -1,6 +1,6 @@
 import ipaddress
 import pprint
-from collections import Counter
+from collections import Counter, abc
 from collections.abc import Callable, Iterable
 from enum import StrEnum
 from functools import cached_property
@@ -191,8 +191,10 @@ class MonitoringFields(BaseModel):
     #         cls.add_to_errors('Некорректный тип контроллера')
     #     return type_controller
 
-    def add_err(self, exc_or_err: Exception | AnyStr):
-        self.errors.append(str(exc_or_err))
+    # def add_err(self, exc_or_err: Exception | AnyStr | abc.Collection[str]):
+    def add_err(self, *args: Exception | AnyStr):
+        for exc_or_err in args:
+            self.errors.append(str(exc_or_err))
 
     def check_type_controller(self):
         try:
@@ -231,96 +233,30 @@ class MonitoringFields(BaseModel):
     #     return self
 
 
-
-
 class ManagementFields(MonitoringFields):
-
-    # set_stage_options: ClassVar = {
-    #     str(AllowedControllers.SWARCO): available_services.swarco,
-    #     # str(AllowedControllers.PEEK): available_services.peek_set_stage_options,
-    #     # str(AllowedControllers.POTOK_P): available_services.potok_p_set_stage_options,
-    #     # str( AllowedControllers.POTOK_S): available_services.potok_s_set_stage_options
-    # }
 
     matches_command_to_controller: ClassVar = {
         str(AllowedControllers.SWARCO): available_services.swarco,
     }
 
-    # matches_sources: ClassVar = {
-    #     AllowedControllers.SWARCO: {AllowedManagementSources.man},
-    #     AllowedControllers.PEEK: {AllowedManagementSources.central}
-    # }
-
     command: Annotated[str, SkipValidation]
     value: Annotated[int | str | None, Field(default=None), SkipValidation]
     source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
+    controller_command_entity: Annotated[available_services.T_Services, Field(exclude=True, default=None)]
 
-    command_entity: Annotated[available_services.T_CommandOptions | None, Field(default=None, exclude=True)]
-
-    def set_settings_and_options(self):
-        self.command_entity: available_services.T_Services = self.matches_command_to_controller.get(self.type_controller)
-
-    # @cached_property
-    # def matches_command_to_controller(self):
-    #     """
-    #     Возвращает словарь, ключами которого являются типы доступных команд
-    #     в строковом представлении, а ключи - последовательности методов валидации
-    #     для данного типа команды.
-    #     """
-    #     return {
-    #         str(AllowedControllers.SWARCO): available_services.swarco,
-    #     }
-
-    @cached_property
-    def matches_commands(self):
-        """
-        Возвращает словарь, ключами которого являются типы доступных команд
-        в строковом представлении, а ключи - последовательности методов валидации
-        для данного типа команды.
-        """
-        return {
-            str(AllowedManagementEntity.set_stage): (self.check_num_stage, )
-        }
-
-    def check_command_for_current_controller_type(self) -> bool:
-        if self.command not in self.command_entity.available_commands:
-            self.add_err(f'Невалидная команда: < {self.command} >')
-            return False
-        return True
-
-    def check_num_stage(self):
-        # controller_options: available_services.Stage = self.set_stage_options[self.type_controller]
-        vals_range: available_services.T_Services = self.command_entity.services_entity.get(self.command)
-
-        if not int(self.value) in vals_range.values_range_as_set:
-            msg = (
-                f'Некорректный номер фазы. Должен быть в диапазоне '
-                f'[{vals_range.min_val}...{vals_range.max_val}]'
-            )
-            self.add_err(msg)
-            return False
-        return True
-
-    def check_source(self):
-        pass
-
-
-    def validate_all(self) -> None:
+    def validate_all(self):
         super().validate_all()
-        self.set_settings_and_options()
-        self.command_entity = self.matches_command_to_controller.get(self.type_controller)
-
-        # print(f'self.settings_and_options')
 
         if self.errors:
             return
-        try:
-            for method in self.matches_commands[self.command]:
-                if self.stop_check_flag: # На будущее, если после какого либо метода требуется прервать валидацию
-                    return
-                method()
-        except KeyError:
-            self.add_err(f'Невалидная команда: < {self.command} >')
+
+        self.controller_command_entity: available_services.CommandOptions = (
+            self.matches_command_to_controller[self.type_controller]
+        )
+
+        self.add_err(*self.controller_command_entity.validate_service_entity(
+            command=self.command, value=self.value
+        ))
 
 
 class Monitoring(BaseModel):
@@ -606,7 +542,6 @@ if __name__ == '__main__':
     #     command='set_stage',
     #     value=1
     # )
-    print(swarco2_set_stage)
-    pprint.pprint(swarco2_set_stage)
-    pprint.pprint(swarco2_set_stage.model_dump_json())
-    pprint.pprint(available_services.swarco.model_dump_json())
+    print(swarco2_set_stage.model_dump_json(indent=4))
+    print('*' * 100)
+    print(available_services.swarco.model_dump_json(indent=4))

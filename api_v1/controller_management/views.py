@@ -18,7 +18,7 @@ from api_v1.controller_management.schemas import (
     Management, MonitoringFields,
     # ControllerManagementOptions
 )
-from api_v1.controller_management.available_services import all_controllers_services, T_CommandOptions
+from api_v1.controller_management.available_services import all_controllers_services
 
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ async def get_state(data: Monitoring):
 
 
 @router.get('/commands-and-options', tags=[settings.traffic_lights_tag_management])
-async def commands_options() -> T_CommandOptions:
+async def commands_options():
     return all_controllers_services
 
 

@@ -10,6 +10,7 @@ from typing import (
 
 from pydantic import BaseModel, Field, ConfigDict, computed_field, field_validator
 
+from core.user_exceptions.validate_exceptions import ErrMessages
 from sdp_lib.management_controllers.constants import AllowedControllers
 
 
@@ -53,7 +54,7 @@ class Services(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True, frozen=True, arbitrary_types_allowed=True)
 
-    alias: Annotated[str, Field(default=None)]
+    command_name: Annotated[str, Field(default=None)]
     values_range: abc.Sequence[int | str]
     values_range_as_set: Annotated[set[int | str], Field(exclude=True, default=set())]
     options: mutable_seq
@@ -71,10 +72,9 @@ class Services(BaseModel):
         return self.values_range[-1]
 
 
-
 class Stage(Services):
 
-    alias: Annotated[str, Field(default='Фаза')]
+    command_name: Annotated[str, Field(default='Фаза')]
 
 
 T_Services: TypeAlias = Services | Stage
@@ -84,7 +84,6 @@ class CommandOptions(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True, frozen=True, arbitrary_types_allowed=True)
 
-
     matches_services: ClassVar = {
         AllowedControllers.SWARCO: {AllowedManagementEntity.set_stage},
         AllowedControllers.POTOK_P: {AllowedManagementEntity.set_stage},
@@ -93,8 +92,30 @@ class CommandOptions(BaseModel):
     }
 
     type_controller: AllowedControllers
-    available_services: Annotated[abc.Collection[AllowedManagementEntity | str], Field(default=[])]
     services_entity: abc.MutableMapping[AllowedManagementEntity, Stage | Services]
+
+    def validate_service_entity(
+            self,
+            *,
+            command,
+            value,
+            source=None
+    ) -> abc.Collection[str]:
+
+        errors = []
+        if command not in self.services_entity:
+            errors.append(ErrMessages.bad_command_pretty(self.services_entity))
+            return errors
+
+        service = self.services_entity[command]
+
+        if value not in service.values_range_as_set:
+            errors.append(ErrMessages.bad_value_pretty(service.min_val, service.max_val, service.command_name))
+
+        if source is not None and source not in service.sources:
+            errors.append(ErrMessages.bad_source_pretty(service.sources))
+
+        return errors
 
 
     # def model_post_init(self, __context) -> None:
@@ -137,18 +158,18 @@ peek_set_stage = Stage(
 swarco = CommandOptions(
     type_controller=AllowedControllers.SWARCO,
     services_entity={AllowedManagementEntity.set_stage: swarco_set_stage},
-    available_services={AllowedManagementEntity.set_stage}
+    # available_services={AllowedManagementEntity.set_stage}
 )
 
 potok_s = CommandOptions(
     type_controller=AllowedControllers.POTOK_S,
     services_entity={AllowedManagementEntity.set_stage: potok_s_set_stage},
-    available_services={AllowedManagementEntity.set_stage},
+    # available_services={AllowedManagementEntity.set_stage},
 )
 
 
 # T_CommandOptions: TypeAlias = TypeVar('T_CommandOptions', SwarcoOptions, PotokOptions)
-T_CommandOptions: TypeAlias = TypeVar('T_CommandOptions', bound=CommandOptions)
+# T_CommandOptions = TypeVar('T_CommandOptions', bound=CommandOptions, covariant=True)
 
 # class Commands(BaseModel):
 #     available_commands: abc.Collection[AllowedManagementEntity | str]
@@ -193,11 +214,12 @@ T_CommandOptions: TypeAlias = TypeVar('T_CommandOptions', bound=CommandOptions)
 
 
 __T_CommandOptions = TypeVar('__T_CommandOptions', bound=CommandOptions)
-T_CommandOptions = dict[AllowedControllers, dict[AllowedManagementEntity, __T_CommandOptions]]
+# T_CommandOptions = dict[AllowedControllers, dict[AllowedManagementEntity, __T_CommandOptions]]
 
 
 all_controllers_services = {
-    AllowedControllers.SWARCO: swarco,
+    swarco.type_controller: swarco,
+    potok_s.type_controller: potok_s
     # AllowedControllers.POTOK_S: {
     #     AllowedManagementEntity.set_stage: potok_s_set_stage_options
     # },
