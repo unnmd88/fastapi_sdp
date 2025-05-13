@@ -515,6 +515,7 @@ class T1(BaseModel):
     id: int
     hosts: list[Nested]
 
+
 if __name__ == '__main__':
     data = {'type_controller': 'Swarc', 'entity': 'get_state_base', 'host_id': '1557'}
     data = ['1', "11", "192.168.45.16"]

@@ -39,7 +39,7 @@ mutable_seq = Annotated[abc.MutableSequence, Field(default=[])]
 #     default: AllowedManagementSources
 
 
-def get_stage_range_as_set(
+def get_stage_range(
     min_val: int,
     max_val: int,
     collection_type: Type[abc.Collection[int | str]]
@@ -118,38 +118,29 @@ class CommandOptions(BaseModel):
         return errors
 
 
-    # def model_post_init(self, __context) -> None:
-    #     self.available_services = self.matches_services[self.type_controller]
-
-
-
-
-
-
-
 swarco_set_stage = Stage(
 
-    values_range=get_stage_range_as_set(0, 8, list),
-    values_range_as_set=get_stage_range_as_set(0, 8, set),
+    values_range=get_stage_range(0, 8, list),
+    values_range_as_set=get_stage_range(0, 8, set),
     default_source=AllowedManagementSources.central,
     sources=[AllowedManagementSources.central, AllowedManagementSources.man]
 )
 
 potok_s_set_stage = Stage(
-    values_range=get_stage_range_as_set(0, 128, list),
-    values_range_as_set=get_stage_range_as_set(0, 128, set),
+    values_range=get_stage_range(0, 128, list),
+    values_range_as_set=get_stage_range(0, 128, set),
     default_source=AllowedManagementSources.central
 )
 
 potok_p_set_stage = Stage(
-    values_range=get_stage_range_as_set(0, 128, list),
-    values_range_as_set=get_stage_range_as_set(0, 128, set),
+    values_range=get_stage_range(0, 128, list),
+    values_range_as_set=get_stage_range(0, 128, set),
     default_source=AllowedManagementSources.central
 )
 
 peek_set_stage = Stage(
-    values_range=get_stage_range_as_set(0, 32, list),
-    values_range_as_set=get_stage_range_as_set(0, 32, set),
+    values_range=get_stage_range(0, 32, list),
+    values_range_as_set=get_stage_range(0, 32, set),
     default_source=AllowedManagementSources.man,
     sources=[AllowedManagementSources.central, AllowedManagementSources.man]
 )
