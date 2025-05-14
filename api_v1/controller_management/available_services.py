@@ -129,13 +129,15 @@ swarco_set_stage = Stage(
 potok_s_set_stage = Stage(
     values_range=get_stage_range(0, 128, list),
     values_range_as_set=get_stage_range(0, 128, set),
-    default_source=AllowedManagementSources.central
+    default_source=AllowedManagementSources.central,
+    sources=[AllowedManagementSources.central]
 )
 
 potok_p_set_stage = Stage(
     values_range=get_stage_range(0, 128, list),
     values_range_as_set=get_stage_range(0, 128, set),
-    default_source=AllowedManagementSources.central
+    default_source=AllowedManagementSources.central,
+    sources=[AllowedManagementSources.central]
 )
 
 peek_set_stage = Stage(
