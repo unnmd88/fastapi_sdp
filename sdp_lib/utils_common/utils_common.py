@@ -2,7 +2,7 @@ import functools
 import ipaddress
 import random
 import time
-from collections.abc import Sequence
+from collections.abc import Sequence, MutableMapping
 from datetime import datetime as dt
 from string import ascii_letters
 from typing import Callable, TypeVar, Any
@@ -20,7 +20,7 @@ def timed(func: Callable):
         return func
     return wrapper
 
-def set_curr_datetime(sep: str = ':') -> str:
+def get_curr_datetime(sep: str = ':') -> str:
     """
     Возвращает текущую дату и время
     :param sep: разделитель между датой и временем

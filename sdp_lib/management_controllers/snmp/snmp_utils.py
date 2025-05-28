@@ -1,7 +1,7 @@
 import logging
 import math
 from collections.abc import Iterable
-from typing import Type
+from typing import Type, Any
 
 from pysnmp.proto import rfc1905
 from pysnmp.proto.rfc1902 import (
@@ -171,6 +171,10 @@ swarco_stcip_set_stage_varbinds = create_stcip_set_stage_varbinds(swarco_itc2.MA
 potok_stcip_set_stage_varbinds = create_stcip_set_stage_varbinds(potok.MAX_STAGE)
 
 
+def parse_varbinds_to_dict(varbinds) -> dict[str, Any]:
+    return {str(k): v.prettyPrint() for k, v in varbinds}
+
+
 class ScnConverterMixin:
 
     @classmethod
@@ -258,6 +262,11 @@ class StageConverterMixinUg405(AbstractStageConverterMixin):
     matches_oid_val_to_num_stage = HexValueToIntegerStageConverter
 
 
+class StcipVarbindsMixin:
+
+    get_stage_varbinds: T_Varbinds = create_varbinds([oids.Oids.swarcoUTCTrafftechPhaseStatus])
+
+
 class AbstractVarbinds:
     states_oids: T_Oids
     states_varbinds: T_Varbinds
@@ -270,19 +279,19 @@ class AbstractVarbinds:
         return [self.set_stage_varbinds[num_stage]]
 
 
-class VarbSwarco(AbstractVarbinds):
+class VarbSwarco(AbstractVarbinds, StageConverterMixinSwarco, StcipVarbindsMixin):
     states_oids = oids.oids_state_swarco
     states_varbinds = create_varbinds(oids.oids_state_swarco)
     set_stage_varbinds = swarco_stcip_set_stage_varbinds
 
 
-class VarbPotokS(AbstractVarbinds):
+class VarbPotokS(AbstractVarbinds, StageConverterMixinPotokS, StcipVarbindsMixin):
     states_oids = oids.oids_state_potok_s
     states_varbinds = tuple(wrap_oid_by_object_type(oid) for oid in oids.oids_state_potok_s)
-    set_stage_varbinds = swarco_stcip_set_stage_varbinds
+    set_stage_varbinds = potok_stcip_set_stage_varbinds
 
 
-class CommonVarbindsUg405:
+class CommonVarbindsUg405(StageConverterMixinUg405):
 
     max_scn = 9999
     num_CO_prefix = 'CO'

@@ -28,6 +28,7 @@ class ConfigsParser(typing.NamedTuple):
     extras: bool
     oid_handler: Callable
     val_oid_handler: Callable
+    oid_name_by_alias: bool = False
     host_protocol: str = None
 
 
@@ -41,6 +42,7 @@ pretty_processing_stcip = ConfigsParser(
     extras=True,
     oid_handler=get_val_as_str,
     val_oid_handler=pretty_print,
+    oid_name_by_alias=True,
     host_protocol=FieldsNames.protocol_stcip
 )
 
@@ -58,12 +60,26 @@ default_processing_stcip = ConfigsParser(
     host_protocol=FieldsNames.protocol_stcip
 )
 
+pretty_processing_stcip_without_extras = ConfigsParser(
+    extras=False,
+    oid_handler=get_val_as_str,
+    val_oid_handler=pretty_print,
+    oid_name_by_alias=True,
+    host_protocol=FieldsNames.protocol_stcip
+)
+
 class BaseSnmpParser(Parsers):
 
     @property
     @abc.abstractmethod
     def matches(self) -> dict[str | Oids, tuple[FieldsNames, Callable]]:
-        ...
+        """
+        Словарь, где:
+        ключ -> оид
+        значение -> кортеж, где нулевой элемент это строка названия поля, а первый
+                    элемент это функция-обработчик.
+        """
+
 
     @property
     @abc.abstractmethod
@@ -91,7 +107,10 @@ class BaseSnmpParser(Parsers):
             oid, val = config.oid_handler(oid), config.val_oid_handler(val)
             try:
                 field_name, cb_fn = self.matches[oid]
-                self.parsed_content_as_dict[field_name] = cb_fn(val)
+                if config.oid_name_by_alias:
+                    self.parsed_content_as_dict[field_name] = cb_fn(val)
+                else:
+                    self.parsed_content_as_dict[oid] = cb_fn(val)
             except (TypeError, KeyError):
                 self.parsed_content_as_dict[oid] = val
         if config.extras:
@@ -119,7 +138,6 @@ class ParsersVarbindsSwarco(BaseSnmpParser, StcipMixin):
         return octet_string[179: 181]
 
     def get_current_mode(self) -> str | None:
-
         try:
             match (
                 self.parsed_content_as_dict.get(FieldsNames.curr_plan),
@@ -131,7 +149,7 @@ class ParsersVarbindsSwarco(BaseSnmpParser, StcipMixin):
             ):
                 case [self.CENTRAL_PLAN, self.CONTROL_BLOCK_SOURCE, *rest]:
                     return str(NamesMode.CENTRAL)
-                case [_, _, self.FT_STATUS_FALSE, '00', num_det] if num_det > 0:
+                case [plan, _, self.FT_STATUS_FALSE, '00', num_det] if num_det > 0 and plan != '15':
                     return str(NamesMode.VA)
                 case [_, self.CALENDAR_CLOCK_SOURCE, fixed_status, flag180_181, num_det] if (
                     '1' in flag180_181 or num_det == 0 or fixed_status == self.FT_STATUS_TRUE
@@ -198,25 +216,27 @@ class ParsersVarbindsPotokS(BaseSnmpParser, StcipMixin):
 class ParsersVarbindsPotokP(BaseSnmpParser, Ug405Mixin):
 
     def get_current_mode(self) -> str | None:
-
-        match (
-            self.parsed_content_as_dict.get(FieldsNames.operation_mode),
-            self.parsed_content_as_dict.get(FieldsNames.local_adaptive_status),
-            self.parsed_content_as_dict.get(FieldsNames.num_detectors),
-            self.parsed_content_as_dict.get(FieldsNames.has_det_faults),
-            self.parsed_content_as_dict.get(FieldsNames.is_mode_man),
-        ):
-            case ['1', '1', num_det, '0', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
-                return str(NamesMode.VA)
-            case ['1', '0', '0', _, _]:
-                return str(NamesMode.FT)
-            # case ['1', '0', num_det, '1', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
-            case ['1', '0', num_det, _, _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
-                return str(NamesMode.FT)
-            case [self.UTC_OPERATION_MODE, *rest]:
-                return str(NamesMode.CENTRAL)
-            case [*rest, '1']:
-                return str(NamesMode.MANUAL)
+        try:
+            match (
+                self.parsed_content_as_dict.get(FieldsNames.operation_mode),
+                self.parsed_content_as_dict.get(FieldsNames.local_adaptive_status),
+                self.parsed_content_as_dict.get(FieldsNames.num_detectors),
+                self.parsed_content_as_dict.get(FieldsNames.has_det_faults),
+                self.parsed_content_as_dict.get(FieldsNames.is_mode_man),
+            ):
+                case ['1', '1', num_det, '0', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+                    return str(NamesMode.VA)
+                case ['1', '0', '0', _, _]:
+                    return str(NamesMode.FT)
+                # case ['1', '0', num_det, '1', _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+                case ['1', '0', num_det, _, _] if num_det is not None and num_det.isdigit() and int(num_det) > 0:
+                    return str(NamesMode.FT)
+                case [self.UTC_OPERATION_MODE, *rest]:
+                    return str(NamesMode.CENTRAL)
+                case [*rest, '1']:
+                    return str(NamesMode.MANUAL)
+        except ValueError:
+            pass
         return None
 
     def get_current_status_mode(self) -> str | None:

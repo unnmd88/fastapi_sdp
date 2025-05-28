@@ -38,6 +38,10 @@ class Host:
                 f'Response data as json:\n'
                 f'{json.dumps(self.response_as_dict, indent=4, ensure_ascii=False)}')
 
+    def __getattr__(self, item):
+        if 'stage' in item:
+            return self._response.data.get(FieldsNames.curr_stage)
+
     # def __setattr__(self, key, value):
     #     if key == 'ip_v4':
     #         if value is None or check_is_ipv4(value):
@@ -102,10 +106,10 @@ class Host:
         self._response.add_data_to_attrs(error, data)
 
     def remove_data_from_response(self):
-        self._response.remove_data_from_data_response()
+        self._response.clear_data()
 
     def remove_errors_from_response(self):
-        self._response.remove_errors_from_errors()
+        self._response.clear_errors()
 
 
 class Responses:
@@ -127,11 +131,11 @@ class Responses:
 
     @property
     def errors(self) -> list:
-        return self._response[HostResponseStructure.ERRORS]
+        return self._errors
 
     @property
     def data(self) -> dict:
-        return self._response[HostResponseStructure.DATA_RESPONSE]
+        return self._data_response
 
     def build_as_dict(self, ip_v4: str):
         """
@@ -179,8 +183,13 @@ class Responses:
         if isinstance(error, (Exception, str)):
             self._errors.append(error)
 
-    def remove_data_from_data_response(self):
+    def clear(self):
+        self.clear_data()
+        self.clear_errors()
+
+    def clear_data(self):
         self._data_response = {}
 
-    def remove_errors_from_errors(self):
+    def clear_errors(self):
         self._errors = []
+
