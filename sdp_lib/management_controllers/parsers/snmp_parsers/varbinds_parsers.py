@@ -120,28 +120,31 @@ class ParsersVarbindsSwarco(BaseSnmpParser, StcipMixin):
 
     def get_current_mode(self) -> str | None:
 
-        match (
-            self.parsed_content_as_dict.get(FieldsNames.curr_plan),
-            self.parsed_content_as_dict.get(FieldsNames.plan_source),
-            self.parsed_content_as_dict.get(FieldsNames.fixed_time_status),
-            self.parsed_content_as_dict.get(FieldsNames.status_soft_flag180_181, ''),
-            int(self.parsed_content_as_dict.get(FieldsNames.num_detectors, '0'))
+        try:
+            match (
+                self.parsed_content_as_dict.get(FieldsNames.curr_plan),
+                self.parsed_content_as_dict.get(FieldsNames.plan_source),
+                self.parsed_content_as_dict.get(FieldsNames.fixed_time_status),
+                self.parsed_content_as_dict.get(FieldsNames.status_soft_flag180_181, ''),
+                int(self.parsed_content_as_dict.get(FieldsNames.num_detectors, '0'))
 
-        ):
-            case [self.CENTRAL_PLAN, self.CONTROL_BLOCK_SOURCE, *rest]:
-                return str(NamesMode.CENTRAL)
-            case [_, _, self.FT_STATUS_FALSE, '00', num_det] if num_det > 0:
-                return str(NamesMode.VA)
-            case [_, self.CALENDAR_CLOCK_SOURCE, fixed_status, flag180_181, num_det] if (
-                '1' in flag180_181 or num_det == 0 or fixed_status == self.FT_STATUS_TRUE
             ):
-                return str(NamesMode.FT)
-            case[self.MANUAL_PLAN, self.CONTROL_BLOCK_SOURCE, *rest]:
-                return str(NamesMode.MANUAL)
-            case[self.SYNC_PLAN, source_plan, *rest] if source_plan in (
-                self.CONTROL_BLOCK_SOURCE, self.TRAFFIC_SITUATION_SOURCE
-            ):
-                return str(NamesMode.SYNC)
+                case [self.CENTRAL_PLAN, self.CONTROL_BLOCK_SOURCE, *rest]:
+                    return str(NamesMode.CENTRAL)
+                case [_, _, self.FT_STATUS_FALSE, '00', num_det] if num_det > 0:
+                    return str(NamesMode.VA)
+                case [_, self.CALENDAR_CLOCK_SOURCE, fixed_status, flag180_181, num_det] if (
+                    '1' in flag180_181 or num_det == 0 or fixed_status == self.FT_STATUS_TRUE
+                ):
+                    return str(NamesMode.FT)
+                case[self.MANUAL_PLAN, self.CONTROL_BLOCK_SOURCE, *rest]:
+                    return str(NamesMode.MANUAL)
+                case[self.SYNC_PLAN, source_plan, *rest] if source_plan in (
+                    self.CONTROL_BLOCK_SOURCE, self.TRAFFIC_SITUATION_SOURCE
+                ):
+                    return str(NamesMode.SYNC)
+        except ValueError:
+            pass
         return None
 
     @property
