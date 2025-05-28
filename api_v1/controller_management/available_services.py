@@ -119,7 +119,6 @@ class CommandOptions(BaseModel):
 
 
 swarco_set_stage = Stage(
-
     values_range=get_stage_range(0, 8, list),
     values_range_as_set=get_stage_range(0, 8, set),
     default_source=AllowedManagementSources.central,
@@ -147,64 +146,25 @@ peek_set_stage = Stage(
     sources=[AllowedManagementSources.central, AllowedManagementSources.man]
 )
 
-
 swarco = CommandOptions(
     type_controller=AllowedControllers.SWARCO,
     services_entity={AllowedManagementEntity.set_stage: swarco_set_stage},
-    # available_services={AllowedManagementEntity.set_stage}
 )
 
 potok_s = CommandOptions(
     type_controller=AllowedControllers.POTOK_S,
     services_entity={AllowedManagementEntity.set_stage: potok_s_set_stage},
-    # available_services={AllowedManagementEntity.set_stage},
 )
 
+potok_p = CommandOptions(
+    type_controller=AllowedControllers.POTOK_P,
+    services_entity={AllowedManagementEntity.set_stage: potok_p_set_stage},
+)
 
-# T_CommandOptions: TypeAlias = TypeVar('T_CommandOptions', SwarcoOptions, PotokOptions)
-# T_CommandOptions = TypeVar('T_CommandOptions', bound=CommandOptions, covariant=True)
-
-# class Commands(BaseModel):
-#     available_commands: abc.Collection[AllowedManagementEntity | str]
-#     stage_command: Stage
-
-
-# swarco_set_stage_options = Stage(
-#     min_val=0,
-#     max_val=8,
-#     sources=[AllowedManagementSources.man],
-#     default=AllowedManagementSources.central,
-#     stages_range=get_stage_range_as_set(0, 8)
-# )
-#
-# potok_s_set_stage_options = Stage(
-#     min_val=0,
-#     max_val=128,
-#     default=AllowedManagementSources.central,
-#     stages_range=get_stage_range_as_set(0, 128)
-# )
-#
-# potok_p_set_stage_options = Stage(
-#     min_val=0,
-#     max_val=128,
-#     default=AllowedManagementSources.central,
-#     stages_range=get_stage_range_as_set(0, 128)
-# )
-#
-# peek_set_stage_options = Stage(
-#     min_val=0,
-#     max_val=128,
-#     sources=[AllowedManagementSources.central],
-#     default=AllowedManagementSources.man,
-#     stages_range=get_stage_range_as_set(0, 32)
-# )
-#
-#
-# swarco = Commands(
-#     available_commands={AllowedManagementEntity.set_stage},
-#     stage_command=swarco_set_stage_options
-# )
-
+peek = CommandOptions(
+    type_controller=AllowedControllers.PEEK,
+    services_entity={AllowedManagementEntity.set_stage: peek_set_stage},
+)
 
 __T_CommandOptions = TypeVar('__T_CommandOptions', bound=CommandOptions)
 # T_CommandOptions = dict[AllowedControllers, dict[AllowedManagementEntity, __T_CommandOptions]]
@@ -212,7 +172,9 @@ __T_CommandOptions = TypeVar('__T_CommandOptions', bound=CommandOptions)
 
 all_controllers_services = {
     swarco.type_controller: swarco,
-    potok_s.type_controller: potok_s
+    potok_s.type_controller: potok_s,
+    potok_p.type_controller: potok_p,
+    peek.type_controller: peek,
     # AllowedControllers.POTOK_S: {
     #     AllowedManagementEntity.set_stage: potok_s_set_stage_options
     # },

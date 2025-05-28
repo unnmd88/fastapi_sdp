@@ -1,6 +1,9 @@
 import pytest
 
 from api_v1.controller_management import available_services
+from api_v1.controller_management.available_services import AllowedManagementSources
+from core.constants import AllowedManagementEntity, AllowedControllers
+from sdp_lib.management_controllers.archive.controller_management import AvailableControllers
 
 
 @pytest.mark.parametrize(
@@ -15,7 +18,6 @@ from api_v1.controller_management import available_services
 )
 def test_get_stage_range(min_val, max_val, collection_type, expected):
     assert available_services.get_stage_range(min_val, max_val, collection_type) == expected
-
 
 def test_set_stage_swarco():
     swarco_stages = [i for i in range(9)]
@@ -82,3 +84,20 @@ def test_set_stage_peek():
     assert available_services.peek_set_stage.command_name == 'Фаза'
     assert available_services.peek_set_stage.min_val == 0
     assert available_services.peek_set_stage.max_val == 32
+
+def test_command_options_swarco():
+    assert available_services.swarco.type_controller == AllowedControllers.SWARCO
+
+    services_entity = {
+        AllowedManagementEntity.set_stage: available_services.swarco_set_stage
+    }
+    assert available_services.swarco.services_entity == services_entity
+
+def test_command_options_potok_s():
+    assert available_services.potok_s.type_controller == AllowedControllers.POTOK_S
+
+    services_entity = {
+        AllowedManagementEntity.set_stage: available_services.potok_s_set_stage
+    }
+    assert available_services.potok_s.services_entity == services_entity
+

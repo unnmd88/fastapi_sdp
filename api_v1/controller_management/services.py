@@ -163,12 +163,17 @@ class Management(Controllers):
         option = data_host.option
         command = data_host.command
         value = data_host.value
+        print(f'type_controller: {type_controller}\n'
+              f'source: {source}'
+              f'option: {option}'
+              f'command: {command}'
+              f'value: {value}')
         match (type_controller, command, source):
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
                 return cm_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
+            case (AllowedControllers.POTOK_S, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
                 return cm_api.PotokS(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
+            case (AllowedControllers.POTOK_P, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
                 scn = cm_api.PotokP.add_CO_to_scn(data_host.number)
                 return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):

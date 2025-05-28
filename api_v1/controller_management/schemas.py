@@ -237,6 +237,9 @@ class ManagementFields(MonitoringFields):
 
     matches_command_to_controller: ClassVar = {
         str(AllowedControllers.SWARCO): available_services.swarco,
+        str(AllowedControllers.POTOK_P): available_services.potok_p,
+        str(AllowedControllers.POTOK_S): available_services.potok_s,
+        str(AllowedControllers.PEEK): available_services.peek,
     }
 
     command: Annotated[str, SkipValidation]
