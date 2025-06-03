@@ -122,7 +122,7 @@ class StatesMonitoring(Controllers):
             self, ip: str,
             data_host
     ) -> Coroutine:
-        print(f'ip > {ip}\ndata_host > {data_host}')
+        # print(f'ip > {ip}\ndata_host > {data_host}')
         type_controller = data_host.type_controller
         option = data_host.option
         match (type_controller, option):
@@ -164,9 +164,9 @@ class Management(Controllers):
         command = data_host.command
         value = data_host.value
         print(f'type_controller: {type_controller}\n'
-              f'source: {source}'
-              f'option: {option}'
-              f'command: {command}'
+              f'source: {source} | '
+              f'option: {option} | '
+              f'command: {command} | '
               f'value: {value}')
         match (type_controller, command, source):
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
@@ -176,7 +176,7 @@ class Management(Controllers):
             case (AllowedControllers.POTOK_P, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
                 scn = cm_api.PotokP.add_CO_to_scn(data_host.number)
                 return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):
+            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.central):

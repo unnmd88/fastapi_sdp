@@ -162,7 +162,7 @@ class TrafficLights:
 
         if found_record.number in self._host_data:
             key = found_record.number
-        elif found_record.ip_address in self._host_data:
+        elif found_record.ip_adress in self._host_data:
             key = found_record.ip_adress
         else:
             raise ValueError('DEBUG: Значение не найдено. Должно быть найдено')
