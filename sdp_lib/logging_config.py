@@ -10,7 +10,7 @@ LOGGING_CONFIG = {
     "disable_existing_loggers": False,
     "handlers": {
         "console": {
-            "level": "DEBUG",
+            "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
@@ -19,6 +19,12 @@ LOGGING_CONFIG = {
             "class": "logging.FileHandler",
             "filename": "logs/log.log",
             "formatter": "verbose",
+        },
+        "file2": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": "logs/penetrate_stage.log",
+            "formatter": "simple2",
         },
         "server": {
             "level": "DEBUG",
@@ -50,6 +56,11 @@ LOGGING_CONFIG = {
             "handlers": ['server'],
             "propagate": True,
         },
+        "penetrate_stage_log": {
+            "level": "DEBUG",
+            "handlers": ['file2'],
+            "propagate": True,
+        },
         "full_log": {
             "level": "INFO",
             "handlers": ['file'],
@@ -79,9 +90,12 @@ LOGGING_CONFIG = {
             "format": "{name} {levelname} {asctime} {message}",
             "style": "{",
         },
+        "simple2": {
+            "format": "[{levelname:^11}] {asctime} {message}",
+            "style": "{",
+        },
     },
 }
-
 try:
     logging.config.dictConfig(LOGGING_CONFIG)
 except ValueError:
