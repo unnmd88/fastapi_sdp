@@ -150,7 +150,6 @@ class PeekWebHosts(HttpHosts):
         inps_data = InputsPayloads(request_response_inputs.processed_pretty_data['inputs'])
         success_sent, faults_sent = [], []
         for payloads in inps_data.create_payloads(stage):
-            print(f'payloads: {payloads}')
             ok, faults = await self._make_request_and_process_response(payloads)
             faults_sent += faults
             if faults:
@@ -188,10 +187,10 @@ async def main():
         obj = PeekWebHosts('10.179.107.129', host_id='2406', session=sess)
         start_time = time.perf_counter()
 
-        # await obj.get_states()
+        await obj.get_states()
         # await obj.generate_data_and_send_http_request(DataFromWeb.main_page_get, DataFromWeb.inputs_page_get)
         # await obj.get_inputs()
-        await obj.set_stage(0)
+        # await obj.set_stage(0)
         print(json.dumps(obj.build_response_as_dict(), indent=4, ensure_ascii=False))
         print(f'время составило: {time.perf_counter() - start_time}')
         # await obj.request_all_types(AvailableDataFromWeb.main_page_get)
