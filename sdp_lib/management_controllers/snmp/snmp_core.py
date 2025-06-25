@@ -1,8 +1,11 @@
 import abc
 import asyncio
 import functools
+import itertools
+import json
 import time
 from abc import abstractmethod
+from collections import deque
 from dataclasses import dataclass
 from functools import cached_property
 from typing import (
@@ -11,13 +14,13 @@ from typing import (
 )
 from collections.abc import (
     Callable,
-    Awaitable
+    Awaitable, Sequence, Coroutine, MutableSequence
 )
 
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts_core import (
     Host,
-    ResponseEntity
+    ResponseEntity, RequestResponse
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.processing_methods import (
@@ -48,7 +51,7 @@ from sdp_lib.management_controllers.snmp.snmp_utils import (
     VarbSwarco,
     VarbPotokS,
     VarbPotokP,
-    VarbPeek
+    VarbPeek, ScnUg405, convert_ascii_string_to_chars
 )
 from sdp_lib.management_controllers.snmp.snmp_requests import (
     AsyncSnmpRequests,
@@ -71,7 +74,7 @@ def ug405_dependency(
         @functools.wraps(func)
         async def wrapped(instance, value=None, *args, **kwargs):
             # print(f'dependency_varbinds: {dependency_varbinds}')
-            await instance.get_scn_and_add_error_if_has()
+            await instance.get_scn_from_host_and_set_to_attr()
             if instance.response_errors:
                 return instance
 
@@ -136,9 +139,21 @@ class SnmpHost(Host):
         super().__init__(ipv4=ipv4, host_id=host_id)
         self.set_driver(engine)
         self._request_sender = AsyncSnmpRequests(self._driver, self.snmp_config, ipv4=self._ipv4)
-        self._parser = self._parser_class()
-        self._request_config: RequestConfig = RequestConfig(parser=self._parser)
-        self._get_states_request_config: RequestConfig | None = None
+        self._request_response_data_get_states.set_parse_method(
+            self._request_response_data_get_states.parser_obj
+        )
+        # self._request_response_data_default = RequestResponse(
+        #     protocol=self.protocol,
+        #     parser=self._parser_class(),
+        #     add_to_response_storage=True
+        # )
+        # self._request_response_data_get_states = RequestResponse(
+        #     protocol=self.protocol,
+        #     name='get_state',
+        #     add_to_response_storage=True,
+        #     parser=self._parser_class()
+        # )
+        self._get_states_parser_config: ParserConfig = None
 
     @cached_property
     @abc.abstractmethod
@@ -154,47 +169,38 @@ class SnmpHost(Host):
     def request_sender(self) -> AsyncSnmpRequests:
         return self._request_sender
 
-    def reset_states_request_config(self):
-        self._get_states_request_config = None
-
-    async def _make_request_and_load_response_to_storage(self, request_config: RequestConfig) -> Self:
+    async def _make_request(self, request_response: RequestResponse) -> Self:
         """
         Осуществляет вызов соответствующего snmp-запроса и передает
         self.__parse_response_all_types_requests полученный ответ для парса response.
         """
-        # self._tmp_response = await request_config.snmp_method(varbinds=request_config.varbinds)
-        self._tmp_response = await request_config.snmp_request_coro
-        self._check_response_errors_and_add_to_response_entity_if_has()
-        if request_config.create_response_entity:
-            self._parser.load_config_parser(request_config.parser_config)
-            self._response_storage.storage_raw_responses.append(
-                ResponseEntity(
-                    raw_data=self._tmp_response[SnmpResponseStructure.VAR_BINDS],
-                    name=FieldsNames.snmp_varbinds,
-                    parser=self._parser
-                )
-            )
-            # DEBUG
-            # self._response_storage.build_response_as_dict_from_raw_data_responses(self.ip_v4)
+        self._tmp_response = await request_response.coro
+        error = self._check_tmp_response_errors()
+        print(f'error: {error}')
+        print(f'self._tmp_response: {self._tmp_response}')
+        if error:
+            request_response.load_error(error)
+            self._data_storage.put(request_response)
+            return self
+        request_response.load_raw_response(self._tmp_response[SnmpResponseStructure.VAR_BINDS])
+        self._data_storage.put(request_response)
         return self
 
-    def _check_response_errors_and_add_to_response_entity_if_has(self) -> bool:
+    def _check_tmp_response_errors(self) -> None | str | Exception:
         """
         self._response[ResponseStructure.ERROR_INDICATION] = error_indication: errind.ErrorIndication,
         self._response[ResponseStructure.ERROR_STATUS] = error_status: Integer32 | int,
         self._response[ResponseStructure.ERROR_INDEX] = error_index: Integer32 | int
-        :return True, при наличии ошибки запроса(error_indication | error_status | error_index):
+        :return None если нет ошибок в response.
+                При наличии ошибки запроса(error_indication | error_status | error_index):
+                Экземпляр Exception или текст ошибки в строковом представлении.
         """
         if self._tmp_response[SnmpResponseStructure.VAR_BINDS]:
-            return False
-        self._response_storage.put_errors(
-            self._tmp_response[SnmpResponseStructure.ERROR_INDICATION]
-            or BadControllerType()
-        )
-        return True
+            return None
+        return self._tmp_response[SnmpResponseStructure.ERROR_INDICATION] or BadControllerType()
 
 
-class Ug405Hosts(SnmpHost, ScnConverterMixin):
+class Ug405Hosts(SnmpHost):
 
     def __init__(
             self,
@@ -202,11 +208,20 @@ class Ug405Hosts(SnmpHost, ScnConverterMixin):
             ipv4: str = None,
             engine=None,
             host_id=None,
-            scn=None
+            scn=''
     ):
         super().__init__(ipv4=ipv4, engine=engine, host_id=host_id)
-        self.scn_as_chars = scn
-        self.scn_as_ascii_string = self._get_scn_as_ascii_from_scn_as_chars_attr()
+        self._seconds_freshness_scn: float = 60
+        self._timestamp_set_scn: float = 0
+        self._scn = ScnUg405(scn)
+        self._dependencies_coro_or_tasks: MutableSequence[Coroutine] | deque[Coroutine] = deque(maxlen=8)
+        self._get_states_parser_config = ParserConfig(
+            extras=True,
+            val_oid_handler=pretty_print,
+            oid_name_by_alias=True,
+            host_protocol=FieldsNames.protocol_ug405
+        )
+
 
     @cached_property
     def snmp_config(self) -> HostSnmpConfig:
@@ -229,52 +244,75 @@ class Ug405Hosts(SnmpHost, ScnConverterMixin):
         предварительная проверка и установка utcType2OperationMode,
         иначе False.
         """
-        raise NotImplementedError()
+        ...
 
     @abstractmethod
-    def _set_scn_from_response(self):
+    def _get_scn_as_chars_from_tmp_response(self):
         """ Устанавливает scn из snmp-response в соответствующие атрибуты. """
         ...
 
-    async def get_scn_and_add_error_if_has(self) -> bool:
+    @abstractmethod
+    def get_management_coroutines_dependency(self) -> MutableSequence[Coroutine]:
         """
-        Получает и обрабатывает зависимость для snmp-запросов.
-        В данной реализации получение scn и установка в соответствующие атрибуты.
+        Возвращает коллекцию с корутинами,
+        которые необходимо выполнить перед началом управления контроллером.
+        Если перед началом управления контроллером не требуется зависимых запросов,
+        например utcType2OperationMode=3 для управления Peek, то вернуть
+        пустой итерируемый объект.
         """
-        if self.scn_as_ascii_string:
-            return True
+        ...
 
-        self._tmp_response = await self._method_for_request_scn(varbinds=[CommonVarbindsUg405.site_id_varbind])
-        if self._check_response_errors_and_add_to_response_entity_if_has():
-            return False
-        try:
-            self._set_scn_from_response()
+    def set_freshness_scn_time_in_seconds(self, seconds: float):
+        self._seconds_freshness_scn = float(seconds)
+
+    def get_seconds_freshness_scn(self) -> float:
+        return self._seconds_freshness_scn
+
+    def check_scn_is_fresh(self) -> bool:
+        if self._seconds_freshness_scn == 0 or time.time() - self._timestamp_set_scn < self._seconds_freshness_scn:
             return True
-        except BadControllerType as e:
-            self.reset_scn_attrs()
-            self._response_storage.put_errors(e)
         return False
 
-    def _get_scn_as_ascii_from_scn_as_chars_attr(self) -> str | None:
-        return self.get_scn_as_ascii_from_scn_as_chars_attr(self.scn_as_chars)
+    def set_scn(self, value: Sequence[str] | str):
+        self._scn.refresh(value)
 
-    def _get_scn_as_chars_from_scn_as_ascii(self) -> str:
-        return self.get_scn_as_ascii_from_scn_as_chars_attr(self.scn_as_ascii_string)
+    def reset_scn(self):
+        self._scn.reset_scn_to_empty_string()
 
-    def _get_config_parser_with_remove_scn_from_oid_and_pretty_parsed_varbinds(self):
-        return ParserConfig(
-            extras=True,
-            oid_handler=build_func_with_remove_scn(self.scn_as_ascii_string, get_val_as_str),
-            val_oid_handler=pretty_print,
-            oid_name_by_alias=True,
-            host_protocol=FieldsNames.protocol_ug405
+    async def get_scn_from_host_and_set_to_attr(self) -> None | str | Exception:
+        """
+        Получает scn из соответствующего oid и устанавливает в соответствующий атрибут.
+        :return : При успешной установке scn возвращает None, иначе возвращает текст ошибки.
+        """
+        if self._scn.scn_as_ascii and self.check_scn_is_fresh():
+            print(f'SCN IS FRESH!!!')
+            return None
+        print(f'SCN IS ROTTEN...')
+
+        self._tmp_response = await self._method_for_request_scn(varbinds=[self._varbinds.site_id_varbind])
+        response_error = self._check_tmp_response_errors()
+        if response_error is None:
+            print(f'self._get_scn_as_chars_from_tmp_response(): {self._get_scn_as_chars_from_tmp_response()}')
+            self._scn.refresh(self._get_scn_as_chars_from_tmp_response())
+            self._timestamp_set_scn = time.time()
+        else:
+            self.reset_scn()
+        return response_error
+
+    async def set_operation_mode(self, value: int) -> bool:
+        """
+        Отправляет запрос на установку utcType2OperationMode.
+        :param value: Значение utcType2OperationMode.
+        :return: None
+        """
+        self._tmp_response = await self._request_sender.snmp_set(
+            varbinds=[self._varbinds.get_operation_mode_varbinds(value)]
         )
+        if self._tmp_response[SnmpResponseStructure.VAR_BINDS]:
+            return True
+        return False
 
-    def reset_scn_attrs(self):
-        self.scn_as_chars = None
-        self.scn_as_ascii_string = None
-
-    async def set_operation_mode3_across_operation_mode2_and_add_error_if_has(self) -> bool:
+    async def set_operation_mode3_across_operation_mode2_and_add_error_if_has(self) -> None | str | Exception:
         """
         Устанавливает utcType2OperationMode = 3.
         Перед установкой проверяет текущее значение utcType2OperationMode.
@@ -290,71 +328,44 @@ class Ug405Hosts(SnmpHost, ScnConverterMixin):
 
         op_mode_varbind = (self._varbinds.operation_mode_varbind, )
         self._tmp_response = await self._request_sender.snmp_get(varbinds=op_mode_varbind)
-        if self._check_response_errors_and_add_to_response_entity_if_has():
-            return False
+        error = self._check_tmp_response_errors()
+        if error:
+            return error
         op_mode = int(self._tmp_response[SnmpResponseStructure.VAR_BINDS][0][1].prettyPrint())
         if op_mode == 3:
-            return True
+            return None
 
-        for operation_mode_set_command in range(op_mode, 3):
+        assert 1 <= op_mode <= 2
+
+        while op_mode <= 2:
             self._tmp_response = await self._request_sender.snmp_set(
                 varbinds=[self._varbinds.get_operation_mode_varbinds(op_mode + 1)]
             )
-            if self._check_response_errors_and_add_to_response_entity_if_has():
-                return False
+            error = self._check_tmp_response_errors()
+            if error is not None:
+                return error
+            op_mode +=1
 
         self._tmp_response = await self._request_sender.snmp_get(varbinds=op_mode_varbind)
-        if self._check_response_errors_and_add_to_response_entity_if_has():
-            return False
-        return self._tmp_response[SnmpResponseStructure.VAR_BINDS][0][1].prettyPrint() == '3'
+        error = self._check_tmp_response_errors()
+        if error:
+            return None
+        assert self._tmp_response[SnmpResponseStructure.VAR_BINDS][0][1].prettyPrint() == '3'
+        return None
 
-    async def collect_dependency_and_add_error_if_has(self, *coros: Awaitable) -> bool:
+    async def collect_dependencies_and_load_errors_if_has(self, request_response: RequestResponse) -> RequestResponse:
         async with asyncio.TaskGroup() as tg:
-            response = [tg.create_task(coro) for coro in coros]
-        return all(t.result() for t in response)
-
-    async def collect_scn_dependency_and_add_error_if_has(self) -> bool:
-        return await self.collect_dependency_and_add_error_if_has(self.get_scn_and_add_error_if_has())
-
-    async def collect_scn_and_operation_mode_dependency_and_add_error_if_has(self) -> bool:
-        return await self.collect_dependency_and_add_error_if_has(
-            self.get_scn_and_add_error_if_has(),
-            self.set_operation_mode3_across_operation_mode2_and_add_error_if_has()
-        )
-
-    async def set_operation_mode(self, value: int) -> bool:
-        """
-        Отправляет запрос на установку utcType2OperationMode.
-        :param value: Значение utcType2OperationMode.
-        :return: None
-        """
-        self._tmp_response = await self._request_sender.snmp_set(
-            varbinds=[self._varbinds.get_operation_mode_varbinds(value)]
-        )
-        if self._tmp_response[SnmpResponseStructure.VAR_BINDS]:
-            return True
-        return False
-
-    async def set_operation_mode1(self) -> bool:
-        """
-        Отправляет запрос на установку utcType2OperationMode = 1.
-        :return: True, если отправка значения успешна, иначе False
-        """
-        return await self.set_operation_mode(1)
-
-    async def set_operation_mode2(self) -> bool:
-        """
-        Отправляет запрос на установку utcType2OperationMode = 2.
-        :return: True, если отправка значения успешна, иначе False
-        """
-        return await self.set_operation_mode(2)
-
-    async def set_operation_mode3(self):
-        """
-        Отправляет запрос на установку utcType2OperationMode = 3.
-        :return: None
-        """
-        return await self.set_operation_mode(3)
+            pending = [tg.create_task(self.get_scn_from_host_and_set_to_attr())]
+            while self._dependencies_coro_or_tasks:
+                pending.append(tg.create_task(self._dependencies_coro_or_tasks.popleft()))
+            while pending:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for done_task in done:
+                    await done_task
+                    error = done_task.result()
+                    if error:
+                        request_response.load_error(error)
+        return request_response
 
     async def get_states(self) -> Self:
         """
@@ -362,26 +373,22 @@ class Ug405Hosts(SnmpHost, ScnConverterMixin):
         дорожного контроллера.
         :return: Self.
         """
-        if self._get_states_request_config is not None:
-            self._get_states_request_config.load_snmp_request_coro(
-                self._request_sender.snmp_get(self._varbinds.get_varbinds_current_states(self.scn_as_ascii_string))
-            )
-            return await self._make_request_and_load_response_to_storage(self._get_states_request_config)
-
-        scn_success = await self.get_scn_and_add_error_if_has()
-        if not scn_success:
+        self._request_response_data_get_states.reset_data()
+        self._request_response_data_get_states = await self.collect_dependencies_and_load_errors_if_has(
+            self._request_response_data_get_states
+        )
+        if self._request_response_data_get_states.errors:
+            self._data_storage.put(self._request_response_data_get_states)
             return self
 
-        self._get_states_request_config = RequestConfig(
-            parser=self._parser,
-            snmp_request_coro=self._request_sender.snmp_get(
-                self._varbinds.get_varbinds_current_states(self.scn_as_ascii_string)
-            ),
-            # snmp_method=self._request_sender.snmp_get,
-            parser_config=self._get_config_parser_with_remove_scn_from_oid_and_pretty_parsed_varbinds(),
-            # varbinds=self._varbinds.get_varbinds_current_states(self.scn_as_ascii_string)
+        self._get_states_parser_config.set_oid_handler(
+            build_func_with_remove_scn(self._scn.scn_as_ascii, get_val_as_str)
         )
-        return await self._make_request_and_load_response_to_storage(self._get_states_request_config)
+        self._request_response_data_get_states.parser.load_config_parser(self._get_states_parser_config)
+        self._request_response_data_get_states.load_coro(
+            self._request_sender.snmp_get(self._varbinds.get_varbinds_current_states(self._scn.scn_as_ascii))
+        )
+        return await self._make_request(self._request_response_data_get_states)
 
     async def set_stage(self, value: int) -> Self:
         """
@@ -394,21 +401,20 @@ class Ug405Hosts(SnmpHost, ScnConverterMixin):
             raise ValueError(f'Недопустимый номер фазы: {self.value}')
 
         if value > 0:
-            if self.has_operation_mode_dependency:
-                success = await self.collect_scn_and_operation_mode_dependency_and_add_error_if_has()
-            else:
-                success = await self.collect_scn_dependency_and_add_error_if_has()
-            if not success:
-                return self
-        self._request_config.parser = self._parser
-        self._request_config.load_snmp_request_coro(
-            self._request_sender.snmp_set(self._varbinds.get_varbinds_set_stage(self.scn_as_ascii_string, value))
+            for coro in self.get_management_coroutines_dependency():
+                self._dependencies_coro_or_tasks.append(coro)
+            self._request_response_data_default = await self.collect_dependencies_and_load_errors_if_has(
+                 self._request_response_data_default
+            )
+
+        if self._request_response_data_default.errors:
+            self._data_storage.put(self._request_response_data_default)
+            return self
+        self._request_response_data_default.load_coro(
+            self._request_sender.snmp_set(self._varbinds.get_varbinds_set_stage(self._scn.scn_as_ascii, value))
         )
-        self._request_config.parser_config = default_processing_ug405_parser_config
-
-        print(self._request_config)
-
-        return await self._make_request_and_load_response_to_storage(self._request_config)
+        self._request_response_data_default.parser.load_config_parser(default_processing_ug405_parser_config)
+        return await self._make_request(self._request_response_data_default)
 
 
 class StcipHosts(SnmpHost):
@@ -421,38 +427,40 @@ class StcipHosts(SnmpHost):
             host_id=None,
     ):
         super().__init__(ipv4=ipv4, engine=engine, host_id=host_id)
-        self._get_states_request_config = RequestConfig(
-                parser=self._parser,
-                parser_config=pretty_processing_stcip_parser_config,
-                create_response_entity=True
-            )
+        self._get_states_parser_config = pretty_processing_stcip_parser_config
+        self._request_response_data_get_states.parser.load_config_parser(self._get_states_parser_config)
 
     @cached_property
     def snmp_config(self) -> HostSnmpConfig:
         return snmp_utils.stcip_config
 
     async def get_states(self):
-        self._get_states_request_config.load_snmp_request_coro(
+        self._request_response_data_get_states.reset_data()
+        self._request_response_data_get_states.load_coro(
             self._request_sender.snmp_get(self._varbinds.get_varbinds_current_states())
         )
-        return await self._make_request_and_load_response_to_storage(self._get_states_request_config)
+        return await self._make_request(self._request_response_data_get_states)
 
     async def set_stage(self, value: int):
-        self._parse_method_config = default_processing_stcip_parser_config
-        self._request_config.snmp_method = self._request_sender.snmp_set
-        self._set_varbinds_and_method_for_request(
-            varbinds=self._varbinds.get_varbinds_set_stage(value),
-            method=self._request_sender.snmp_set
+        self._request_response_data_default.reset_data()
+        value = int(value)
+        if not 0 <= value <= self._varbinds.MAX_STAGE:
+            raise ValueError(f'Номер фазы должен быть в диапазоне от 0 до {self._varbinds.MAX_STAGE}')
+        self._request_response_data_default.load_coro(
+            self._request_sender.snmp_set(self._varbinds.get_varbinds_set_stage(value))
         )
-        return await self._make_request_and_build_response()
+        self._request_response_data_default.parser.load_config_parser(default_processing_stcip_parser_config)
+        return await self._make_request(self._request_response_data_default)
 
     async def get_current_stage(self):
-        self._parse_method_config = pretty_processing_stcip_parser_config_without_extras
-        self._set_varbinds_and_method_for_request(
-            varbinds=self._varbinds.get_stage_varbinds,
-            method=self._request_sender.snmp_get
+        self._request_response_data_default.reset_data()
+        self._request_response_data_default.load_coro(
+            self._request_sender.snmp_get(self._varbinds.get_stage_varbinds)
         )
-        return await self._make_request_and_build_response()
+        self._request_response_data_default.parser.load_config_parser(
+            pretty_processing_stcip_parser_config_without_extras
+        )
+        return await self._make_request(self._request_response_data_default)
 
 
 class SwarcoStcip(StcipHosts):
@@ -480,13 +488,15 @@ class PotokP(Ug405Hosts):
     def has_operation_mode_dependency(self) -> bool:
         return False
 
-    def _set_scn_from_response(self) -> None | BadControllerType:
-        try:
-            self.scn_as_chars = str(self._tmp_response[SnmpResponseStructure.VAR_BINDS][0][1])
-            self.scn_as_ascii_string = self._get_scn_as_ascii_from_scn_as_chars_attr()
-        except IndexError:
-            raise BadControllerType()
-        return None
+    def _get_scn_as_chars_from_tmp_response(self) -> str:
+        return str(self._tmp_response[SnmpResponseStructure.VAR_BINDS][0][1])
+
+    def get_management_coroutines_dependency(self) -> MutableSequence[Coroutine]:
+        """
+        Возвращает коллекцию с корутинами,
+        которые необходимо выполнить перед началом управления контроллером.
+        """
+        return []
 
 
 class PeekUg405(Ug405Hosts):
@@ -502,15 +512,16 @@ class PeekUg405(Ug405Hosts):
     def has_operation_mode_dependency(self) -> bool:
         return True
 
-    def _set_scn_from_response(self) -> None | BadControllerType:
-        try:
-            oid = str(self._tmp_response[SnmpResponseStructure.VAR_BINDS][0][0])
-            self.scn_as_ascii_string = oid.replace(oids.Oids.utcReplyGn , '')
-            self.scn_as_chars = self.get_scn_as_chars_from_scn_as_ascii(self.scn_as_ascii_string)
-        except IndexError:
-            raise  BadControllerType()
-        return None
+    def _get_scn_as_chars_from_tmp_response(self) -> str:
+        oid = str(self._tmp_response[SnmpResponseStructure.VAR_BINDS][0][0])
+        return convert_ascii_string_to_chars(oid.replace(oids.Oids.utcReplyGn , ''))
 
+    def get_management_coroutines_dependency(self) -> MutableSequence[Coroutine]:
+        """
+        Возвращает коллекцию с корутинами,
+        которые необходимо выполнить перед началом управления контроллером.
+        """
+        return [self.set_operation_mode3_across_operation_mode2_and_add_error_if_has()]
 
 async def main():
 
@@ -527,8 +538,10 @@ async def main():
     # obj = PotokP(ipv4='10.179.108.129', host_id='2822')
     obj = PotokP(ipv4='10.179.69.129', host_id='2954', engine=snmp_engine)
     # obj = PotokS(ipv4='10.179.24.153', host_id='205', engine=snmp_engine)
+    obj = PotokS(ipv4='10.179.107.177', host_id='2508', engine=snmp_engine)
     # obj.set_driver()
     # obj = SwarcoStcip(ipv4='10.179.89.225', host_id='3584')
+    # obj = PotokP(ipv4='10.45.154.12', host_id='laba', engine=snmp_engine)
 
     # obj.ip_v4 = '10.179.20.129'
 
@@ -536,7 +549,7 @@ async def main():
 
     # obj = SwarcoStcip(ipv4='10.179.20.129', engine=snmp_engine, host_id='2405')
 
-    # obj = PeekUg405(ipv4='10.45.154.19', host_id='laba', engine=snmp_engine)
+    obj = PeekUg405(ipv4='10.45.154.19', host_id='laba', engine=snmp_engine)
 
 
     # start_time = time.time()
@@ -544,9 +557,10 @@ async def main():
 
     while True:
         start_time = time.time()
-        res = await obj.get_states()
-        # res = await obj.set_stage(5)
-        print(res.response)
+        # res = await obj.get_states()
+        # res = await obj.get_current_stage()
+        res = await obj.set_stage(2)
+        print(json.dumps(res.build_response_as_dict(), indent=4, ensure_ascii=False))
         print(f'время составло: {time.time() - start_time}')
         await asyncio.sleep(2)
 
@@ -560,9 +574,7 @@ async def main():
 
     # print(res.response_as_dict)
 
-    print(res)
-    print(res.response)
-    print(res.ip_v4)
+    print(json.dumps(res.build_response_as_dict(), indent=4, ensure_ascii=False))
     print(f'время составло: {time.time() - start_time}')
 
     return obj.response

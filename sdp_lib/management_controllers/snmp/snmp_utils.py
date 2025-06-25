@@ -3,7 +3,7 @@ import math
 import os
 from collections.abc import Iterable
 from enum import IntEnum
-from typing import Type, Any, NamedTuple
+from typing import Type, Any, NamedTuple, Sequence
 
 from dotenv import load_dotenv
 from pysnmp.proto import rfc1905
@@ -61,15 +61,38 @@ def wrap_oid_by_object_type(
     return ObjectType(ObjectIdentity(oid), val)
 
 
-def convert_chars_string_to_ascii_string(
-        scn_as_chars: str
-) -> str:
+def convert_chars_string_to_ascii_string(scn_as_chars: str) -> str:
     """
     Генерирует SCN.
     :param:  scn_as_chars: Cимволы строки, которые необходимо конвертировать, например: CO3995.
-    :return: Scn в виде строки ascii, например .1.6.67.79.51.57.57.53.
+    :return: Строка scn в виде кодов ascii, например .1.6.67.79.51.57.57.53.
     """
     return f'.1.{str(len(scn_as_chars))}.{".".join([str(ord(c)) for c in scn_as_chars])}'
+
+
+def convert_ascii_string_to_chars(scn_as_ascii: str):
+    """
+    Конвертирует scn строку кодов ascii в строку символов.
+    Пример: если scn_as_ascii = ".1.6.67.79.50.48.56.48", функция вернёт "CO2080".
+    Расшифровка строки ".1.6.67.79.50.48.56.48".
+    Точка (.) является разделителем символов.
+     1 -> стандартный префикс для snc протокола ug405.
+     6 -> Количество символов из строки "CO2080" = 6.
+    67 -> Символ "C"
+    79 -> Символ "O"
+    50 -> Символ "2"
+    48 -> Символ "O"
+    56 -> Символ "8"
+    48 -> Символ "O"
+    :param scn_as_ascii -> строка кодов ascii, которая будет сконвертирова в строку символов.
+    :return -> Строка scn в виде символов. Например "CO2080".
+    """
+    separated_chars = scn_as_ascii.split('.')
+    num_chars = int(separated_chars[2])
+    scn_as_chars = ''.join([chr(int(c)) for c in separated_chars[3:]])
+    assert num_chars == len(scn_as_chars)
+    return scn_as_chars
+
 
 def create_varbinds(
         oids: Iterable[T_Oid],
@@ -258,6 +281,38 @@ class ScnConverterMixin:
         return None
 
 
+class ScnUg405:
+
+    __slots__ = ('_scn_as_chars', '_scn_as_ascii')
+
+    def __init__(self, scn_as_chars: Sequence[str] | str = ''):
+        self._scn_as_chars = ''
+        self._scn_as_ascii = ''
+        self.refresh(scn_as_chars)
+
+    @property
+    def scn_as_chars(self):
+        return self._scn_as_chars
+
+    @property
+    def scn_as_ascii(self):
+        return self._scn_as_ascii
+
+    def refresh(self, scn_as_chars: Sequence[str] | str):
+        self._scn_as_chars = ''.join(scn_as_chars)
+        if self._scn_as_chars:
+            self._scn_as_ascii = convert_chars_string_to_ascii_string(self._scn_as_chars)
+        else:
+            self._scn_as_ascii = ''
+        print(f'-----')
+        print(f'self._scn_as_chars: {self._scn_as_chars}')
+        print(f'self._scn_as_ascii: {self._scn_as_ascii}')
+        print(f'-----')
+
+    def reset_scn_to_empty_string(self):
+        self.refresh('')
+
+
 class HexValueToIntegerStageConverter:
 
     @classmethod
@@ -304,7 +359,7 @@ class StcipVarbindsMixin:
 
 
 class AbstractVarbinds:
-    max_stage: int
+    MAX_STAGE: int
     states_oids: T_Oids
     states_varbinds: T_Varbinds
     set_stage_varbinds: dict[int, T_Varbinds]
@@ -317,14 +372,14 @@ class AbstractVarbinds:
 
 
 class VarbSwarco(AbstractVarbinds, StageConverterMixinSwarco, StcipVarbindsMixin):
-    max_stage = MaxStage.swarco_itc2
+    MAX_STAGE = MaxStage.swarco_itc2
     states_oids = oids.oids_state_swarco
     states_varbinds = create_varbinds(oids.oids_state_swarco)
     set_stage_varbinds = _swarco_stcip_set_stage_varbinds
 
 
 class VarbPotokS(AbstractVarbinds, StageConverterMixinPotokS, StcipVarbindsMixin):
-    max_stage = MaxStage.potok_s
+    MAX_STAGE = MaxStage.potok_s
     states_oids = oids.oids_state_potok_s
     states_varbinds = tuple(wrap_oid_by_object_type(oid) for oid in oids.oids_state_potok_s)
     set_stage_varbinds = _potok_stcip_set_stage_varbinds

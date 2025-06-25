@@ -1,5 +1,4 @@
 import abc
-import asyncio
 import logging
 import time
 from typing import Coroutine, Type, TypeVar
@@ -51,72 +50,6 @@ S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
 # P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
-# class Controllers:
-#
-#     snmp_engine = cm_api.snmp_engine
-#
-#     def __init__(
-#             self,
-#             *,
-#             income_data,
-#             session: aiohttp.ClientSession = None
-#     ):
-#         self.income_data = income_data
-#         self.hosts = self.income_data.hosts
-#         self.result_tasks = None
-#         self._session = session
-#
-#
-#     @abc.abstractmethod
-#     def get_coro(
-#             self, ip_v4: str,
-#             data_host: MonitoringFields | ManagementFields
-#     ) -> Coroutine:
-#         ...
-#
-#     async def _make_request(self):
-#
-#         self.result_tasks = []
-#         if self._session is None:
-#             async with aiohttp.ClientSession() as self._session:
-#                 async with TaskGroup() as tg:
-#                     for ip_v4, data_host in self.hosts.items():
-#                         if data_host.allowed:
-#                             self.result_tasks.append(tg.create_task(
-#                                 self.get_coro(ip_v4, data_host),
-#                                 name=ip_v4
-#                             ))
-#         else:
-#             async with TaskGroup() as tg:
-#                 for ip_v4, data_host in self.hosts.items():
-#                     if data_host.allowed:
-#                         self.result_tasks.append(tg.create_task(
-#                             self.get_coro(ip_v4, data_host),
-#                             name=ip_v4
-#                         ))
-#         return self.result_tasks
-#
-#     async def compose_request(self):
-#
-#         start_time = time.time()
-#
-#         await self._make_request()
-#         self.add_response_to_data_hosts()
-#         self.hosts['Время составило'] = time.time() - start_time
-#         return self.income_data.hosts
-#
-#     def get_all_hosts_as_dict(self):
-#         return self.allowed_to_request_hosts | {'bad_hosts': self.bad_hosts}
-#
-#     def add_response_to_data_hosts(self):
-#         for t in self.result_tasks:
-#             instance = t.result()
-#             self.income_data.hosts[t.get_name()].response = instance.response_as_dict
-#             # Заглушка, добавляет в шаренный словарь ssh соединение swarco
-#             if isinstance(instance, ssh_core.SwarcoSSH):
-#                 SWARCO_SSH_CONNECTIONS[instance.ip_v4] = instance.driver
-
-
 class Controllers:
 
     snmp_engine = cm_api.snmp_engine
@@ -140,65 +73,34 @@ class Controllers:
     ) -> Coroutine:
         ...
 
-    # async def _make_request(self):
-    #
-    #     self.result_tasks = []
-    #     if self._session is None:
-    #         async with aiohttp.ClientSession() as self._session:
-    #             async with TaskGroup() as tg:
-    #                 for ip_v4, data_host in self.hosts.items():
-    #                     if data_host.allowed:
-    #                         self.result_tasks.append(tg.create_task(
-    #                             self.get_coro(ip_v4, data_host),
-    #                             name=ip_v4
-    #                         ))
-    #     else:
-    #         async with TaskGroup() as tg:
-    #             for ip_v4, data_host in self.hosts.items():
-    #                 if data_host.allowed:
-    #                     self.result_tasks.append(tg.create_task(
-    #                         self.get_coro(ip_v4, data_host),
-    #                         name=ip_v4
-    #                     ))
-    #     return self.result_tasks
+    async def _make_request(self):
+
+        self.result_tasks = []
+        if self._session is None:
+            async with aiohttp.ClientSession() as self._session:
+                async with TaskGroup() as tg:
+                    for ip_v4, data_host in self.hosts.items():
+                        if data_host.allowed:
+                            self.result_tasks.append(tg.create_task(
+                                self.get_coro(ip_v4, data_host),
+                                name=ip_v4
+                            ))
+        else:
+            async with TaskGroup() as tg:
+                for ip_v4, data_host in self.hosts.items():
+                    if data_host.allowed:
+                        self.result_tasks.append(tg.create_task(
+                            self.get_coro(ip_v4, data_host),
+                            name=ip_v4
+                        ))
+        return self.result_tasks
 
     async def compose_request(self):
 
         start_time = time.time()
 
-        pending = []
-        if self._session is None:
-            async with aiohttp.ClientSession() as self._session:
-                for ip_v4, data_host in self.hosts.items():
-                    if data_host.allowed:
-                        pending.append(asyncio.create_task(
-                            self.get_coro(ip_v4, data_host),
-                            name=ip_v4
-                        ))
-
-        else:
-
-            for ip_v4, data_host in self.hosts.items():
-                if data_host.allowed:
-                    pending.append(asyncio.create_task(
-                        self.get_coro(ip_v4, data_host),
-                        name=ip_v4
-                    ))
-
-        while pending:
-            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-
-            for done_task in done:
-                await done_task
-                instance = done_task.result()
-                self.income_data.hosts[done_task.get_name()].response =  instance.response.build_response_as_dict_from_raw_data_responses(instance.ip_v4)
-                # self.income_data.hosts[task.get_name()].response = instance.response_as_dict
-                # Заглушка, добавляет в шаренный словарь ssh соединение swarco
-                if isinstance(instance, ssh_core.SwarcoSSH):
-                    SWARCO_SSH_CONNECTIONS[instance.ip_v4] = instance.driver
-
-        # await self._make_request()
-        # self.add_response_to_data_hosts()
+        await self._make_request()
+        self.add_response_to_data_hosts()
         self.hosts['Время составило'] = time.time() - start_time
         return self.income_data.hosts
 
@@ -220,7 +122,7 @@ class StatesMonitoring(Controllers):
             self, ip: str,
             data_host
     ) -> Coroutine:
-        # print(f'ip > {ip}\ndata_host > {data_host}')
+        print(f'ip > {ip}\ndata_host > {data_host}')
         type_controller = data_host.type_controller
         option = data_host.option
         match (type_controller, option):
@@ -262,9 +164,9 @@ class Management(Controllers):
         command = data_host.command
         value = data_host.value
         print(f'type_controller: {type_controller}\n'
-              f'source: {source} | '
-              f'option: {option} | '
-              f'command: {command} | '
+              f'source: {source}'
+              f'option: {option}'
+              f'command: {command}'
               f'value: {value}')
         match (type_controller, command, source):
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
@@ -274,7 +176,7 @@ class Management(Controllers):
             case (AllowedControllers.POTOK_P, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
                 scn = cm_api.PotokP.add_CO_to_scn(data_host.number)
                 return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
+            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):
                 # print('fFF')
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
