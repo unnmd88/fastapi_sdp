@@ -2,53 +2,36 @@ import abc
 import asyncio
 import logging
 import time
-from typing import Coroutine, Type, TypeVar
-from asyncio import TaskGroup
+from typing import (
+    Coroutine,
+    TypeVar
+)
 import aiohttp
-from pysnmp.entity.engine import SnmpEngine
-from typing_extensions import deprecated
-
-# from api_v1.controller_management.crud.crud import (
-#     MonitoringProcessors,
-#     ManagementProcessors
-# )
 
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedMonitoringEntity,
     AllowedManagementEntity,
-    # BaseFields,
-    ManagementFields, AllowedManagementSources, MonitoringFields,
+    ManagementFields,
+    AllowedManagementSources,
+    MonitoringFields,
 )
-from api_v1.controller_management.sorters import sorters
 from api_v1.controller_management.sorters.sorters_core import (
     HostSorterMonitoring,
     HostSorterManagement
 )
-# from api_v1.controller_management.sorters.sorters import (
-#     HostSorterMonitoring,
-#     HostSorterManagement
-# )
 from core.shared import SWARCO_SSH_CONNECTIONS
 from sdp_lib.management_controllers.http.peek import peek_http
-
-import logging_config
 from sdp_lib.management_controllers.http.peek.peek_http import DataFromWeb
 from sdp_lib.management_controllers import api as cm_api
 from sdp_lib.management_controllers.ssh import ssh_core
+import logging_config
 
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar(
-    'T',
-    # snmp_core.SwarcoStcip,
-    # snmp_core.PotokP,
-    # snmp_core.PotokS,
-    # peek_MainPage
-)
+T = TypeVar('T')
 S = TypeVar('S', HostSorterMonitoring, HostSorterManagement)
-# P = TypeVar('P', MonitoringProcessors, ManagementProcessors)
 
 
 class Controllers:
