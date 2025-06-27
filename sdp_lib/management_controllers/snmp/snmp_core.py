@@ -1,7 +1,6 @@
 import abc
 import asyncio
 import functools
-import itertools
 import json
 import time
 from abc import abstractmethod
@@ -20,7 +19,7 @@ from collections.abc import (
 from sdp_lib.management_controllers.exceptions import BadControllerType
 from sdp_lib.management_controllers.hosts_core import (
     Host,
-    ResponseEntity, RequestResponse
+    RequestResponse
 )
 from sdp_lib.management_controllers.fields_names import FieldsNames
 from sdp_lib.management_controllers.parsers.snmp_parsers.processing_methods import (
@@ -46,7 +45,6 @@ from sdp_lib.management_controllers.snmp import (
 from sdp_lib.management_controllers.structures import SnmpResponseStructure
 from sdp_lib.management_controllers.snmp.set_commands import SnmpEntity
 from sdp_lib.management_controllers.snmp.snmp_utils import (
-    ScnConverterMixin,
     HostSnmpConfig,
     VarbSwarco,
     VarbPotokS,
@@ -62,7 +60,7 @@ from sdp_lib.management_controllers.snmp.snmp_utils import (
     swarco_stcip_varbinds,
     potok_stcip_varbinds,
     potok_ug405_varbinds,
-    peek_ug405_varbinds, CommonVarbindsUg405
+    peek_ug405_varbinds
 )
 
 
@@ -207,6 +205,9 @@ class Ug405Hosts(SnmpHost):
             val_oid_handler=pretty_print,
             oid_name_by_alias=True,
             host_protocol=FieldsNames.protocol_ug405
+        )
+        self._request_response_data_default.set_parse_method(
+            self._request_response_data_default.parser_obj
         )
 
 
@@ -368,7 +369,7 @@ class Ug405Hosts(SnmpHost):
         self._get_states_parser_config.set_oid_handler(
             build_func_with_remove_scn(self._scn.scn_as_ascii, get_val_as_str)
         )
-        self._request_response_data_get_states.parser.load_config_parser(self._get_states_parser_config)
+        self._request_response_data_get_states.parser_obj.load_config_parser(self._get_states_parser_config)
         self._request_response_data_get_states.load_coro(
             self._request_sender.snmp_get(self._varbinds.get_varbinds_current_states(self._scn.scn_as_ascii))
         )
@@ -397,7 +398,7 @@ class Ug405Hosts(SnmpHost):
         self._request_response_data_default.load_coro(
             self._request_sender.snmp_set(self._varbinds.get_varbinds_set_stage(self._scn.scn_as_ascii, value))
         )
-        self._request_response_data_default.parser.load_config_parser(default_processing_ug405_parser_config)
+        self._request_response_data_default.parser_obj.load_config_parser(default_processing_ug405_parser_config)
         return await self._make_request(self._request_response_data_default)
 
 
@@ -412,7 +413,7 @@ class StcipHosts(SnmpHost):
     ):
         super().__init__(ipv4=ipv4, engine=engine, host_id=host_id)
         self._get_states_parser_config = pretty_processing_stcip_parser_config
-        self._request_response_data_get_states.parser.load_config_parser(self._get_states_parser_config)
+        self._request_response_data_get_states.parser_obj.load_config_parser(self._get_states_parser_config)
 
     @cached_property
     def snmp_config(self) -> HostSnmpConfig:
@@ -541,9 +542,9 @@ async def main():
 
     while True:
         start_time = time.time()
-        # res = await obj.get_states()
+        res = await obj.get_states()
         # res = await obj.get_current_stage()
-        res = await obj.set_stage(2)
+        # res = await obj.set_stage(0)
         print(json.dumps(res.build_response_as_dict(), indent=4, ensure_ascii=False))
         print(f'время составло: {time.time() - start_time}')
         await asyncio.sleep(2)

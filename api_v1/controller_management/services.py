@@ -112,42 +112,8 @@ class Controllers:
         # await self._make_request()
         # self.add_response_to_data_hosts()
         self.hosts['Время составило'] = time.time() - start_time
+        # print(self.income_data.hosts)
         return self.income_data.hosts
-
-
-    # async def _make_request(self):
-    #
-    #     self.result_tasks = []
-    #     if self._session is None:
-    #         async with aiohttp.ClientSession() as self._session:
-    #             async with TaskGroup() as tg:
-    #                 for ip_v4, data_host in self.hosts.items():
-    #                     if data_host.allowed:
-    #                         self.result_tasks.append(tg.create_task(
-    #                             self.get_coro(ip_v4, data_host),
-    #                             name=ip_v4
-    #                         ))
-    #     else:
-    #         async with TaskGroup() as tg:
-    #             for ip_v4, data_host in self.hosts.items():
-    #                 if data_host.allowed:
-    #                     self.result_tasks.append(tg.create_task(
-    #                         self.get_coro(ip_v4, data_host),
-    #                         name=ip_v4
-    #                     ))
-    #     return self.result_tasks
-    #
-    # async def compose_request(self):
-    #
-    #     start_time = time.time()
-    #
-    #     await self._make_request()
-    #     self.add_response_to_data_hosts()
-    #     self.hosts['Время составило'] = time.time() - start_time
-    #     return self.income_data.hosts
-
-    def get_all_hosts_as_dict(self):
-        return self.allowed_to_request_hosts | {'bad_hosts': self.bad_hosts}
 
     def add_response_to_data_hosts(self):
         for t in self.result_tasks:
@@ -164,28 +130,19 @@ class StatesMonitoring(Controllers):
             self, ip: str,
             data_host
     ) -> Coroutine:
-        print(f'ip > {ip}\ndata_host > {data_host}')
+        # print(f'ip > {ip}\ndata_host > {data_host}')
         type_controller = data_host.type_controller
         option = data_host.option
         match (type_controller, option):
             case (AllowedControllers.SWARCO, None):
-                # return stcip_monitoring.CurrentStatesSwarco(ip_v4=ip).request_and_parse_response(engine=self.snmp_engine)
-                # return snmp_core.SwarcoStcip(ip_v4=ip, engine=self.snmp_engine).get_states()
                 return cm_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_S, None):
-                # return snmp_core.PotokS(ip_v4=ip, engine=self.snmp_engine).get_states()
                 return cm_api.PotokS(ipv4=ip, engine=self.snmp_engine).get_states()
             case (AllowedControllers.POTOK_P, None):
-                scn = cm_api.PotokP.add_CO_to_scn(data_host.number)
-                # scn = ug405_monitoring.MonitoringPotokP.add_CO_to_scn(data_host.number)
-                # return ug405_monitoring.MonitoringPotokP(ip_v4=ip, scn=scn).request_and_parse_response(engine=self.snmp_engine)
-                # return snmp_core.PotokP(ip_v4=ip, engine=self.snmp_engine, scn=scn).get_states()
-                return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine, scn=scn).get_states()
+                return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine).get_states()
             case(AllowedControllers.PEEK, None):
-                # return peek_MainPage(ipv4=ip, session=self._session).get_and_parse()
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).get_states()
             case(AllowedControllers.PEEK, AllowedMonitoringEntity.ADVANCED):
-                # return peek_MultipleData(ipv4=ip, session=self._session).get_and_parse()
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).fetch_all_pages(
                     DataFromWeb.main_page_get, DataFromWeb.inputs_page_get,
                 )
@@ -206,23 +163,20 @@ class Management(Controllers):
         command = data_host.command
         value = data_host.value
         print(f'type_controller: {type_controller}\n'
-              f'source: {source}'
-              f'option: {option}'
-              f'command: {command}'
+              f'source: {source} '
+              f'option: {option} '
+              f'command: {command} '
               f'value: {value}')
         match (type_controller, command, source):
-            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, None):
+            case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
                 return cm_api.SwarcoStcip(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.POTOK_S, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
                 return cm_api.PotokS(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.POTOK_P, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
-                scn = cm_api.PotokP.add_CO_to_scn(data_host.number)
                 return cm_api.PotokP(ipv4=ip, engine=self.snmp_engine).set_stage(value)
-            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, None):
-                # print('fFF')
+            case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
                 return peek_http.PeekWebHosts(ipv4=ip, session=self._session).set_stage(value)
             case (AllowedControllers.PEEK, AllowedManagementEntity.set_stage, AllowedManagementSources.central):
-                # print('fFF')
                 return cm_api.PeekUg405(ipv4=ip, engine=self.snmp_engine).set_stage(value)
             case (AllowedControllers.SWARCO, AllowedManagementEntity.set_stage, AllowedManagementSources.man):
                 if ip in SWARCO_SSH_CONNECTIONS:
