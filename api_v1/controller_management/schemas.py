@@ -1,6 +1,10 @@
-from collections import Counter
+import ipaddress
+import pprint
+from collections import Counter, abc
+from collections.abc import Callable, Iterable
 from enum import StrEnum
-from typing import Annotated, Any, TypeVar
+from functools import cached_property
+from typing import Annotated, Any, TypeVar, Self, AnyStr, ClassVar
 from annotated_types import MinLen, MaxLen
 
 from pydantic import (
@@ -8,18 +12,22 @@ from pydantic import (
     Field,
     ConfigDict,
     computed_field,
-    AfterValidator, SkipValidation, field_validator
+    ValidationError,
+    AfterValidator,
+    SkipValidation,
+    field_validator,
+    IPvAnyAddress,
+    model_validator, BeforeValidator
 )
-from pydantic_core import ValidationError
+from pydantic_core import PydanticCustomError
 
-from api_v1.controller_management.available_services import AllowedManagementSources, AllowedManagementEntity
-from sdp_lib.management_controllers.constants import AllowedControllers
-
-# class AllowedControllers(StrEnum):
-#     SWARCO = 'Swarco'
-#     POTOK_P = 'Поток (P)'
-#     POTOK_S = 'Поток (S)'
-#     PEEK = 'Peek'
+from api_v1.controller_management.available_services import (
+    AllowedManagementSources,
+    AllowedManagementEntity
+)
+from api_v1.controller_management import available_services
+from core.user_exceptions.validate_exceptions import ErrMessages
+from core.constants import AllowedControllers, AllowedDataHostFields
 
 
 class AllowedMonitoringEntity(StrEnum):
@@ -36,76 +44,39 @@ class AllowedMonitoringOptions(StrEnum):
     base_and_inputs = 'base_and_inputs'
 
 
-
-
-
-
-
-
 class AllowedProtocolsRequest(StrEnum):
     SNMP = 'snmp'
     HTTP = 'http'
     AUTO = 'auto'
 
 
-class AllowedDataHostFields(StrEnum):
-    errors = 'errors'
-    host_id = 'host_id'
-    type_controller = 'type_controller'
-    scn = 'scn'
-
-    source_data = 'source_data'
-    results = 'results'
-    execution_time = 'execution_time'
-    ip_or_name_from_user = 'ip_or_name_from_user'
-    entity = 'entity'
-    ip_adress = 'ip_adress'
-    ipv4 = 'ip_address'
-    ip_or_name = 'ip/name'
-    option = 'option'
-    #Database entity
-    search_in_db = 'search_in_db'
-    search_in_db_field = 'search_in_db_field'
-    found = 'found'
-    count = 'count'
-    db_records = 'db_records'
-    #management
-    command = 'command'
-    value = 'value'
-
-
-class TrafficLightsObjectsTableFields(StrEnum):
-    IP_ADDRESS = 'ip_adress'
-    NUMBER = 'number'
-    ALL = '*'
-
-
 ip_or_name = Annotated[str, Field(min_length=1, max_length=20)]
 
 
-class BaseFields(BaseModel):
-
-    model_config = ConfigDict(extra='allow')
-
-    number: Annotated[str | None, Field(default=None)]
-    ip_adress: Annotated[str | None, Field(default=None)]
-    type_controller: Annotated[str | None, Field(default=None)]
-    address: Annotated[str | None, Field(default=None)]
-    description: Annotated[str | None, Field(default=None)]
-    option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
-
-
-class ManagementFields(BaseFields):
-    model_config = ConfigDict(use_enum_values=True)
-    command: str
-    value: Annotated[int | str, Field()]
-    source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
+# class BaseFields(BaseModel):
+#
+#     model_config = ConfigDict(extra='allow')
+#
+#     number: Annotated[str | None, Field(default=None)]
+#     ip_adress: Annotated[str | None, Field(default=None)]
+#     type_controller: Annotated[str | None, Field(default=None)]
+#     address: Annotated[str | None, Field(default=None)]
+#     description: Annotated[str | None, Field(default=None)]
+#     option: Annotated[AllowedMonitoringOptions | None, Field(default=None)]
+#
+#
+# class ManagementFields(BaseFields):
+#
+#     model_config = ConfigDict(use_enum_values=True)
+#     command: str
+#     value: Annotated[int | str, Field()]
+#     source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
 
 
 """ Взаимосвязаны с запросом в БД. """
 
 
-class BaseFieldsSearchInDb(BaseModel):
+class BaseSearchTrafficLightsInDb(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={
         "examples": [
@@ -132,13 +103,22 @@ class BaseFieldsSearchInDb(BaseModel):
         self.hosts = hosts_without_doubles
 
 
+class TrafficLightDbRecords(BaseModel):
+
+    model_config = ConfigDict(from_attributes=True)
+
+    number: str | None
+    ip_adress: str | None
+    type_controller: str | None
+    address: str | None
+    description: str | None
+
+
 class SearchinDbFields(BaseModel):
 
     ip_or_name_source: Annotated[str, Field(min_length=1, max_length=20, frozen=True)]
-    # search_in_db_field: Annotated[str, AfterValidator(get_field_for_search_in_db)]
     search_in_db_field:  Annotated[str, Field(frozen=True)]
-    db_records: Annotated[list, Field(default=[])]
-    errors: Annotated[list, Field(default=[])]
+    db_records: Annotated[list[TrafficLightDbRecords], Field(default=[])]
 
     # @computed_field
     @property
@@ -151,16 +131,16 @@ class SearchinDbFields(BaseModel):
         return len(self.db_records)
 
 
-class BaseFieldsWithSearchInDb(SearchinDbFields, BaseFields):
-    """ Класс агрегатор полей хоста категории "мониторинг"
-        с опцией предварительного поиска в БД.
-    """
-
-
-class DataHostManagement(SearchinDbFields, ManagementFields):
-    """ Класс агрегатор полей хоста категории "управление"
-        с опцией предварительного поиска в БД.
-    """
+# class BaseFieldsWithSearchInDb(SearchinDbFields, BaseFields):
+#     """ Класс агрегатор полей хоста категории "мониторинг"
+#         с опцией предварительного поиска в БД.
+#     """
+#
+#
+# class DataHostManagement(SearchinDbFields, ManagementFields):
+#     """ Класс агрегатор полей хоста категории "управление"
+#         с опцией предварительного поиска в БД.
+#     """
 
 
 def splitter(data, splitter=';') -> list:
@@ -172,19 +152,117 @@ def splitter(data, splitter=';') -> list:
         return [data]
 
 
-class ControllerManagementOptions(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    type_controller: str
-    group: Annotated[int, Field(exclude=True)]
-    commands: Annotated[str, AfterValidator(splitter)]
-    max_stage: int
-    options: Annotated[str | list | None, AfterValidator(splitter)]
-    sources: Annotated[str | list | None, AfterValidator(splitter)]
+# class ControllerManagementOptions(BaseModel):
+#
+#     model_config = ConfigDict(from_attributes=True)
+#     type_controller: str
+#     group: Annotated[int, Field(exclude=True)]
+#     commands: Annotated[str, AfterValidator(splitter)]
+#     max_stage: int
+#     options: Annotated[str | list | None, AfterValidator(splitter)]
+#     sources: Annotated[str | list | None, AfterValidator(splitter)]
 
 """ Без запроса в БД. """
 
 
-class FieldsMonitoringWithoutSearchInDb(BaseModel):
+class MonitoringFields(BaseModel):
+
+    model_config = ConfigDict(extra='allow', use_enum_values=True)
+
+    number: Annotated[str | None, Field(default=None)]
+    ip_v4: Annotated[str | None, Field(default=None, exclude=True)]
+    type_controller: Annotated[str | None, Field(default=None)]
+    errors: Annotated[list, Field(default=[])]
+    response: Annotated[dict, Field(default={})]
+    option: Annotated[str | None, Field(default=None)]
+    database: Annotated[dict | SearchinDbFields, Field(default={})]
+    allowed: Annotated[bool, Field(default=False)]
+
+    stop_check_flag: Annotated[bool, Field(default=False, exclude=True)]
+    
+
+
+    # @field_validator('type_controller', mode='after')
+    # @classmethod
+    # def check_type_controller(cls, type_controller):
+    #     try:
+    #         AllowedControllers(type_controller)
+    #     except ValueError:
+    #         cls.add_to_errors('Некорректный тип контроллера')
+    #     return type_controller
+
+    # def add_err(self, exc_or_err: Exception | AnyStr | abc.Collection[str]):
+    def add_err(self, *args: Exception | AnyStr):
+        for exc_or_err in args:
+            self.errors.append(str(exc_or_err))
+
+    def check_type_controller(self):
+        try:
+            AllowedControllers(self.type_controller)
+        except ValueError:
+            self.add_err(ErrMessages.get_bad_controller_pretty(self.type_controller))
+
+    def check_ipv4(self):
+        try:
+            ipaddress.IPv4Address(self.ip_v4)
+        except ValueError as e:
+            self.add_err(ErrMessages.get_bad_ip_pretty(self.ip_v4))
+
+    def check_database(self):
+        try:
+            if self.database['count'] > 1:
+                self.add_err('Более 1 записи найдено в БД')
+        except KeyError:
+            pass
+
+    def model_post_init(self, __context) -> None:
+        self.validate_all()
+        if not self.errors:
+            self.allowed = True
+
+    def validate_all(self):
+        self.check_ipv4()
+        self.check_type_controller()
+
+    # @model_validator(mode='after')
+    # def check_type_controller(self) -> Self:
+    #     try:
+    #         AllowedControllers(self.type_controller)
+    #     except ValueError:
+    #         self.errors.append('Некорректный тип контроллера')
+    #     return self
+
+
+class ManagementFields(MonitoringFields):
+
+    matches_command_to_controller: ClassVar = {
+        str(AllowedControllers.SWARCO): available_services.swarco,
+        str(AllowedControllers.POTOK_P): available_services.potok_p,
+        str(AllowedControllers.POTOK_S): available_services.potok_s,
+        str(AllowedControllers.PEEK): available_services.peek,
+    }
+
+    command: Annotated[str, SkipValidation]
+    value: Annotated[int | str | None, Field(default=None), SkipValidation]
+    source: Annotated[AllowedManagementSources, Field(default=None), SkipValidation]
+    controller_command_entity: Annotated[available_services.T_Services, Field(exclude=True, default=None)]
+
+    def validate_all(self):
+        super().validate_all()
+
+        if self.errors:
+            return
+
+        self.controller_command_entity: available_services.CommandOptions = (
+            self.matches_command_to_controller[self.type_controller]
+        )
+
+        self.add_err(*self.controller_command_entity.validate_service_entity(
+            command=self.command, value=self.value
+        ))
+
+
+class Monitoring(BaseModel):
 
     model_config = ConfigDict(
         extra='allow',
@@ -209,25 +287,24 @@ class FieldsMonitoringWithoutSearchInDb(BaseModel):
         }
     )
 
+    _model = MonitoringFields
+
     hosts: Annotated[
-        dict[str, BaseFields], MinLen(1), MaxLen(30), SkipValidation
+        dict[str, MonitoringFields | ManagementFields], MinLen(1), MaxLen(30), SkipValidation
     ]
 
     @field_validator('hosts', mode='before')
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, BaseFields]:
-        # return {
-        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
-        #     for k, v in hosts.items()
-        # }
-        return {
-            k: BaseFields(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
-            for k, v in hosts.items()
-        }
+    @classmethod
+    def body_to_pydantic_model(cls, hosts: dict[str, Any]) -> dict[str, MonitoringFields | ManagementFields]:
+        # a_a = {k: cls._model(**v) for k, v in hosts.items()}
+        # print(f'a_a: {a_a}')
+        return {k: cls._model(ip_v4=k, **v) for k, v in hosts.items()}
 
 
-class FieldsManagementWithoutSearchInDb(BaseModel):
+class Management(Monitoring):
 
     model_config = ConfigDict(
+        extra='allow',
         json_schema_extra= {
             "examples": [
                 {
@@ -251,20 +328,16 @@ class FieldsManagementWithoutSearchInDb(BaseModel):
         }
     )
 
-    hosts: Annotated[
-        dict[str, ManagementFields], MinLen(1), MaxLen(30), SkipValidation
-    ]
+    _model = ManagementFields
 
-    @field_validator('hosts', mode='before')
-    def add_m(cls, hosts: dict[str, Any]) -> dict[str, ManagementFields]:
-        # return {
-        #     k: DataHostMixin(**(v | {'errors': [], 'ip_adress': k}))
-        #     for k, v in hosts.items()
-        # }
-        return {
-            k: ManagementFields(**(v | {str(AllowedDataHostFields.errors): [], str(AllowedDataHostFields.ip_adress): k}))
-            for k, v in hosts.items()
-        }
+
+    # hosts: Annotated[
+    #     dict[str, ManagementFields], MinLen(1), MaxLen(30), SkipValidation
+    # ]
+    #
+    # @field_validator('hosts', mode='before')
+    # def add_m(cls, hosts: dict[str, Any]) -> dict[str, ManagementFields]:
+    #     return {k: ManagementFields(**v) for k, v in hosts.items()}
 
 
 """ Response """
@@ -420,8 +493,6 @@ class ResponseGetState(BaseModel):
 T_PydanticModel = TypeVar("T_PydanticModel", bound=BaseModel)
 
 
-
-
 """ Модели БД """
 class ModelFromDb(BaseModel):
     model_config = ConfigDict(use_enum_values=True, from_attributes=True)
@@ -447,33 +518,34 @@ class T1(BaseModel):
     id: int
     hosts: list[Nested]
 
+
 if __name__ == '__main__':
     data = {'type_controller': 'Swarc', 'entity': 'get_state_base', 'host_id': '1557'}
     data = ['1', "11", "192.168.45.16"]
 
-    try:
-        o = BaseFieldsSearchInDb(hosts=data)
-        print(f'o: {o}')
-        print(f'o: {o.hosts.keys()}')
-        d = o.model_dump()
-        d1 = o.model_dump()
-        print(f'o: {d1 is d}')
+    data_command = {
+        'hosts': {
+            '10.45.154.15': {
+                'type_controller': 'Swarco',
+                'command': 'set_stage',
+                'value': 1
+            }
+        }
+    }
+    swarco2 = {
+        'ip_v4': '10.45.154.15',
+        'type_controller': 'Swarco',
+        'command': 'set_stage',
+        'value': 9
+    }
 
-    except ValidationError as err:
-        print(f'err: {err}')
-        print(f'err.errors(): {err.errors()}')
-        print(f'err.args: {err.args}')
-        print(f'err.json(): {err.json()}')
-        print(f'err.error_count(): {err.error_count()}')
-
-
-
-    # j_data = json.dumps(data)
-    # print(j_data)
-    # print(type(j_data))
-    # obj = _MonitoringAndManagementBase(**{'type_controller': 'Swarco', 'host_id': 'string', 'scn': 'string',
-    #                   'entity': AllowedMonitoringEntity.GET_STATE_BASE, 'search_in_db': True,
-    #                                       })
-    # print(obj.model_dump())
-############################
-
+    swarco2_set_stage = ManagementFields(**swarco2)
+    # swarco2_set_stage = ManagementFields(
+    #     ip_v4='10.45.154.15',
+    #     type_controller='Swarco',
+    #     command='set_stage',
+    #     value=1
+    # )
+    print(swarco2_set_stage.model_dump_json(indent=4))
+    print('*' * 100)
+    print(available_services.swarco.model_dump_json(indent=4))

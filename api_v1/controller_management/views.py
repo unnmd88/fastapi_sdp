@@ -9,16 +9,17 @@ from core.models.db_helper import db_helper
 from core.settings import settings
 from core.shared import HTTP_CLIENT_SESSIONS
 from api_v1.controller_management import services
-from api_v1.controller_management.crud.crud import HostPropertiesFromDb
+from api_v1.controller_management.crud.crud import TrafficLights
 from api_v1.controller_management.schemas import (
-    BaseFieldsSearchInDb,
-    FieldsMonitoringWithoutSearchInDb,
+    BaseSearchTrafficLightsInDb,
+    Monitoring,
     ResponseGetState,
     ResponseSearchinDb,
-    FieldsManagementWithoutSearchInDb,
-    ControllerManagementOptions
+    Management, MonitoringFields,
+    # ControllerManagementOptions
 )
-from api_v1.controller_management.available_services import all_controllers_services, T_CommandOptions
+from api_v1.controller_management.available_services import all_controllers_services
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -30,56 +31,64 @@ router = APIRouter()
 #     logger.debug(data.model_json_schema())
 #     return data
 
-@router.get('/controller-management-options')
-async def get_controller_management_options(
-    session: AsyncSession = Depends(db_helper.session_dependency)
-) -> list[ControllerManagementOptions]:
-    return await crud.get_controller_management_options(session)
+# @router.get('/controller-management-options')
+# async def get_controller_management_options(
+#     session: AsyncSession = Depends(db_helper.session_dependency)
+# ) -> list[ControllerManagementOptions]:
+#     return await crud.get_controller_management_options(session)
 
 
 @router.post('/properties', tags=[settings.traffic_lights_tag_static_properties])
-async def get_hosts(data: BaseFieldsSearchInDb) -> ResponseSearchinDb:
+async def get_hosts(data: BaseSearchTrafficLightsInDb) -> ResponseSearchinDb:
 
     start_time = time.time()
     logger.debug(f'data: {data}')
-    hosts_from_db = HostPropertiesFromDb(data)
+    hosts_from_db = TrafficLights(data)
     await hosts_from_db.search_hosts_and_processing()
-    return hosts_from_db.get_response_as_model()
+    hosts_from_db.get_as_dict()
+    return hosts_from_db.get_response_as_pydantic_model()
 
 
 @router.post('/search-and-get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def search_and_get_state(data: BaseFieldsSearchInDb) -> ResponseGetState:
+async def search_and_get_state(data: BaseSearchTrafficLightsInDb):
+
+    hosts_from_db = TrafficLights(data)
+    await hosts_from_db.search_hosts_and_processing()
+    # print(f'hosts_from_db host_data: {hosts_from_db.host_data}' )
+    # print(f'hosts_from_db src_data: {hosts_from_db.src_data}' )
+    # print(f'hosts_from_db hosts_after_search: {hosts_from_db.hosts_after_search}' )
+    # print(f'get_response_as_pydantic_model: {hosts_from_db.get_response_as_pydantic_model()}' )
+
+    host_for_req = Monitoring(hosts={**hosts_from_db.get_as_dict()})
 
     states = services.StatesMonitoring(
-        income_data=data,
-        search_in_db=True,
+        income_data=host_for_req,
         session=HTTP_CLIENT_SESSIONS[0].session
     )
     return await states.compose_request()
 
 
 @router.post('/get-state', tags=[settings.traffic_lights_tag_monitoring])
-async def get_state(data: FieldsMonitoringWithoutSearchInDb) -> ResponseGetState:
-    # print(f'data: \n {data}')
+# async def get_state(data: Monitoring) -> ResponseGetState:
+async def get_state(data: Monitoring):
+
     states = services.StatesMonitoring(
         income_data=data,
-        search_in_db=False,
         session=HTTP_CLIENT_SESSIONS[0].session
     )
     return await states.compose_request()
 
 
 @router.get('/commands-and-options', tags=[settings.traffic_lights_tag_management])
-async def commands_options() -> T_CommandOptions:
+async def commands_options():
     return all_controllers_services
 
 
 @router.post('/set-command', tags=[settings.traffic_lights_tag_management])
-async def set_command(data: FieldsManagementWithoutSearchInDb):
+async def set_command(data: Management):
 
     result_set_command = services.Management(
         income_data=data,
-        search_in_db=False,
         session=HTTP_CLIENT_SESSIONS[0].session
     )
     return await result_set_command.compose_request()
@@ -157,3 +166,26 @@ async def set_command(data: FieldsManagementWithoutSearchInDb):
 }
 
 '''
+
+
+########################
+"""
+
+{
+  "hosts": {
+    "10.179.72.185": {
+      "type_controller": "Swarco"
+    },
+    "10.179.24.73": {
+      "type_controller": "Поток (S)"
+    },
+     "10.179.91.17": {
+          "type_controller": "Поток (P)"
+        },
+     "10.179.66.97": {
+          "type_controller": "Peek"
+    }
+  }
+}
+
+"""

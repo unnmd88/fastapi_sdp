@@ -1,3 +1,4 @@
+from enum import StrEnum
 
 from sqlalchemy import DateTime, func, Column
 from sqlalchemy.orm import Mapped
@@ -44,6 +45,13 @@ class ControllerManagementOptions(Base):
             f'options: {self.options}\n'
             f'sources: {self.sources}'
         )
+
+
+class TrafficLightsTableFields(StrEnum):
+    ip_address = 'ip_adress'
+    number = 'number'
+    type_controller = 'type_controller'
+    ALL = '*'
 
 
 if __name__ == '__main__':

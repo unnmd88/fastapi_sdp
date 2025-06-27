@@ -6,7 +6,6 @@ from pydantic_core import ValidationError, PydanticCustomError
 from api_v1.controller_management.schemas import (
     AllowedControllers,
     AllowedManagementEntity,
-    TrafficLightsObjectsTableFields,
     SearchinDbFields, AllowedManagementSources,
 )
 from api_v1.controller_management.checkers.archive.custom_checkers import HostData
@@ -92,12 +91,12 @@ class FoundInDatabaseFields(BaseModel):
             # dict(wrong_value=v)
 
             )
-        if not (records[0][TrafficLightsObjectsTableFields.IP_ADDRESS]):
+        if not (records[0][TrafficLightsTableFields.ip_address]):
             raise PydanticCustomError(
                 'not if field',
                 f'Нет данных об ip адресе у хоста в базе',
                 {
-                    'Нет ip': f'У найденного хоста нет информации об ip: {records[0][TrafficLightsObjectsTableFields.IP_ADDRESS]}'
+                    'Нет ip': f'У найденного хоста нет информации об ip: {records[0][TrafficLightsTableFields.ip_address]}'
                 }
             )
 
