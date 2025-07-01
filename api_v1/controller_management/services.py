@@ -70,19 +70,15 @@ class Controllers:
                             self.get_coro(ip_v4, data_host),
                             name=ip_v4
                         ))
-
         else:
-
             for ip_v4, data_host in self.hosts.items():
                 if data_host.allowed:
                     pending.append(asyncio.create_task(
                         self.get_coro(ip_v4, data_host),
                         name=ip_v4
                     ))
-
         while pending:
             done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-
             for done_task in done:
                 await done_task
                 instance = done_task.result()

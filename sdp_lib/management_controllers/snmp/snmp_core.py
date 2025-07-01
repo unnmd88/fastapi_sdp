@@ -141,6 +141,9 @@ class SnmpHost(Host):
             self._request_response_data_get_states.parser_obj
         )
         self._get_states_parser_config: ParserConfig = None
+        self._request_response_data_default.set_parse_method(
+            self._request_response_data_default.parser_obj
+        )
 
     @cached_property
     @abc.abstractmethod
@@ -434,7 +437,8 @@ class StcipHosts(SnmpHost):
         self._request_response_data_default.load_coro(
             self._request_sender.snmp_set(self._varbinds.get_varbinds_set_stage(value))
         )
-        self._request_response_data_default.parser.load_config_parser(default_processing_stcip_parser_config)
+        # self._request_response_data_default.parser.load_config_parser(default_processing_stcip_parser_config)
+        self._request_response_data_default.parser_obj.load_config_parser(default_processing_stcip_parser_config)
         return await self._make_request(self._request_response_data_default)
 
     async def get_current_stage(self):
